@@ -950,6 +950,51 @@
   padding: var(--space-4) var(--space-5) var(--space-5);
 }
 
+/* Campos: ayuda pegada al campo, error junto al campo que lo causa y error general del formulario */
+dialog form > .helper-text {
+  margin-top: calc(var(--space-2) - 14px);
+}
+.field-error {
+  display: flex;
+  gap: 6px;
+  align-items: start;
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+dialog form > .field-error {
+  margin-top: calc(var(--space-1) - 14px);
+}
+.field-error .icon {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+.editor-grid .field-error {
+  grid-column: 1 / -1;
+}
+[aria-invalid='true'] {
+  border-color: var(--danger) !important;
+}
+.form-error {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--danger);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+.form-error:empty {
+  display: none;
+}
+dialog input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 /* Notificaciones: oscuras por diseño en ambos temas, apiladas abajo a la derecha */
 .toasts {
   position: fixed;

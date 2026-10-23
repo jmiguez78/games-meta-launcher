@@ -168,6 +168,47 @@ function undoPreference(game, patch, message) {
     }
   };
 }
+// Errores de formulario junto al campo que los causa: aria-invalid, aria-describedby y foco en el primero.
+// Los errores que no corresponden a un campo (por ejemplo, del servidor) van al .form-error del formulario.
+function setFieldError(input, message) {
+  const id = input.id + '-error';
+  let error = document.getElementById(id);
+  if (!error) {
+    error = document.createElement('p');
+    error.id = id;
+    error.className = 'field-error';
+    (input.closest('label, .field-row') || input).after(error);
+  }
+  error.innerHTML = icon('alert') + '<span></span>';
+  error.querySelector('span').textContent = message;
+  input.setAttribute('aria-invalid', 'true');
+  const described = (input.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+  if (!described.includes(id)) input.setAttribute('aria-describedby', [id, ...described].join(' '));
+}
+function clearFieldError(input) {
+  const id = input.id + '-error';
+  document.getElementById(id)?.remove();
+  input.removeAttribute('aria-invalid');
+  const described = (input.getAttribute('aria-describedby') || '').split(' ').filter((item) => item && item !== id);
+  if (described.length) input.setAttribute('aria-describedby', described.join(' '));
+  else input.removeAttribute('aria-describedby');
+}
+function setFormError(form, message) {
+  form.querySelector('.form-error').textContent = message;
+}
+// errors: lista de [campo, mensaje]. Devuelve true si el formulario es válido.
+function showFormErrors(form, errors) {
+  form.querySelectorAll('[aria-invalid]').forEach(clearFieldError);
+  setFormError(form, '');
+  errors.forEach(([input, message]) => setFieldError(input, message));
+  errors[0]?.[0].focus();
+  return errors.length === 0;
+}
+['input', 'change'].forEach((type) =>
+  document.addEventListener(type, (event) => {
+    if (event.target.getAttribute?.('aria-invalid')) clearFieldError(event.target);
+  })
+);
 async function request(url, options) {
   const response = await fetch(url, options);
   const data = await response.json();
@@ -845,7 +886,46 @@ function editGame(game) {
   document.querySelector('#cover-input').value = '';
   document.querySelector('#launch-type').value = game.launchOverride?.type || '';
   document.querySelector('#launch-target').value = game.launchOverride?.target || '';
+  syncLaunchTarget();
+  showFormErrors(editor.querySelector('form'), []);
   editor.showModal();
+}
+const launchPlaceholders = {
+  '': 'Se usa la detección automática',
+  uri: 'steam://rungameid/1234',
+  file: 'C:\\Juegos\\MiJuego\\juego.exe',
+  appsFolder: 'Paquete_abc123!App'
+};
+// Con detección automática la ruta no se usa: se deshabilita para que no parezca obligatoria.
+function syncLaunchTarget() {
+  const type = document.querySelector('#launch-type').value;
+  const target = document.querySelector('#launch-target');
+  target.disabled = !type;
+  target.placeholder = launchPlaceholders[type];
+  if (!type) clearFieldError(target);
+}
+function editorErrors() {
+  const errors = [];
+  const tags = document.querySelector('#tags-input');
+  if (tags.value.split(',').filter((tag) => tag.trim()).length > 12)
+    errors.push([tags, 'Podés usar hasta 12 etiquetas. Quitá algunas para guardar.']);
+  const cover = document.querySelector('#cover-input');
+  const file = cover.files[0];
+  if (file && !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))
+    errors.push([cover, 'Elegí una imagen PNG, JPG o WebP.']);
+  else if (file && file.size > 5_000_000)
+    errors.push([cover, 'La imagen pesa más de 5 MB. Probá con una más liviana.']);
+  const type = document.querySelector('#launch-type').value;
+  const target = document.querySelector('#launch-target');
+  const value = target.value.trim();
+  if (type && !value) errors.push([target, 'Escribí la ruta o la URI, o volvé a la detección automática.']);
+  else if (type === 'uri' && !/^[a-z][a-z0-9+.-]*:/i.test(value))
+    errors.push([target, 'La URI empieza con el protocolo del launcher, por ejemplo steam://rungameid/1234.']);
+  else if (type === 'file' && !/^([a-z]:[\\/]|\\\\)/i.test(value))
+    errors.push([target, 'Usá la ruta completa, por ejemplo C:\\Juegos\\MiJuego\\juego.exe.']);
+  else if (type === 'appsFolder' && !/^[^\\/!\s]+![^\\/!\s]+$/.test(value))
+    errors.push([target, 'El identificador tiene la forma Paquete_abc123!App.']);
+  return errors;
 }
 async function uploadCover(game, file) {
   return new Promise((resolve, reject) => {
@@ -1109,12 +1189,29 @@ document.querySelectorAll('#views button').forEach(
 );
 document.querySelectorAll('.nav-item').forEach((button) => (button.onclick = () => showPage(button.dataset.page)));
 document.querySelectorAll('[data-go-library]').forEach((button) => (button.onclick = () => showPage('library')));
-document.querySelector('#save-tags').onclick = async () => {
-  if (!editing) return;
+editor.querySelectorAll('[data-close]').forEach((button) => (button.onclick = () => editor.close()));
+document.querySelector('#launch-type').onchange = syncLaunchTarget;
+// El diálogo sólo se cierra si todo se guardó; si no, el error queda a la vista dentro de la ficha.
+editor.querySelector('form').onsubmit = async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!editing || !showFormErrors(form, editorErrors())) return;
+  const game = editing;
+  const save = document.querySelector('#save-tags');
+  const coverInput = document.querySelector('#cover-input');
+  const cover = coverInput.files[0];
+  const before = {
+    tags: tagsOf(game),
+    progress: game.progress || 'Pendiente',
+    rating: Number(game.rating) || 0,
+    notes: game.notes || '',
+    launchOverride: game.launchOverride || null
+  };
+  const type = document.querySelector('#launch-type').value;
+  const target = document.querySelector('#launch-target').value.trim();
+  save.disabled = true;
   try {
-    const type = document.querySelector('#launch-type').value;
-    const target = document.querySelector('#launch-target').value.trim();
-    await updatePreference(editing, {
+    await updatePreference(game, {
       tags: document
         .querySelector('#tags-input')
         .value.split(',')
@@ -1123,15 +1220,33 @@ document.querySelector('#save-tags').onclick = async () => {
       progress: document.querySelector('#progress-input').value,
       rating: Number(document.querySelector('#rating-input').value),
       notes: document.querySelector('#notes-input').value,
-      launchOverride: type && target ? { type, target } : null
+      launchOverride: type ? { type, target } : null
     });
-    const cover = document.querySelector('#cover-input').files[0];
-    if (cover) await uploadCover(editing, cover);
+    if (cover) {
+      try {
+        await uploadCover(game, cover);
+      } catch (error) {
+        showFormErrors(form, [[coverInput, error.message + ' El resto de la ficha ya se guardó.']]);
+        return;
+      }
+    }
     renderHome();
     renderLibrary();
-    notify('Ficha actualizada.', { type: 'success' });
+    editor.close();
+    // La portada reemplaza un archivo y no se puede deshacer; el resto de la ficha, sí.
+    notify('Ficha de ' + game.name + ' actualizada.', {
+      type: 'success',
+      action: cover
+        ? undefined
+        : {
+            label: 'Deshacer',
+            run: undoPreference(game, before, 'Se recuperó la ficha anterior de ' + game.name + '.')
+          }
+    });
   } catch (error) {
-    notifyError(error);
+    setFormError(form, error.message);
+  } finally {
+    save.disabled = false;
   }
 };
 document.querySelector('#refresh').onclick = async (event) => {
@@ -1162,18 +1277,21 @@ document.querySelector('#import-preferences').onchange = (event) => {
 };
 document.querySelector('#schedule-form').onsubmit = async (event) => {
   event.preventDefault();
-  const button = event.currentTarget.querySelector('button');
+  const form = event.currentTarget;
+  const time = document.querySelector('#schedule-time');
+  if (!showFormErrors(form, time.value ? [] : [[time, 'Elegí la hora en que se actualiza la biblioteca.']])) return;
+  const button = form.querySelector('button');
   button.disabled = true;
   try {
     await request('/api/schedule', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ time: document.querySelector('#schedule-time').value })
+      body: JSON.stringify({ time: time.value })
     });
     await loadSchedule();
     notify('Horario de indexación guardado.', { type: 'success' });
   } catch (error) {
-    notifyError(error);
+    setFormError(form, error.message);
   } finally {
     button.disabled = false;
   }
@@ -1193,22 +1311,43 @@ document.querySelectorAll('[data-theme-option]').forEach((button) => {
     }
   };
 });
+// Mismo formato que valida el servidor: entre 10 y 64 letras y números.
+function igdbErrors(clientId, secret) {
+  const credential = /^[a-z0-9]{10,64}$/i;
+  const errors = [];
+  if (!clientId.value.trim()) errors.push([clientId, 'Pegá el ID de cliente de tu aplicación de Twitch.']);
+  else if (!credential.test(clientId.value.trim()))
+    errors.push([clientId, 'El ID de cliente tiene entre 10 y 64 letras y números, sin espacios ni símbolos.']);
+  if (!secret.value.trim())
+    errors.push([
+      secret,
+      secret.placeholder
+        ? 'Para volver a conectar, pegá el secreto otra vez.'
+        : 'Pegá el secreto de tu aplicación de Twitch.'
+    ]);
+  else if (!credential.test(secret.value.trim()))
+    errors.push([secret, 'El secreto tiene entre 10 y 64 letras y números, sin espacios ni símbolos.']);
+  return errors;
+}
 document.querySelector('#igdb-form').onsubmit = async (event) => {
   event.preventDefault();
-  const button = event.currentTarget.querySelector('button[type=submit]');
+  const form = event.currentTarget;
+  const clientId = document.querySelector('#igdb-client-id');
   const secret = document.querySelector('#igdb-secret');
+  if (!showFormErrors(form, igdbErrors(clientId, secret))) return;
+  const button = form.querySelector('button[type=submit]');
   button.disabled = true;
   try {
     await request('/api/integrations/igdb', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clientId: document.querySelector('#igdb-client-id').value, clientSecret: secret.value })
+      body: JSON.stringify({ clientId: clientId.value, clientSecret: secret.value })
     });
     secret.value = '';
     notify('IGDB conectado. Buscando información de tus juegos…', { type: 'success' });
     await loadIgdb();
   } catch (error) {
-    notifyError(error);
+    setFormError(form, error.message);
   } finally {
     button.disabled = false;
   }

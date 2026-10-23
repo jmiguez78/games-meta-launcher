@@ -211,14 +211,15 @@
                 <h2>Indexación nocturna</h2>
                 <p>Actualiza el inventario cada día sin abrir la aplicación.</p>
               </div>
-              <form id="schedule-form" class="schedule-form">
+              <form id="schedule-form" class="schedule-form" novalidate>
                 <label for="schedule-time">Hora de ejecución</label>
-                <div>
+                <div class="field-row">
                   <input id="schedule-time" type="time" value="03:00" /><button class="button primary" type="submit">
                     Guardar horario
                   </button>
                 </div>
                 <p id="schedule-status" class="helper-text">Consultando la tarea programada…</p>
+                <p id="schedule-error" class="form-error" role="alert"></p>
               </form>
             </section>
             <section class="settings-card">
@@ -248,17 +249,18 @@
                   <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">Twitch</a>.
                 </p>
               </div>
-              <form id="igdb-form" class="schedule-form" autocomplete="off">
+              <form id="igdb-form" class="schedule-form" autocomplete="off" novalidate>
                 <label for="igdb-client-id">ID de cliente</label>
-                <input id="igdb-client-id" spellcheck="false" />
+                <input id="igdb-client-id" spellcheck="false" aria-required="true" />
                 <label for="igdb-secret">Secreto</label>
-                <input id="igdb-secret" type="password" spellcheck="false" />
+                <input id="igdb-secret" type="password" spellcheck="false" aria-required="true" />
                 <div class="button-row">
                   <button class="button primary" type="submit">Conectar</button
                   ><button id="igdb-refresh" class="button" type="button">Actualizar información</button
                   ><button id="igdb-remove" class="text-button" type="button">Desconectar</button>
                 </div>
                 <p id="igdb-status" class="helper-text">Consultando la conexión…</p>
+                <p id="igdb-error" class="form-error" role="alert"></p>
               </form>
             </section>
           </div>
@@ -280,7 +282,9 @@
             <p class="kicker">BIBLIOTECA PERSONAL</p>
             <h2 id="editor-title">Ficha del juego</h2>
           </div>
-          <button value="cancel" class="icon-btn dialog-close" aria-label="Cerrar"><span data-icon="x"></span></button>
+          <button type="button" class="icon-btn dialog-close" data-close aria-label="Cerrar">
+            <span data-icon="x"></span>
+          </button>
         </div>
         <label
           >Etiquetas<input
@@ -288,7 +292,9 @@
             type="text"
             placeholder="simracing, pendiente, cooperativo"
             autocomplete="off"
+            aria-describedby="tags-help"
         /></label>
+        <p id="tags-help" class="helper-text">Separalas con comas. Hasta 12 etiquetas.</p>
         <div class="editor-grid">
           <label
             >Estado<select id="progress-input">
@@ -312,12 +318,20 @@
           >Notas<textarea
             id="notes-input"
             rows="4"
+            maxlength="4000"
             placeholder="Objetivos, mods o recordatorios personales…"
           ></textarea></label
-        ><label>Portada local<input id="cover-input" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+        ><label
+          >Portada local<input
+            id="cover-input"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-describedby="cover-help"
+        /></label>
+        <p id="cover-help" class="helper-text">PNG, JPG o WebP de hasta 5 MB.</p>
         <fieldset>
           <legend>Lanzamiento personalizado</legend>
-          <p class="helper-text">Usalo sólo si la detección automática no alcanza.</p>
+          <p id="launch-help" class="helper-text">Usalo sólo si la detección automática no alcanza.</p>
           <div class="editor-grid">
             <label for="launch-type" class="visually-hidden">Tipo de lanzamiento</label>
             <select id="launch-type">
@@ -326,12 +340,13 @@
               <option value="file">Archivo ejecutable</option>
               <option value="appsFolder">AppsFolder de Microsoft</option></select
             ><label for="launch-target" class="visually-hidden">Ruta o URI de lanzamiento</label
-            ><input id="launch-target" type="text" placeholder="Ruta o URI" />
+            ><input id="launch-target" type="text" placeholder="Ruta o URI" aria-describedby="launch-help" />
           </div>
         </fieldset>
+        <p id="editor-error" class="form-error" role="alert"></p>
         <div class="dialog-actions">
-          <button value="cancel" class="button">Cancelar</button
-          ><button id="save-tags" value="default" class="button primary">Guardar cambios</button>
+          <button type="button" class="button" data-close>Cancelar</button
+          ><button id="save-tags" type="submit" class="button primary">Guardar cambios</button>
         </div>
       </form>
     </dialog>

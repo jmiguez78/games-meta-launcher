@@ -1,10 +1,10 @@
 # Games Meta Launcher
 
-Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, Xbox/Microsoft Store y Ubisoft Connect en una sola biblioteca de estética retro.
+Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, Xbox/Microsoft Store, Ubisoft Connect, EA app y GOG Galaxy en una sola biblioteca de estética retro.
 
 ## Estado
 
-Versión inicial `0.1.0`. Detecta instalaciones locales, permite filtrarlas y lanza los juegos de Steam. Las integraciones con bibliotecas compradas y cuentas externas quedan fuera de esta versión.
+Versión `0.3.0`. Detecta instalaciones locales, permite filtrarlas, guardar favoritos y etiquetas, y lanzar juegos mediante los identificadores locales que se puedan resolver. Las integraciones con bibliotecas compradas y cuentas externas quedan fuera de esta versión.
 
 ## Uso rápido
 
@@ -24,6 +24,7 @@ No requiere instalar dependencias de npm para esta primera versión.
 | `npm run check` | Comprueba la sintaxis de los archivos de aplicación. |
 
 El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC.
+Tus favoritos, etiquetas y últimos lanzamientos se guardan localmente en `data/preferences.json`, también excluido del repositorio.
 
 ## Documentación
 
@@ -31,6 +32,7 @@ El inventario generado se guarda en `data/library.json`, que no forma parte del 
 - [Operación e indexación nocturna](docs/operacion.md)
 - [Plan de versiones](docs/roadmap.md)
 - [Plan de trabajo](docs/plan-de-trabajo.md)
+- [Registro de cambios](CHANGELOG.md)
 
 ## Versionado
 

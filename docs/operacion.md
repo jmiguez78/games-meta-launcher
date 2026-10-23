@@ -20,6 +20,10 @@ El script `tools/register-nightly-index.ps1` crea una tarea de Windows para ejec
 
 La tarea sólo actualiza el archivo de inventario local. No inicia el navegador ni los launchers.
 
+## Datos personales
+
+Favoritos, etiquetas y la fecha de último lanzamiento se conservan en `data/preferences.json`. La reindexación no los elimina: se asocian al identificador estable de cada plataforma.
+
 ## Acceso directo
 
 El script `tools/create-desktop-shortcut.ps1` crea un acceso directo en el Escritorio para iniciar la aplicación local y abrir el navegador.

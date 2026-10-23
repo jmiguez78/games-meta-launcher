@@ -1,12 +1,12 @@
 {
   "name": "games-meta-launcher",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Lanzador local y catálogo de juegos para Windows.",
   "scripts": {
     "start": "node src/server.mjs",
     "scan": "node src/indexer.mjs",
-    "check": "node --check src/server.mjs && node --check src/indexer.mjs"
+    "check": "node --check src/server.mjs && node --check src/indexer.mjs && node --check public/app.js"
   }
 }

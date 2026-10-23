@@ -12,7 +12,7 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.10.0 terminada
+## Estado actual — implementación hasta 0.11.0 terminada
 
 La base local está terminada:
 
@@ -36,6 +36,7 @@ La base local está terminada:
 - Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store; validadas manualmente en 0.8.1.
 - Portadas desde los datos locales de cada launcher, con descarga desde la CDN de Steam cuando faltan (0.9.0).
 - Interfaz 2.0 accesible, modo oscuro e integración beta con IGDB (0.10.0).
+- Paleta de comandos, avisos con Deshacer y errores junto a cada campo (0.11.0).
 
 Queda pendiente validar IGDB con credenciales reales de Twitch.
 
@@ -59,7 +60,7 @@ Queda pendiente validar IGDB con credenciales reales de Twitch.
 | Diagnóstico y horario | Panel de salud por plataforma y configuración visual de indexación nocturna. | Disponible. |
 | Fecha de juego y Explorador | Registro local del último inicio y tabla de Explorador ordenable. | Disponible. |
 
-## Siguiente — versión 0.10.1: validación de IGDB
+## Siguiente — versión 0.11.1: validación de IGDB
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |

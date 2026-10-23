@@ -76,7 +76,13 @@
 - Modo oscuro que sigue a Windows o se elige en Configuración.
 - Integración opcional con IGDB (beta): descripción, géneros, año, desarrolladora, valoración y portadas faltantes.
 
-## 0.10.1 — Validación de IGDB
+## 0.11.0 — Avisos, formularios y paleta de comandos · Completada
+
+- Paleta de comandos con Control+K para abrir juegos, ir a secciones y ejecutar acciones.
+- Avisos apilados con Deshacer, Reintentar y progreso de las operaciones largas.
+- Errores de formulario junto al campo que los causa en la ficha y en Configuración.
+
+## 0.11.1 — Validación de IGDB
 
 - Conectar credenciales reales de Twitch y revisar la coincidencia de cada juego.
 - Quitar la etiqueta beta cuando los juegos de todas las plataformas se emparejen correctamente.

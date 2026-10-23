@@ -1,6 +1,6 @@
 # Registro de cambios
 
-## Próxima versión
+## 0.11.0 — 23 de octubre de 2026
 
 - Paleta de comandos: **Control+K** o el botón **Buscar o ir a…** permiten abrir un juego por nombre, ir a cualquier sección o cambiar el tema, actualizar el inventario y otras acciones sin usar el mouse. **Mayús+Enter** abre la ficha del juego. La barra diagonal sigue enfocando la búsqueda de la Biblioteca.
 - Avisos nuevos: se apilan sin interrumpir, muestran si algo está en curso, salió bien o falló, y ofrecen **Deshacer** al cambiar favoritos, guardar una ficha o restaurar un respaldo, y **Reintentar** cuando algo falla. Los errores ya no abren una ventana que hay que cerrar.

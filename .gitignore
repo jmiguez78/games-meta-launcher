@@ -4,10 +4,5 @@ data/library.json
 data/preferences.json
 data/covers/
 dist/
-release/
-release-portable/
-release-v050/
-release-v051/
-release-v070/
-release-v071/
 *.log
+release*/

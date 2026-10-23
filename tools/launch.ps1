@@ -5,4 +5,4 @@ if (-not $running) {
     Start-Process -FilePath $nodePath -ArgumentList 'src/server.mjs' -WorkingDirectory $projectPath -WindowStyle Hidden
     Start-Sleep -Seconds 1
 }
-Start-Process 'http://localhost:4321'
+Start-Process 'http://127.0.0.1:4321'

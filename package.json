@@ -1,6 +1,6 @@
 {
   "name": "games-meta-launcher",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
@@ -23,6 +23,6 @@
     "files": ["public/**/*", "src/**/*", "package.json"],
     "extraResources": [{ "from": "data/library.sample.json", "to": "library.sample.json" }],
     "asar": false,
-    "directories": { "output": "release-v071" }
+    "directories": { "output": "release-v072" }
   }
 }

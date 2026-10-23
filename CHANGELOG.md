@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.7.2 — 23 de octubre de 2026
+
+- Seguridad: el servidor local sólo acepta conexiones desde esta PC y rechaza solicitudes de otros sitios web, que antes podían modificar rutas de lanzamiento e iniciar programas.
+
 ## 0.7.1 — 23 de octubre de 2026
 
 - Fecha de última vez jugado disponible en ficha y Explorador para los inicios realizados desde Games Meta Launcher.

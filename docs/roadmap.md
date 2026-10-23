@@ -49,6 +49,10 @@
 - Fecha de última vez jugado para inicios realizados desde Games Meta Launcher.
 - Vista Explorador en tabla única y ordenamiento ascendente o descendente desde cada encabezado.
 
+## 0.7.2 — Seguridad del servidor local · Completada
+
+- Servidor accesible sólo desde `127.0.0.1` y protegido contra solicitudes de otros orígenes.
+
 ## 0.8.0 — Refinamiento y validación
 
 - Validación manual de lanzamientos por plataforma.

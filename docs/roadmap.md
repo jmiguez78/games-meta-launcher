@@ -44,6 +44,11 @@
 - Panel de salud por plataforma, launchers y detecciones incompletas.
 - La tarea programada invoca la indexación sin abrir la ventana de la aplicación.
 
+## 0.7.1 — Exploración de biblioteca · Completada
+
+- Fecha de última vez jugado para inicios realizados desde Games Meta Launcher.
+- Vista Explorador en tabla única y ordenamiento ascendente o descendente desde cada encabezado.
+
 ## 0.8.0 — Refinamiento y validación
 
 - Validación manual de lanzamientos por plataforma.

@@ -12,7 +12,7 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.7 terminada
+## Estado actual — implementación hasta 0.7.1 terminada
 
 La base local está terminada:
 
@@ -29,6 +29,8 @@ La base local está terminada:
 - Navegación en Inicio, Biblioteca, Diagnóstico y Configuración.
 - Sistema visual de escritorio con estados de carga, vacío, error y confirmación.
 - Diagnóstico por plataforma y horario de indexación nocturna configurable desde la aplicación.
+- Fecha de última vez jugado registrada al iniciar un título desde Games Meta Launcher.
+- Explorador en tabla única, ordenable de forma ascendente o descendente por nombre, plataforma, unidad, estado y fecha de juego.
 - Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store cuando sus datos locales permiten resolverlas.
 
 La implementación está completa, pero la validación real de cada launcher sigue pendiente. Se evitó abrir juegos durante las pruebas automáticas.
@@ -44,13 +46,14 @@ La implementación está completa, pero la validación real de cada launcher sig
 | Validar escritorio | Abrir la aplicación portable y confirmar que conserva los datos entre ejecuciones. | Se abre sin navegador ni terminal y los cambios personales persisten. |
 | Validar personalización | Cargar una portada, editar la ficha y restaurar un respaldo. | Todos los datos se muestran tras reindexar o reiniciar. |
 
-## Versiones 0.6 y 0.7 — completadas
+## Versiones 0.6, 0.7 y 0.7.1 — completadas
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
 | Experiencia de biblioteca | Navegación lateral, inicio con accesos rápidos, filtros reorganizados y cuatro vistas refinadas. | Disponible. |
 | Estados e interacción | Retroalimentación de éxito, biblioteca vacía, mensajes claros y atajos de teclado. | Disponible. |
 | Diagnóstico y horario | Panel de salud por plataforma y configuración visual de indexación nocturna. | Disponible. |
+| Fecha de juego y Explorador | Registro local del último inicio y tabla de Explorador ordenable. | Disponible. |
 
 ## Siguiente — versión 0.8: refinamiento y validación
 

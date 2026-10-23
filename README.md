@@ -10,7 +10,7 @@ Versión `0.7.1`. Detecta instalaciones locales, permite filtrarlas, guardar pre
 
 1. Abrí `release-v071/Games Meta Launcher 0.7.1.exe` cuando esté disponible, o ejecutá `npm run desktop` durante el desarrollo.
 2. En **Inicio**, elegí favoritos o juegos listos para iniciar.
-3. En **Biblioteca**, buscá, filtrá y elegí la vista que mejor se adapte a la tarea.
+3. En **Biblioteca**, buscá, filtrá y elegí la vista que mejor se adapte a la tarea. El modo **Explorador** reúne toda la colección en una única tabla: seleccioná cualquier encabezado para ordenar ascendente o descendentemente.
 4. En **Diagnóstico**, revisá las plataformas y juegos que requieren atención.
 5. En **Configuración**, elegí la hora de la indexación nocturna y respaldá tus preferencias.
 
@@ -26,7 +26,7 @@ La versión portable incluye su propio runtime. Para desarrollo se requiere `npm
 | `npm run desktop` | Abre la aplicación en una ventana de escritorio. |
 | `npm run package` | Genera el ejecutable portable de Windows en `release-v071/`. |
 
-El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC. Tus favoritos, etiquetas, progreso, notas, puntuaciones, portadas y últimos lanzamientos se guardan localmente en `data/preferences.json` y `data/covers/`, también excluidos del repositorio. La aplicación portable guarda esos datos en el perfil local de Windows.
+El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC. Tus favoritos, etiquetas, progreso, notas, puntuaciones, portadas y fecha de última vez jugado se guardan localmente en `data/preferences.json` y `data/covers/`, también excluidos del repositorio. La fecha de juego se registra al iniciar un título desde Games Meta Launcher. La aplicación portable guarda esos datos en el perfil local de Windows.
 
 ## Documentación
 

@@ -23,6 +23,7 @@
 | Tarjeta de juego | Iconos, lista, detalle | Explorar, comparar o profundizar una ficha. |
 | Chips | Normal, activo | Selección de plataforma y filtros visibles. |
 | Estado | Éxito, atención, vacío, notificación | Explica disponibilidad, resultados y confirmaciones. |
+| Tabla Explorador | Una tabla, encabezados ordenables | Compara toda la biblioteca y cambia el orden desde cada columna. |
 
 ## Accesibilidad e interacción
 

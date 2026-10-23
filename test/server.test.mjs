@@ -21,7 +21,8 @@ const catalog = {
       location: 'C:\\Steam\\cs',
       launch: { type: 'uri', target: 'steam://run/10', available: true },
       status: 'installed',
-      evidence: ''
+      evidence: '',
+      art: { portrait: path.join(dataDir, 'portada-local.jpg') }
     },
     {
       key: 'epic games:x',
@@ -40,8 +41,8 @@ const catalog = {
       name: 'Juego roto',
       platform: 'GOG Galaxy',
       drive: 'C:',
-      location: 'C:\no-existe',
-      launch: { type: 'file', target: 'C:\no-existe\juego.exe', available: true },
+      location: 'C:\\no-existe',
+      launch: { type: 'file', target: 'C:\\no-existe\\juego.exe', available: true },
       status: 'installed',
       evidence: ''
     }
@@ -52,6 +53,7 @@ let server;
 let base;
 before(async () => {
   await fs.writeFile(path.join(dataDir, 'library.json'), JSON.stringify(catalog));
+  await fs.writeFile(path.join(dataDir, 'portada-local.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
   server = createServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -157,4 +159,22 @@ test('informa el error si el ejecutable no existe, sin detener el servidor', asy
   assert.equal(response.status, 500);
   assert.match((await response.json()).error, /No se pudo iniciar/);
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
+});
+
+test('la biblioteca resume las imágenes disponibles sin exponer rutas locales', async () => {
+  const library = await (await fetch(`${base}/api/library`)).json();
+  const steam = library.games.find((game) => game.key === 'steam:10');
+  const epic = library.games.find((game) => game.key === 'epic games:x');
+  assert.equal(steam.art, undefined);
+  assert.deepEqual(steam.artwork, { cover: 'portrait', hero: true, background: null });
+  assert.deepEqual(epic.artwork, { cover: null, hero: false, background: null });
+});
+
+test('sirve la imagen local y responde 404 cuando no hay ninguna fuente', async () => {
+  const local = await fetch(`${base}/api/art/cover/steam%3A10`);
+  assert.equal(local.status, 200);
+  assert.equal(local.headers.get('content-type'), 'image/jpeg');
+  assert.deepEqual([...new Uint8Array(await local.arrayBuffer())], [0xff, 0xd8, 0xff, 0xd9]);
+  assert.equal((await fetch(`${base}/api/art/cover/${encodeURIComponent('epic games:x')}`)).status, 404);
+  assert.equal((await fetch(`${base}/api/art/otro/steam%3A10`)).status, 404);
 });

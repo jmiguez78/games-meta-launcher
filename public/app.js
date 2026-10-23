@@ -98,15 +98,41 @@ function statusText(game) {
       : 'Inicio pendiente'
     : 'Requiere revisión';
 }
-function applyCover(element, game, cover) {
-  if (game.coverFile) {
-    element.style.backgroundImage =
-      "linear-gradient(#10182722,#10182799),url('/covers/" + encodeURIComponent(game.coverFile) + "')";
-    element.classList.add('has-image');
-  } else {
-    const initial = element.querySelector('.cover-initial');
-    if (initial) initial.textContent = cover.initials || 'G';
-  }
+// La portada manual tiene prioridad; después, la imagen del launcher (hero apaisada si se pide).
+function artSources(game, preferHero) {
+  const artwork = game.artwork || {};
+  const sources = [];
+  if (game.coverFile) sources.push({ url: '/covers/' + encodeURIComponent(game.coverFile), kind: 'portrait' });
+  if (preferHero && artwork.hero) sources.push({ url: '/api/art/hero/' + encodeURIComponent(game.key), kind: 'hero' });
+  if (artwork.cover) sources.push({ url: '/api/art/cover/' + encodeURIComponent(game.key), kind: artwork.cover });
+  return sources;
+}
+function applyCover(element, game, cover, preferHero = false) {
+  const initial = element.querySelector('.cover-initial');
+  if (initial) initial.textContent = cover.initials || 'G';
+  const sources = artSources(game, preferHero);
+  // Cada imagen se aplica sólo si carga; si todas fallan quedan las iniciales.
+  const tryNext = () => {
+    const source = sources.shift();
+    if (!source) return;
+    const image = new Image();
+    image.onload = () => {
+      const logo = source.kind === 'logo';
+      element.style.backgroundImage =
+        (logo ? '' : 'linear-gradient(#10182700 55%,#101827aa),') + 'url("' + source.url + '")';
+      element.style.backgroundSize = logo ? 'contain' : 'cover';
+      element.style.backgroundRepeat = 'no-repeat';
+      element.style.backgroundPosition = 'center';
+      if (logo) {
+        element.style.backgroundOrigin = 'content-box';
+        element.style.backgroundColor = (game.artwork && game.artwork.background) || '#1d2433';
+      }
+      element.classList.add('has-image', 'art-' + source.kind);
+    };
+    image.onerror = tryNext;
+    image.src = source.url;
+  };
+  tryNext();
 }
 function makeCard(game, compact = false) {
   const node = template.content.cloneNode(true);
@@ -235,7 +261,7 @@ function detailPanel(game) {
     '</dd><dt>Última vez jugado</dt><dd>' +
     lastPlayedText(game) +
     '</dd><dt>Detección</dt><dd></dd></dl><p class="notes"></p><div class="tag-list"></div>';
-  applyCover(panel.querySelector('.detail-cover'), game, cover);
+  applyCover(panel.querySelector('.detail-cover'), game, cover, true);
   panel.querySelector('h2').textContent = game.name;
   panel.querySelector('.detail-status').textContent =
     game.launch && game.launch.available ? 'Disponible para iniciar' : 'Inicio pendiente';

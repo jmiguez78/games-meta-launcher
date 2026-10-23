@@ -12,7 +12,7 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.8.1 terminada
+## Estado actual — implementación hasta 0.9.0 terminada
 
 La base local está terminada:
 
@@ -57,7 +57,7 @@ La implementación está completa, pero la validación real de cada launcher sig
 | Diagnóstico y horario | Panel de salud por plataforma y configuración visual de indexación nocturna. | Disponible. |
 | Fecha de juego y Explorador | Registro local del último inicio y tabla de Explorador ordenable. | Disponible. |
 
-## Siguiente — versión 0.9: portadas automáticas y ajustes de detección
+## Siguiente — versión 0.10: metadatos enriquecidos
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |

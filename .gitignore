@@ -3,6 +3,7 @@ node_modules/
 data/library.json
 data/preferences.json
 data/covers/
+data/art-cache/
 dist/
 *.log
 release*/

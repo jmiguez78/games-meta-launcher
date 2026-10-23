@@ -1137,3 +1137,10 @@ legend {
     flex-direction: column;
   }
 }
+.has-image .cover-initial,
+.has-image .cover-stars {
+  visibility: hidden;
+}
+.detail-cover.has-image {
+  color: transparent;
+}

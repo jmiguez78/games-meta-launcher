@@ -47,7 +47,8 @@ function makeGame({
   launch = null,
   evidence,
   status = 'installed',
-  packageName = ''
+  packageName = '',
+  art = null
 }) {
   return {
     key: gameKey(platform, id, name),
@@ -59,8 +60,45 @@ function makeGame({
     launch,
     packageName,
     status,
-    evidence
+    evidence,
+    art
   };
+}
+
+const STEAM_LIBRARY_CACHE = 'C:\\Program Files (x86)\\Steam\\appcache\\librarycache';
+// Herramientas que Steam instala como aplicaciones pero no son juegos.
+const STEAM_NON_GAMES = new Set(['228980']);
+const steamArtFiles = {
+  portrait: ['library_600x900.jpg', 'library_capsule.jpg'],
+  landscape: ['library_header.jpg', 'header.jpg'],
+  hero: ['library_hero.jpg']
+};
+// Steam guarda las imágenes en la carpeta del juego o, en versiones recientes, en subcarpetas con hash.
+export async function steamArtwork(id, cacheDir = STEAM_LIBRARY_CACHE) {
+  const root = path.join(cacheDir, id);
+  let entries = [];
+  try {
+    entries = await fs.readdir(root, { recursive: true });
+  } catch {
+    return null;
+  }
+  const byName = new Map(entries.map((entry) => [path.basename(entry).toLowerCase(), path.join(root, entry)]));
+  const art = {};
+  for (const [kind, names] of Object.entries(steamArtFiles)) {
+    const found = names.map((name) => byName.get(name)).find(Boolean);
+    if (found) art[kind] = found;
+  }
+  return Object.keys(art).length ? art : null;
+}
+export async function xboxArtwork(location, config) {
+  const background = config.match(/BackgroundColor="(#[0-9a-f]{6})"/i)?.[1] ?? null;
+  for (const attribute of ['Square480x480Logo', 'Square150x150Logo', 'StoreLogo']) {
+    const relative = config.match(new RegExp(`${attribute}="([^"]+)"`, 'i'))?.[1];
+    if (!relative) continue;
+    const target = path.join(location, 'Content', relative);
+    if (await exists(target)) return { logo: target, background };
+  }
+  return null;
 }
 
 export function parseSteamManifest(text) {
@@ -89,7 +127,7 @@ async function steamGames() {
     }
     for (const file of files.filter((name) => /^appmanifest_\d+\.acf$/i.test(name))) {
       const manifest = parseSteamManifest(await readText(path.join(base, file)));
-      if (!manifest.name) continue;
+      if (!manifest.name || STEAM_NON_GAMES.has(manifest.id)) continue;
       const location = path.join(base, 'common', manifest.installDir);
       const present = await exists(location);
       games.push(
@@ -100,6 +138,7 @@ async function steamGames() {
           location,
           launch: present ? { type: 'uri', target: `steam://run/${manifest.id}`, available: true } : null,
           status: present ? 'installed' : 'attention',
+          art: await steamArtwork(manifest.id),
           evidence: present
             ? 'Manifiesto Steam y carpeta presentes'
             : 'Steam lo registra como instalado, pero la carpeta no existe. Verificá los archivos o desinstalalo desde Steam.'
@@ -168,6 +207,7 @@ async function xboxGames() {
           location,
           packageName,
           launch: packageName ? { type: 'appsFolder', target: `${packageName}!${appId}`, available: true } : null,
+          art: await xboxArtwork(location, config),
           evidence: 'MicrosoftGame.config y contenido presentes'
         })
       );

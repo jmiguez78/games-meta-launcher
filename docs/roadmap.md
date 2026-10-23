@@ -65,6 +65,12 @@
 - Lanzamientos validados manualmente por plataforma.
 - Juego directo desde el Explorador y corrección del encabezado con pocos resultados.
 
-## 0.9.0 — Portadas automáticas (en evaluación)
+## 0.9.0 — Portadas automáticas · Completada
 
-- Imágenes de juegos obtenidas de los datos locales de cada launcher, con la portada manual como prioridad.
+- Imágenes locales de Steam (portada, encabezado y panorámica) y logos de Xbox.
+- Descarga desde la CDN pública de Steam cuando falta la imagen local, con caché.
+
+## 0.10.0 — Metadatos enriquecidos (en evaluación)
+
+- Descripción, géneros, fecha de lanzamiento, desarrolladora y puntuaciones desde una base de datos de videojuegos.
+- Portadas para Epic, Ubisoft y otras plataformas sin imágenes locales.

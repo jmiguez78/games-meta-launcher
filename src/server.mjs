@@ -55,14 +55,102 @@ function safeOverride(value) {
     ? { type: value.type, target: value.target.trim(), available: true }
     : null;
 }
+// Imágenes: primero las que guardan los launchers en esta PC; si faltan, la CDN pública de Steam.
+const artCacheDir = path.join(dataDir, 'art-cache');
+const ART_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
+const steamCdnAssets = { cover: ['library_600x900.jpg', 'header.jpg'], hero: ['library_hero.jpg'] };
+const pendingDownloads = new Map();
+function hasSteamCdn(game) {
+  return game.platform === 'Steam' && /^\d+$/.test(game.id);
+}
+function artwork(game, art = {}) {
+  const online = hasSteamCdn(game);
+  const cover = art?.portrait
+    ? 'portrait'
+    : art?.landscape
+      ? 'landscape'
+      : art?.logo
+        ? 'logo'
+        : online
+          ? 'portrait'
+          : null;
+  return { cover, hero: Boolean(art?.hero || online), background: art?.background ?? null };
+}
+async function localArt(art = {}, kind) {
+  const candidates = kind === 'hero' ? [art?.hero] : [art?.portrait, art?.landscape, art?.logo];
+  for (const file of candidates.filter(Boolean)) {
+    const type = types[path.extname(file).toLowerCase()];
+    if (!type?.startsWith('image/')) continue;
+    try {
+      return { bytes: await fs.readFile(file), type };
+    } catch {
+      /* el launcher pudo borrar la imagen desde el último escaneo */
+    }
+  }
+  return null;
+}
+async function downloadSteamArt(id, kind, file, missFile) {
+  let reachable = false;
+  for (const asset of steamCdnAssets[kind]) {
+    try {
+      const response = await fetch(`https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/${asset}`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      reachable = true;
+      if (!response.ok || !String(response.headers.get('content-type')).startsWith('image/')) continue;
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length > 5_000_000) continue;
+      await fs.mkdir(artCacheDir, { recursive: true });
+      await fs.writeFile(file, bytes);
+      return { bytes, type: types['.jpg'] };
+    } catch {
+      /* sin conexión o recurso inválido: se prueba el siguiente */
+    }
+  }
+  // Sólo se recuerda la ausencia si Steam respondió; sin conexión se reintenta en la próxima carga.
+  if (reachable) {
+    await fs.mkdir(artCacheDir, { recursive: true });
+    await fs.writeFile(missFile, '');
+  }
+  return null;
+}
+async function onlineArt(game, kind) {
+  if (!hasSteamCdn(game)) return null;
+  const name = crypto.createHash('sha256').update(`${game.key}:${kind}`).digest('hex').slice(0, 20);
+  const file = path.join(artCacheDir, `${name}.jpg`);
+  const missFile = path.join(artCacheDir, `${name}.miss`);
+  try {
+    return { bytes: await fs.readFile(file), type: types['.jpg'] };
+  } catch {
+    /* todavía no se descargó */
+  }
+  try {
+    if (Date.now() - (await fs.stat(missFile)).mtimeMs < ART_RETRY_MS) return null;
+  } catch {
+    /* no hay ausencia registrada */
+  }
+  if (!pendingDownloads.has(file))
+    pendingDownloads.set(
+      file,
+      downloadSteamArt(game.id, kind, file, missFile).finally(() => pendingDownloads.delete(file))
+    );
+  return pendingDownloads.get(file);
+}
+async function gameArt(key, kind) {
+  const catalog = await rawLibrary();
+  const game = catalog.games.find((item) => item.key === key);
+  if (!game) return null;
+  return (await localArt(game.art, kind)) ?? (await onlineArt(game, kind));
+}
 async function library() {
   const [catalog, prefs] = await Promise.all([rawLibrary(), preferences()]);
   return {
     ...catalog,
-    games: catalog.games.map((game) => {
+    games: catalog.games.map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
       return {
         ...game,
+        artwork: artwork(game, art),
         favorite: false,
         tags: [],
         progress: 'Pendiente',
@@ -252,6 +340,13 @@ export function createServer() {
         prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
         await writePreferences(prefs);
         return reply(res, 200, JSON.stringify({ ok: true }));
+      }
+      const artRoute = req.method === 'GET' && url.pathname.match(/^\/api\/art\/(cover|hero)\/([^/]+)$/);
+      if (artRoute) {
+        const image = await gameArt(decodeURIComponent(artRoute[2]), artRoute[1]);
+        if (!image) return reply(res, 404, 'Sin imagen.', 'text/plain');
+        res.writeHead(200, { 'content-type': image.type, 'cache-control': 'private, max-age=3600' });
+        return res.end(image.bytes);
       }
       if (req.method === 'GET' && url.pathname.startsWith('/covers/')) {
         const name = path.basename(url.pathname);

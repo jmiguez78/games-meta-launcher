@@ -1,5 +1,12 @@
 # Registro de cambios
 
+## 0.9.0 — 23 de octubre de 2026
+
+- Portadas automáticas: se usan las imágenes que Steam y Xbox ya guardan en esta PC. La ficha muestra la imagen panorámica del juego cuando existe.
+- Si un juego de Steam no tiene imagen local, se descarga una vez desde la CDN pública de Steam y queda guardada. Es la única conexión a internet de la aplicación y sólo envía el número del juego.
+- La portada cargada a mano sigue teniendo prioridad.
+- "Steamworks Common Redistributables" ya no aparece como juego.
+
 ## 0.8.1 — 23 de octubre de 2026
 
 - El Explorador permite jugar desde cada fila: botón **Jugar**, doble clic o Enter. Las flechas recorren la tabla.

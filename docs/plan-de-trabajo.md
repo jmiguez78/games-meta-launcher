@@ -12,7 +12,7 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.9.0 terminada
+## Estado actual — implementación hasta 0.10.0 terminada
 
 La base local está terminada:
 
@@ -33,9 +33,11 @@ La base local está terminada:
 - Explorador en tabla única, ordenable de forma ascendente o descendente por nombre, plataforma, unidad, estado y fecha de juego.
 - Servidor local restringido a esta PC, respaldos validados y lanzamiento sin `cmd.exe` (0.7.2 y 0.8.0).
 - Pruebas automáticas (`npm test`) y código fuente formateado.
-- Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store cuando sus datos locales permiten resolverlas.
+- Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store; validadas manualmente en 0.8.1.
+- Portadas desde los datos locales de cada launcher, con descarga desde la CDN de Steam cuando faltan (0.9.0).
+- Interfaz 2.0 accesible, modo oscuro e integración beta con IGDB (0.10.0).
 
-La implementación está completa, pero la validación real de cada launcher sigue pendiente. Se evitó abrir juegos durante las pruebas automáticas.
+Queda pendiente validar IGDB con credenciales reales de Twitch.
 
 ## Ahora — validación de las versiones 0.3 a 0.5
 
@@ -57,11 +59,11 @@ La implementación está completa, pero la validación real de cada launcher sig
 | Diagnóstico y horario | Panel de salud por plataforma y configuración visual de indexación nocturna. | Disponible. |
 | Fecha de juego y Explorador | Registro local del último inicio y tabla de Explorador ordenable. | Disponible. |
 
-## Siguiente — versión 0.10: metadatos enriquecidos
+## Siguiente — versión 0.10.1: validación de IGDB
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
-| Validar lanzadores | Iniciar manualmente un juego representativo por plataforma. | Las plataformas compatibles se abren desde la biblioteca. |
+| Validar IGDB | Credenciales de una aplicación de Twitch. | Los juegos de cada plataforma muestran la ficha correcta; se quita la etiqueta beta. |
 | Ajustar detección | Corregir juegos en revisión a partir de los diagnósticos. Tiny Lands (Epic) ya explica que su carpeta no existe. | Cada caso se resuelve o explica de forma útil. |
 | Pulido de UX | Incorporar correcciones surgidas del uso real. | La interfaz mantiene claridad y coherencia en los flujos frecuentes. |
 

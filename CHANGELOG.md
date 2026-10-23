@@ -1,9 +1,9 @@
 # Registro de cambios
 
-## Sin publicar
+## 0.10.0 — 23 de octubre de 2026
 
 - Modo oscuro: sigue el tema de Windows o se elige en **Configuración → Apariencia**. La barra de título acompaña la elección.
-- Información de juegos desde IGDB (opcional): descripción, géneros, año, desarrolladora, valoración y portadas para Epic y Ubisoft.
+- Información de juegos desde IGDB (beta, opcional): descripción, géneros, año, desarrolladora, valoración y portadas para Epic y Ubisoft. Requiere credenciales de una aplicación de Twitch y todavía no se validó contra el servicio real.
 - Al restaurar un respaldo se conservan las preferencias de la aplicación.
 - Interfaz renovada en todas las pantallas: portadas grandes, filas y ficha de juego rediseñadas, tabla ordenable accesible, íconos nuevos y estados de carga, error y biblioteca vacía.
 - Navegación completa por teclado en cada colección (flechas, Enter, F y E) y mejoras de accesibilidad WCAG 2.2 AA en contraste, foco y etiquetas.

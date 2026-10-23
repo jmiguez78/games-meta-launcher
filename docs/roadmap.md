@@ -70,7 +70,13 @@
 - Imágenes locales de Steam (portada, encabezado y panorámica) y logos de Xbox.
 - Descarga desde la CDN pública de Steam cuando falta la imagen local, con caché.
 
-## 0.10.0 — Metadatos enriquecidos (en evaluación)
+## 0.10.0 — Interfaz 2.0, modo oscuro y metadatos · Completada
 
-- Descripción, géneros, fecha de lanzamiento, desarrolladora y puntuaciones desde una base de datos de videojuegos.
-- Portadas para Epic, Ubisoft y otras plataformas sin imágenes locales.
+- Sistema visual 2.0 en todas las pantallas, navegación completa por teclado y criterios WCAG 2.2 AA.
+- Modo oscuro que sigue a Windows o se elige en Configuración.
+- Integración opcional con IGDB (beta): descripción, géneros, año, desarrolladora, valoración y portadas faltantes.
+
+## 0.10.1 — Validación de IGDB
+
+- Conectar credenciales reales de Twitch y revisar la coincidencia de cada juego.
+- Quitar la etiqueta beta cuando los juegos de todas las plataformas se emparejen correctamente.

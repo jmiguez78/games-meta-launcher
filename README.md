@@ -30,6 +30,7 @@ El inventario generado se guarda en `data/library.json`, que no forma parte del 
 - [Arquitectura](docs/arquitectura.md)
 - [Operación e indexación nocturna](docs/operacion.md)
 - [Plan de versiones](docs/roadmap.md)
+- [Plan de trabajo](docs/plan-de-trabajo.md)
 
 ## Versionado
 

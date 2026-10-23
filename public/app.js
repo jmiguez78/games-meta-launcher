@@ -92,9 +92,12 @@ function notify(message, options = {}) {
   let deadline = 0;
   let remaining = 0;
   const holds = new Set();
+  // Al cerrarse con el foco adentro, el foco vuelve a donde estaba antes de entrar al aviso.
+  let returnFocus = null;
   const dismiss = () => {
     clearTimeout(timer);
-    if (item.contains(document.activeElement)) document.querySelector('.nav-item.active').focus();
+    if (item.contains(document.activeElement))
+      (returnFocus?.isConnected ? returnFocus : document.querySelector('.nav-item.active')).focus();
     item.classList.remove('show');
     setTimeout(() => item.remove(), 200);
   };
@@ -139,7 +142,10 @@ function notify(message, options = {}) {
   });
   item.addEventListener('pointerenter', () => hold('pointer'));
   item.addEventListener('pointerleave', () => release('pointer'));
-  item.addEventListener('focusin', () => hold('focus'));
+  item.addEventListener('focusin', (event) => {
+    if (!item.contains(event.relatedTarget)) returnFocus = event.relatedTarget;
+    hold('focus');
+  });
   item.addEventListener('focusout', (event) => {
     if (!item.contains(event.relatedTarget)) release('focus');
   });
@@ -747,14 +753,19 @@ function renderLibrary() {
   document.querySelector('#empty-state').classList.toggle('hidden', games.length > 0);
   renderActiveFilters();
 }
-function renderHome() {
+// Favoritos, después los jugados hace poco y después los listos para jugar, sin repetir.
+function quickGames(limit) {
   const favorites = state.games.filter((game) => game.favorite);
   const recent = [...state.games]
     .filter((game) => game.lastLaunchedAt)
     .sort((a, b) => String(b.lastLaunchedAt).localeCompare(String(a.lastLaunchedAt)));
-  const quick = [...favorites, ...recent, ...state.games.filter((game) => game.launch && game.launch.available)]
+  return [...favorites, ...recent, ...state.games.filter((game) => game.launch && game.launch.available)]
     .filter((game, index, all) => all.findIndex((item) => item.key === game.key) === index)
-    .slice(0, 6);
+    .slice(0, limit);
+}
+function renderHome() {
+  const favorites = state.games.filter((game) => game.favorite);
+  const quick = quickGames(6);
   quickLibrary.innerHTML = '';
   quick.forEach((game) => quickLibrary.append(makePosterCard(game)));
   const first = quickLibrary.querySelector('.tile');
@@ -1157,6 +1168,210 @@ function setFiltersOpen(open) {
   document.querySelector('#filter-panel').classList.toggle('hidden', !open);
   document.querySelector('#toggle-filters').setAttribute('aria-expanded', String(open));
 }
+// Abre la ficha del juego en la vista Detalle; si los filtros lo ocultan, se limpian.
+function showGame(game) {
+  showPage('library');
+  if (!visibleGames().some((item) => item.key === game.key)) clearFilters();
+  state.selectedKey = game.key;
+  document.querySelector('#views [data-view="detail"]').click();
+  library.querySelector('.tile.selected')?.focus();
+}
+
+// Paleta de comandos (Control+K): combobox con lista agrupada y aria-activedescendant.
+// El foco queda siempre en el campo; las flechas mueven la opción activa y Enter la ejecuta.
+const palette = document.querySelector('#palette');
+const paletteInput = document.querySelector('#palette-input');
+const paletteList = document.querySelector('#palette-list');
+let paletteItems = [];
+let paletteActive = 0;
+function normalize(text) {
+  return String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+function paletteCommands() {
+  const sections = [...document.querySelectorAll('.nav-item')].map((button) => ({
+    group: 'Secciones',
+    label: 'Ir a ' + button.textContent.trim(),
+    icon: button.querySelector('[data-icon]').dataset.icon,
+    keywords: pageMeta[button.dataset.page].join(' '),
+    run: () => showPage(button.dataset.page)
+  }));
+  const theme = (option, label, iconName) => ({
+    group: 'Acciones',
+    label,
+    icon: iconName,
+    keywords: 'tema apariencia modo color',
+    run: () => document.querySelector('[data-theme-option="' + option + '"]').click()
+  });
+  const actions = [
+    {
+      group: 'Acciones',
+      label: 'Actualizar inventario',
+      icon: 'refresh',
+      keywords: 'escanear buscar juegos nuevos instalados indexar',
+      run: () => document.querySelector('#refresh').click()
+    },
+    {
+      group: 'Acciones',
+      label: 'Buscar en la biblioteca',
+      icon: 'search',
+      keywords: 'filtrar',
+      hint: '/',
+      run: () => showPage('library')
+    },
+    {
+      group: 'Acciones',
+      label: 'Mostrar sólo favoritos',
+      icon: 'star',
+      keywords: 'filtrar estrella',
+      run: () => {
+        showPage('library');
+        state.favorite = document.querySelector('#favorites-only').checked = true;
+        renderLibrary();
+      }
+    },
+    {
+      group: 'Acciones',
+      label: 'Limpiar filtros de la biblioteca',
+      icon: 'filter',
+      keywords: 'restablecer quitar',
+      run: () => {
+        clearFilters();
+        showPage('library');
+      }
+    },
+    theme('system', 'Tema: seguir a Windows', 'monitor'),
+    theme('light', 'Tema claro', 'sun'),
+    theme('dark', 'Tema oscuro', 'moon'),
+    {
+      group: 'Acciones',
+      label: 'Respaldar biblioteca personal',
+      icon: 'download',
+      keywords: 'exportar copia preferencias backup',
+      run: exportPreferences
+    }
+  ];
+  return [...sections, ...actions];
+}
+function gameCommand(game, group) {
+  const available = game.launch && game.launch.available;
+  return {
+    group,
+    label: game.name,
+    detail: game.platform + ' · ' + (available ? 'Enter para jugar' : 'Enter para revisar'),
+    icon: available ? 'play' : 'alert',
+    keywords: [game.platform, ...tagsOf(game), ...((game.meta && game.meta.genres) || [])].join(' '),
+    run: () => playOrReview(game),
+    alternate: () => showGame(game)
+  };
+}
+// Sin texto: acceso rápido, secciones y acciones. Con texto, cada palabra debe aparecer en el nombre o
+// ser el comienzo de una palabra clave. Dentro de cada grupo va primero lo que empieza igual y después
+// lo que contiene el texto; los grupos se ordenan por su mejor coincidencia (a igualdad, juegos primero).
+function paletteMatches(query) {
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return [...quickGames(5).map((game) => gameCommand(game, 'Acceso rápido')), ...paletteCommands()];
+  const phrase = words.join(' ');
+  const rank = (item) => {
+    const label = normalize(item.label);
+    const keywords = normalize(item.keywords || '').split(/\s+/);
+    if (!words.every((word) => label.includes(word) || keywords.some((keyword) => keyword.startsWith(word)))) return -1;
+    return label.startsWith(phrase) ? 0 : label.includes(phrase) ? 1 : 2;
+  };
+  const ranked = (items) =>
+    items
+      .map((item) => [rank(item), item])
+      .filter(([score]) => score >= 0)
+      .sort((a, b) => a[0] - b[0]);
+  const commands = paletteCommands();
+  return [
+    ranked(state.games.map((game) => gameCommand(game, 'Juegos'))).slice(0, 8),
+    ranked(commands.filter((item) => item.group === 'Secciones')),
+    ranked(commands.filter((item) => item.group === 'Acciones'))
+  ]
+    .filter((group) => group.length)
+    .sort((a, b) => a[0][0] - b[0][0])
+    .flatMap((group) => group.map(([, item]) => item));
+}
+function renderPalette() {
+  paletteItems = paletteMatches(paletteInput.value);
+  paletteList.innerHTML = '';
+  let group;
+  paletteItems.forEach((item, index) => {
+    if (item.group !== paletteItems[index - 1]?.group) {
+      group = document.createElement('div');
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-labelledby', 'palette-group-' + index);
+      group.innerHTML = '<div class="palette-group-label" role="presentation"></div>';
+      group.firstChild.id = 'palette-group-' + index;
+      group.firstChild.textContent = item.group;
+      paletteList.append(group);
+    }
+    const option = document.createElement('div');
+    option.id = 'palette-option-' + index;
+    option.className = 'palette-option';
+    option.setAttribute('role', 'option');
+    option.innerHTML = icon(item.icon) + '<span class="palette-label"><span></span></span>';
+    option.querySelector('.palette-label span').textContent = item.label;
+    if (item.detail) option.querySelector('.palette-label').insertAdjacentHTML('beforeend', '<small></small>');
+    if (item.detail) option.querySelector('small').textContent = item.detail;
+    if (item.hint) option.insertAdjacentHTML('beforeend', '<kbd class="search-hint" aria-hidden="true"></kbd>');
+    if (item.hint) option.querySelector('kbd').textContent = item.hint;
+    option.onpointermove = () => paletteActive !== index && setPaletteActive(index);
+    option.onclick = (event) => runPaletteItem(index, event.shiftKey);
+    group.append(option);
+  });
+  const empty = document.querySelector('#palette-empty');
+  empty.classList.toggle('hidden', paletteItems.length > 0);
+  empty.querySelector('p').textContent = 'No encontramos «' + paletteInput.value.trim() + '».';
+  document.querySelector('#palette-status').textContent = paletteItems.length
+    ? paletteItems.length + (paletteItems.length === 1 ? ' resultado' : ' resultados')
+    : 'Sin resultados';
+  setPaletteActive(0);
+}
+function setPaletteActive(index) {
+  paletteActive = index;
+  paletteList
+    .querySelectorAll('[role=option]')
+    .forEach((option) => option.setAttribute('aria-selected', String(option.id === 'palette-option-' + index)));
+  const active = document.getElementById('palette-option-' + index);
+  if (active) {
+    paletteInput.setAttribute('aria-activedescendant', active.id);
+    active.scrollIntoView({ block: 'nearest' });
+  } else paletteInput.removeAttribute('aria-activedescendant');
+}
+// Se cierra antes de ejecutar: así el foco vuelve a la página y el comando puede moverlo donde corresponda.
+function runPaletteItem(index, alternate) {
+  const item = paletteItems[index];
+  if (!item) return;
+  palette.close();
+  (alternate && item.alternate ? item.alternate : item.run)();
+}
+function openPalette() {
+  if (document.querySelector('dialog[open]')) return;
+  paletteInput.value = '';
+  renderPalette();
+  palette.showModal();
+  paletteInput.focus();
+}
+paletteInput.oninput = renderPalette;
+paletteInput.onkeydown = (event) => {
+  const count = paletteItems.length;
+  if (!count) return;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    setPaletteActive((paletteActive + (event.key === 'ArrowDown' ? 1 : -1) + count) % count);
+  } else if (event.key === 'PageDown' || event.key === 'PageUp') {
+    event.preventDefault();
+    setPaletteActive(Math.max(0, Math.min(count - 1, paletteActive + (event.key === 'PageDown' ? 5 : -5))));
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    runPaletteItem(paletteActive, event.shiftKey);
+  }
+};
+palette.onclick = (event) => {
+  if (event.target === palette) palette.close();
+};
+document.querySelector('#open-palette').onclick = openPalette;
 
 dialog.querySelector('button').onclick = () => dialog.close();
 document.querySelector('#search').oninput = (event) => {
@@ -1372,7 +1587,8 @@ document.querySelector('#igdb-remove').onclick = async () => {
 document.addEventListener('keydown', (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    showPage('library');
+    if (palette.open) palette.close();
+    else openPalette();
   }
   if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
     event.preventDefault();

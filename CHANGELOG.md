@@ -1,5 +1,12 @@
 # Registro de cambios
 
+## Próxima versión
+
+- Paleta de comandos: **Control+K** o el botón **Buscar o ir a…** permiten abrir un juego por nombre, ir a cualquier sección o cambiar el tema, actualizar el inventario y otras acciones sin usar el mouse. **Mayús+Enter** abre la ficha del juego. La barra diagonal sigue enfocando la búsqueda de la Biblioteca.
+- Avisos nuevos: se apilan sin interrumpir, muestran si algo está en curso, salió bien o falló, y ofrecen **Deshacer** al cambiar favoritos, guardar una ficha o restaurar un respaldo, y **Reintentar** cuando algo falla. Los errores ya no abren una ventana que hay que cerrar.
+- Formularios más claros: los errores aparecen debajo del campo que hay que corregir, en la ficha del juego y en Configuración. La ficha avisa si la ruta de lanzamiento no tiene el formato correcto o si la portada no es una imagen válida, y no se cierra hasta guardar.
+- En la ficha, Enter guarda los cambios (antes cerraba sin guardar) y la ruta de lanzamiento se deshabilita mientras se usa la detección automática.
+
 ## 0.10.0 — 23 de octubre de 2026
 
 - Modo oscuro: sigue el tema de Windows o se elige en **Configuración → Apariencia**. La barra de título acompaña la elección.

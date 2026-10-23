@@ -42,7 +42,10 @@ Todos los colores de superficies, textos y bordes salen de tokens; los elementos
 | Ficha | Panel de detalle | Imagen panorámica, datos de IGDB, acciones, progreso, notas y detalles técnicos plegables. |
 | Tabla | Biblioteca, Diagnóstico | `<table>` semántica; encabezados ordenables con `aria-sort`. |
 | Estadística | Inicio, Diagnóstico | Rótulo, valor y aclaración. |
-| Estado | Carga, error, vacío, sin resultados, notificación | Esqueletos durante la carga; error con Reintentar; vacío con una acción concreta. |
+| Estado | Carga, error, vacío, sin resultados | Esqueletos durante la carga; error con Reintentar; vacío con una acción concreta. |
+| Aviso | Información, éxito, error, en curso | `notify(mensaje, { type, action })`. Se apilan abajo a la derecha (máximo tres) en una región viva educada. Éxito e información se cierran solos (5 s, 8 s con acción) y se pausan con el puntero o el foco encima; errores y operaciones en curso quedan hasta cerrarlos o hasta que termina la operación (`update`). La acción ofrece Deshacer o Reintentar; Escape cierra el aviso enfocado. El diálogo `say()` queda sólo para explicar por qué un juego requiere revisión. |
+| Campo con error | Error de campo, error de formulario | `showFormErrors(form, [[campo, mensaje]])`. El mensaje aparece debajo del campo con `aria-invalid` y `aria-describedby`, y el foco va al primer campo con error; se borra al corregir el campo. Los errores del servidor van al `.form-error` del formulario. Los diálogos sólo se cierran si se guardó todo. |
+| Paleta de comandos | Juegos, secciones, acciones | Control más K o el botón «Buscar o ir a…». Combobox con lista agrupada y `aria-activedescendant`: el foco queda en el campo, las flechas mueven la opción activa, Enter la ejecuta y Mayús más Enter abre la ficha del juego. Busca sin distinguir tildes. |
 
 ## Accesibilidad e interacción (WCAG 2.2 AA)
 
@@ -50,5 +53,6 @@ Todos los colores de superficies, textos y bordes salen de tokens; los elementos
 - Foco visible en todos los controles; se respeta `prefers-reduced-motion`.
 - Colecciones (portadas, filas y tabla) con un único punto de Tab: las flechas recorren los juegos, Enter juega, F marca favorito y E edita. El foco vuelve al mismo juego tras cada cambio.
 - La navegación lateral marca la página con `aria-current`; el contador de resultados es la región viva, no la grilla.
-- Atajos globales: Control más K o barra diagonal abren la Biblioteca y enfocan la búsqueda; Escape oculta los filtros.
+- Atajos globales: Control más K abre y cierra la paleta de comandos; la barra diagonal abre la Biblioteca y enfoca la búsqueda; Escape oculta los filtros.
+- Al cerrarse un aviso con el foco adentro, el foco vuelve a donde estaba antes de entrar.
 - Todos los campos tienen etiqueta y todos los botones un nombre accesible, aunque sólo muestren un ícono.

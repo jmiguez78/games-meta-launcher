@@ -33,6 +33,9 @@
           </div>
           <div class="top-actions">
             <span id="last-update" class="last-update">Cargando inventario…</span
+            ><button id="open-palette" class="button palette-trigger" aria-keyshortcuts="Control+K">
+              <span data-icon="search"></span> Buscar o ir a…
+              <kbd class="search-hint" aria-hidden="true">Ctrl K</kbd></button
             ><button id="refresh" class="button"><span data-icon="refresh"></span> Actualizar</button>
           </div>
         </header>
@@ -85,7 +88,7 @@
                 type="search"
                 placeholder="Buscar por juego, género, etiqueta o plataforma"
                 autocomplete="off"
-                aria-keyshortcuts="/ Control+K"
+                aria-keyshortcuts="/"
               /><kbd class="search-hint" aria-hidden="true">/</kbd></label
             ><button id="toggle-filters" class="button" aria-expanded="false" aria-controls="filter-panel">
               <span data-icon="filter"></span> Filtros <span id="active-filter-count" class="badge hidden">0</span>
@@ -349,6 +352,33 @@
           ><button id="save-tags" type="submit" class="button primary">Guardar cambios</button>
         </div>
       </form>
+    </dialog>
+    <dialog id="palette" class="palette" aria-label="Buscar o ir a">
+      <div class="palette-search">
+        <span data-icon="search"></span
+        ><input
+          id="palette-input"
+          type="text"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="palette-list"
+          aria-autocomplete="list"
+          aria-label="Buscar juegos, secciones y acciones"
+          placeholder="Buscá un juego, una sección o una acción…"
+          autocomplete="off"
+          spellcheck="false"
+        /><kbd class="search-hint" aria-hidden="true">Esc</kbd>
+      </div>
+      <div id="palette-list" class="palette-list" role="listbox" aria-label="Resultados"></div>
+      <div id="palette-empty" class="palette-empty hidden">
+        <p></p>
+        <p>Probá con el nombre de un juego, una sección o una acción como «tema» o «actualizar».</p>
+      </div>
+      <p id="palette-status" class="visually-hidden" role="status"></p>
+      <footer class="palette-footer">
+        <span><kbd>↑</kbd><kbd>↓</kbd> moverse</span><span><kbd>Enter</kbd> elegir</span
+        ><span><kbd>Mayús</kbd> + <kbd>Enter</kbd> ver la ficha del juego</span><span><kbd>Esc</kbd> cerrar</span>
+      </footer>
     </dialog>
     <section id="toasts" class="toasts" aria-label="Notificaciones" aria-live="polite"></section>
     <script src="/app.js"></script>

@@ -9,13 +9,13 @@ const DRIVE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'H', 'K'];
 async function exists(target) { try { await fs.access(target); return true; } catch { return false; } }
 async function readText(target) { try { return await fs.readFile(target, 'utf8'); } catch { return ''; } }
 async function folders(root) { try { return (await fs.readdir(root, { withFileTypes: true })).filter((entry) => entry.isDirectory()).map((entry) => entry.name); } catch { return []; } }
-function vdfValue(text, key) { return text.match(new RegExp(`"${key}"\\s+"([^"]+)"`, 'i'))?.[1] ?? ''; }
+export function vdfValue(text, key) { return text.match(new RegExp(`"${key}"\\s+"([^"]+)"`, 'i'))?.[1] ?? ''; }
 function gameKey(platform, id, name) { return `${platform}:${id || name}`.toLowerCase(); }
 function makeGame({ platform, id = '', name, location, launch = null, evidence, status = 'installed', packageName = '' }) {
   return { key: gameKey(platform, id, name), id, name: name.trim(), platform, drive: location.slice(0, 2), location, launch, packageName, status, evidence };
 }
 
-function parseSteamManifest(text) { return { id: vdfValue(text, 'appid'), name: vdfValue(text, 'name'), installDir: vdfValue(text, 'installdir') }; }
+export function parseSteamManifest(text) { return { id: vdfValue(text, 'appid'), name: vdfValue(text, 'name'), installDir: vdfValue(text, 'installdir') }; }
 async function steamLibraries() {
   const bases = new Set(['C:\\Program Files (x86)\\Steam\\steamapps']);
   const primary = 'C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf';
@@ -34,7 +34,7 @@ async function steamGames() {
       const location = path.join(base, 'common', manifest.installDir); const present = await exists(location);
       games.push(makeGame({ platform: 'Steam', id: manifest.id, name: manifest.name, location,
         launch: present ? { type: 'uri', target: `steam://run/${manifest.id}`, available: true } : null,
-        status: present ? 'installed' : 'attention', evidence: present ? 'Manifiesto Steam y carpeta presentes' : 'Manifiesto Steam presente; carpeta no encontrada' }));
+        status: present ? 'installed' : 'attention', evidence: present ? 'Manifiesto Steam y carpeta presentes' : 'Steam lo registra como instalado, pero la carpeta no existe. Verificá los archivos o desinstalalo desde Steam.' }));
     }
   }
   return games;
@@ -50,7 +50,7 @@ async function epicGames() {
       const present = await exists(item.InstallLocation);
       games.push(makeGame({ platform: 'Epic Games', id: item.CatalogItemId ?? item.AppName ?? '', name: item.DisplayName, location: item.InstallLocation,
         launch: present && item.AppName ? { type: 'uri', target: `com.epicgames.launcher://apps/${item.AppName}?action=launch&silent=true`, available: true } : null,
-        status: present ? 'installed' : 'attention', evidence: present ? 'Manifiesto Epic y carpeta presentes' : 'Manifiesto Epic presente; carpeta no encontrada' }));
+        status: present ? 'installed' : 'attention', evidence: present ? 'Manifiesto Epic y carpeta presentes' : 'Epic lo registra como instalado, pero la carpeta no existe. Verificá o desinstalá el juego desde Epic Games Launcher.' }));
     } catch { /* se omite un manifiesto incompleto */ }
   }
   return games;

@@ -39,9 +39,29 @@ async function health() {
 }
 function reply(res, code, body, type = 'application/json; charset=utf-8') { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); }
 async function body(req) { let value = ''; for await (const chunk of req) { value += chunk; if (value.length > 8_000_000) throw new Error('Archivo o solicitud demasiado grande.'); } return JSON.parse(value || '{}'); }
-function startTarget(target) { spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref(); }
-function launch(game) { if (!game.launch?.available) throw new Error(`El lanzamiento directo aún no está disponible para ${game.platform}.`); startTarget(game.launch.type === 'appsFolder' ? `shell:AppsFolder\\${game.launch.target}` : game.launch.target); }
+// Sin cmd.exe: sus metacaracteres (&, |) permitirían encadenar comandos desde una ruta de lanzamiento.
+function startDetached(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { ...options, detached: true, stdio: 'ignore' });
+    child.once('error', () => reject(new Error('No se pudo iniciar el juego. Revisá la ruta de lanzamiento.')));
+    child.once('spawn', () => { child.unref(); resolve(); });
+  });
+}
+async function launch(game) {
+  if (!game.launch?.available) throw new Error(`El lanzamiento directo aún no está disponible para ${game.platform}.`);
+  const { type, target } = game.launch;
+  if (type === 'appsFolder') return startDetached('explorer.exe', [`shell:AppsFolder\\${target}`]);
+  if (type === 'file' && /\.exe$/i.test(target)) return startDetached(target, [], { cwd: path.dirname(target) });
+  return startDetached('explorer.exe', [target]);
+}
+const coverName = /^[a-f0-9]{20}\.(png|jpg|webp)$/;
 function gameUpdate(current, update) { const next = { ...current }; if (typeof update.favorite === 'boolean') next.favorite = update.favorite; if (Array.isArray(update.tags)) next.tags = update.tags.map(String).map((tag) => tag.trim()).filter(Boolean).slice(0, 12); if (['Pendiente', 'Jugando', 'Completado', 'Abandonado'].includes(update.progress)) next.progress = update.progress; if (Number.isInteger(update.rating) && update.rating >= 0 && update.rating <= 5) next.rating = update.rating; if (typeof update.notes === 'string') next.notes = update.notes.slice(0, 4000); if ('launchOverride' in update) next.launchOverride = safeOverride(update.launchOverride); return next; }
+function importedGame(saved) {
+  const next = gameUpdate({}, saved);
+  if (typeof saved.lastLaunchedAt === 'string' && !Number.isNaN(Date.parse(saved.lastLaunchedAt))) next.lastLaunchedAt = new Date(saved.lastLaunchedAt).toISOString();
+  if (typeof saved.coverFile === 'string' && coverName.test(saved.coverFile)) next.coverFile = saved.coverFile;
+  return next;
+}
 async function saveCover(update) { const match = typeof update.dataUrl === 'string' && update.dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/); if (!match) throw new Error('La portada debe ser PNG, JPG o WebP.'); const bytes = Buffer.from(match[2], 'base64'); if (bytes.length > 5_000_000) throw new Error('La portada no puede superar 5 MB.'); const name = `${crypto.createHash('sha256').update(update.key).digest('hex').slice(0, 20)}${extensionByMime[match[1]]}`; await fs.mkdir(coversDir, { recursive: true }); await fs.writeFile(path.join(coversDir, name), bytes); return name; }
 function trustedRequest(req) { const host = String(req.headers.host || ''); if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/i.test(host)) return false; const origin = req.headers.origin; return req.method === 'GET' || !origin || origin.toLowerCase() === `http://${host}`.toLowerCase(); }
 export function createServer() { return http.createServer(async (req, res) => {
@@ -54,11 +74,11 @@ export function createServer() { return http.createServer(async (req, res) => {
     if (req.method === 'PUT' && url.pathname === '/api/schedule') { const update = await body(req); return reply(res, 200, JSON.stringify(await configureSchedule(String(update.time || '')))); }
     if (req.method === 'POST' && url.pathname === '/api/scan') return reply(res, 200, JSON.stringify(await scanLibrary()));
     if (req.method === 'GET' && url.pathname === '/api/preferences/export') return reply(res, 200, JSON.stringify(await preferences()), 'application/json; charset=utf-8');
-    if (req.method === 'POST' && url.pathname === '/api/preferences/import') { const imported = await body(req); if (!imported?.games || typeof imported.games !== 'object') return reply(res, 400, JSON.stringify({ error: 'El archivo no contiene preferencias válidas.' })); await writePreferences({ games: imported.games }); return reply(res, 200, JSON.stringify({ ok: true })); }
+    if (req.method === 'POST' && url.pathname === '/api/preferences/import') { const imported = await body(req); if (!imported?.games || typeof imported.games !== 'object') return reply(res, 400, JSON.stringify({ error: 'El archivo no contiene preferencias válidas.' })); const games = Object.fromEntries(Object.entries(imported.games).filter(([, saved]) => saved && typeof saved === 'object').map(([key, saved]) => [key, importedGame(saved)])); await writePreferences({ games }); return reply(res, 200, JSON.stringify({ ok: true })); }
     if (req.method === 'POST' && url.pathname === '/api/covers') { const update = await body(req); if (!update.key) return reply(res, 400, JSON.stringify({ error: 'Falta el juego asociado a la portada.' })); const file = await saveCover(update); const prefs = await preferences(); prefs.games[update.key] = { ...(prefs.games[update.key] ?? {}), coverFile: file }; await writePreferences(prefs); return reply(res, 200, JSON.stringify({ coverFile: file })); }
     if (req.method === 'PUT' && url.pathname === '/api/preferences') { const update = await body(req); if (!update.key) return reply(res, 400, JSON.stringify({ error: 'Falta la clave del juego.' })); const prefs = await preferences(); prefs.games[update.key] = gameUpdate(prefs.games[update.key] ?? {}, update); await writePreferences(prefs); return reply(res, 200, JSON.stringify(prefs.games[update.key])); }
-    if (req.method === 'POST' && url.pathname.startsWith('/api/launch/')) { const game = (await library()).games.find((item) => item.key === decodeURIComponent(url.pathname.slice('/api/launch/'.length))); if (!game) return reply(res, 404, JSON.stringify({ error: 'Juego no encontrado.' })); launch(game); const prefs = await preferences(); prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() }; await writePreferences(prefs); return reply(res, 200, JSON.stringify({ ok: true })); }
-    if (req.method === 'GET' && url.pathname.startsWith('/covers/')) { const name = path.basename(url.pathname); const target = path.join(coversDir, name); if (!/^[a-f0-9]{20}\.(png|jpg|webp)$/.test(name)) return reply(res, 403, 'Acceso denegado.', 'text/plain'); try { return reply(res, 200, await fs.readFile(target), types[path.extname(target)]); } catch { return reply(res, 404, 'No encontrado.', 'text/plain'); } }
+    if (req.method === 'POST' && url.pathname.startsWith('/api/launch/')) { const game = (await library()).games.find((item) => item.key === decodeURIComponent(url.pathname.slice('/api/launch/'.length))); if (!game) return reply(res, 404, JSON.stringify({ error: 'Juego no encontrado.' })); await launch(game); const prefs = await preferences(); prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() }; await writePreferences(prefs); return reply(res, 200, JSON.stringify({ ok: true })); }
+    if (req.method === 'GET' && url.pathname.startsWith('/covers/')) { const name = path.basename(url.pathname); const target = path.join(coversDir, name); if (!coverName.test(name)) return reply(res, 403, 'Acceso denegado.', 'text/plain'); try { return reply(res, 200, await fs.readFile(target), types[path.extname(target)]); } catch { return reply(res, 404, 'No encontrado.', 'text/plain'); } }
     const relative = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, ''); const target = path.resolve(publicDir, relative); if (!target.startsWith(publicDir)) return reply(res, 403, 'Acceso denegado.', 'text/plain'); try { return reply(res, 200, await fs.readFile(target), types[path.extname(target)] || 'application/octet-stream'); } catch { return reply(res, 404, 'No encontrado.', 'text/plain'); }
   } catch (error) { return reply(res, 500, JSON.stringify({ error: error.message || 'Error inesperado.' })); }
 }); }

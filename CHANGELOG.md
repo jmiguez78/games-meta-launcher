@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.5.1 — 23 de octubre de 2026
+
+- Corregida la primera apertura de la aplicación portable: ahora crea el inventario local antes de mostrar la biblioteca.
+
 ## 0.5.0 — 23 de octubre de 2026
 
 - Aplicación de escritorio Electron y paquete portable para Windows.

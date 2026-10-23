@@ -13,7 +13,7 @@ const extensionByMime = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp
 async function readJson(target, fallback) { try { return JSON.parse(await fs.readFile(target, 'utf8')); } catch { return fallback; } }
 async function preferences() { const data = await readJson(preferencesPath, { games: {} }); return data?.games ? data : { games: {} }; }
 async function writePreferences(data) { await fs.mkdir(path.dirname(preferencesPath), { recursive: true }); await fs.writeFile(preferencesPath, JSON.stringify(data, null, 2), 'utf8'); }
-async function rawLibrary() { return readJson(dataPath, null) ?? scanLibrary(); }
+async function rawLibrary() { const catalog = await readJson(dataPath, null); return Array.isArray(catalog?.games) ? catalog : scanLibrary(); }
 function safeOverride(value) { return value && ['uri', 'file', 'appsFolder'].includes(value.type) && typeof value.target === 'string' && value.target.trim() ? { type: value.type, target: value.target.trim(), available: true } : null; }
 async function library() { const [catalog, prefs] = await Promise.all([rawLibrary(), preferences()]); return { ...catalog, games: catalog.games.map((game) => { const saved = prefs.games[game.key] ?? {}; return { ...game, favorite: false, tags: [], progress: 'Pendiente', rating: 0, notes: '', lastLaunchedAt: null, ...saved, launch: safeOverride(saved.launchOverride) ?? game.launch }; }) }; }
 function reply(res, code, body, type = 'application/json; charset=utf-8') { res.writeHead(code, { 'content-type': type }); res.end(body); }

@@ -10,6 +10,7 @@ process.env.GML_DATA_DIR = dataDir;
 const { createServer } = await import('../src/server.mjs');
 
 const catalog = {
+  schema: 2,
   generatedAt: '2026-10-23T00:00:00.000Z',
   games: [
     {

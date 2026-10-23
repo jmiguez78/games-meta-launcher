@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { scanLibrary } from './indexer.mjs';
+import { CATALOG_SCHEMA, scanLibrary } from './indexer.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -45,7 +45,7 @@ async function writePreferences(data) {
 }
 async function rawLibrary() {
   const catalog = await readJson(dataPath, null);
-  return Array.isArray(catalog?.games) ? catalog : scanLibrary();
+  return Array.isArray(catalog?.games) && catalog.schema === CATALOG_SCHEMA ? catalog : scanLibrary();
 }
 function safeOverride(value) {
   return value &&

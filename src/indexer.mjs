@@ -7,6 +7,8 @@ const outputPath = path.join(
   process.env.GML_DATA_DIR ? path.resolve(process.env.GML_DATA_DIR) : path.join(projectRoot, 'data'),
   'library.json'
 );
+// Se incrementa cuando cambia la forma del inventario, para que el servidor lo regenere.
+export const CATALOG_SCHEMA = 2;
 const DRIVE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'H', 'K'];
 
 async function exists(target) {
@@ -276,6 +278,7 @@ export async function scanLibrary() {
   const byKey = new Map();
   for (const game of sources.flat()) byKey.set(game.key, game);
   const result = {
+    schema: CATALOG_SCHEMA,
     generatedAt: new Date().toISOString(),
     games: [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
   };

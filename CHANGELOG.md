@@ -1,5 +1,17 @@
 # Registro de cambios
 
+## 0.7.0 — 23 de octubre de 2026
+
+- Panel de diagnóstico con juegos detectados, disponibles y que requieren revisión por plataforma.
+- Configuración visual de la indexación nocturna desde la aplicación.
+- La tarea nocturna de la aplicación portable ejecuta la indexación sin abrir la ventana.
+
+## 0.6.0 — 23 de octubre de 2026
+
+- Nueva navegación de escritorio con Inicio, Biblioteca, Diagnóstico y Configuración.
+- Pantalla de inicio con acceso rápido, resumen de la colección y favoritos.
+- Filtros reorganizados, estados vacíos, notificaciones, accesos por teclado y ficha de juego refinada.
+
 ## 0.5.1 — 23 de octubre de 2026
 
 - Corregida la primera apertura de la aplicación portable: ahora crea el inventario local antes de mostrar la biblioteca.

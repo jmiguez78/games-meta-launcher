@@ -4,19 +4,40 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { scanLibrary } from './indexer.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public'); const dataDir = process.env.GML_DATA_DIR ? path.resolve(process.env.GML_DATA_DIR) : path.join(root, 'data'); const dataPath = path.join(dataDir, 'library.json'); const preferencesPath = path.join(dataDir, 'preferences.json'); const coversDir = path.join(dataDir, 'covers');
 const types = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 const extensionByMime = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
+const execFileAsync = promisify(execFile);
+const scheduleName = 'Games Meta Launcher - Indexación nocturna';
 async function readJson(target, fallback) { try { return JSON.parse(await fs.readFile(target, 'utf8')); } catch { return fallback; } }
 async function preferences() { const data = await readJson(preferencesPath, { games: {} }); return data?.games ? data : { games: {} }; }
 async function writePreferences(data) { await fs.mkdir(path.dirname(preferencesPath), { recursive: true }); await fs.writeFile(preferencesPath, JSON.stringify(data, null, 2), 'utf8'); }
 async function rawLibrary() { const catalog = await readJson(dataPath, null); return Array.isArray(catalog?.games) ? catalog : scanLibrary(); }
 function safeOverride(value) { return value && ['uri', 'file', 'appsFolder'].includes(value.type) && typeof value.target === 'string' && value.target.trim() ? { type: value.type, target: value.target.trim(), available: true } : null; }
 async function library() { const [catalog, prefs] = await Promise.all([rawLibrary(), preferences()]); return { ...catalog, games: catalog.games.map((game) => { const saved = prefs.games[game.key] ?? {}; return { ...game, favorite: false, tags: [], progress: 'Pendiente', rating: 0, notes: '', lastLaunchedAt: null, ...saved, launch: safeOverride(saved.launchOverride) ?? game.launch }; }) }; }
-function reply(res, code, body, type = 'application/json; charset=utf-8') { res.writeHead(code, { 'content-type': type }); res.end(body); }
+async function schedule() {
+  if (process.platform !== 'win32') return { supported: false, configured: false };
+  const script = `$task = Get-ScheduledTask -TaskName '${scheduleName}' -ErrorAction SilentlyContinue; if ($null -eq $task) { @{ configured = $false } | ConvertTo-Json -Compress } else { $info = Get-ScheduledTaskInfo -TaskName '${scheduleName}'; $trigger = $task.Triggers | Select-Object -First 1; [pscustomobject]@{ configured = $true; enabled = $task.State -ne 'Disabled'; nextRun = $info.NextRunTime; lastRun = $info.LastRunTime; time = if ($trigger.StartBoundary) { ([datetime]$trigger.StartBoundary).ToString('HH:mm') } else { $null } } | ConvertTo-Json -Compress }`;
+  try { const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]); return { supported: true, ...JSON.parse(stdout) }; } catch { return { supported: true, configured: false }; }
+}
+async function configureSchedule(time) {
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Indicá una hora válida en formato HH:MM.');
+  if (process.platform !== 'win32') throw new Error('La indexación programada sólo está disponible en Windows.');
+  const command = process.versions.electron ? `"${process.execPath}" --scan` : `"${process.execPath}" "${path.join(root, 'src', 'indexer.mjs')}"`;
+  await execFileAsync('schtasks.exe', ['/Create', '/TN', scheduleName, '/TR', command, '/SC', 'DAILY', '/ST', time, '/F']);
+  return schedule();
+}
+async function health() {
+  const catalog = await library(); const groups = new Map();
+  for (const game of catalog.games) { const item = groups.get(game.platform) ?? { platform: game.platform, total: 0, ready: 0, review: 0 }; item.total += 1; item.ready += game.launch?.available ? 1 : 0; item.review += game.status === 'attention' ? 1 : 0; groups.set(game.platform, item); }
+  return { total: catalog.games.length, ready: catalog.games.filter((game) => game.launch?.available).length, review: catalog.games.filter((game) => game.status === 'attention').length, generatedAt: catalog.generatedAt, platforms: [...groups.values()].sort((a, b) => a.platform.localeCompare(b.platform, 'es')) };
+}
+function reply(res, code, body, type = 'application/json; charset=utf-8') { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); }
 async function body(req) { let value = ''; for await (const chunk of req) { value += chunk; if (value.length > 8_000_000) throw new Error('Archivo o solicitud demasiado grande.'); } return JSON.parse(value || '{}'); }
 function startTarget(target) { spawn('cmd.exe', ['/c', 'start', '', target], { detached: true, stdio: 'ignore' }).unref(); }
 function launch(game) { if (!game.launch?.available) throw new Error(`El lanzamiento directo aún no está disponible para ${game.platform}.`); startTarget(game.launch.type === 'appsFolder' ? `shell:AppsFolder\\${game.launch.target}` : game.launch.target); }
@@ -26,6 +47,9 @@ export function createServer() { return http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (req.method === 'GET' && url.pathname === '/api/library') return reply(res, 200, JSON.stringify(await library()));
+    if (req.method === 'GET' && url.pathname === '/api/health') return reply(res, 200, JSON.stringify(await health()));
+    if (req.method === 'GET' && url.pathname === '/api/schedule') return reply(res, 200, JSON.stringify(await schedule()));
+    if (req.method === 'PUT' && url.pathname === '/api/schedule') { const update = await body(req); return reply(res, 200, JSON.stringify(await configureSchedule(String(update.time || '')))); }
     if (req.method === 'POST' && url.pathname === '/api/scan') return reply(res, 200, JSON.stringify(await scanLibrary()));
     if (req.method === 'GET' && url.pathname === '/api/preferences/export') return reply(res, 200, JSON.stringify(await preferences()), 'application/json; charset=utf-8');
     if (req.method === 'POST' && url.pathname === '/api/preferences/import') { const imported = await body(req); if (!imported?.games || typeof imported.games !== 'object') return reply(res, 400, JSON.stringify({ error: 'El archivo no contiene preferencias válidas.' })); await writePreferences({ games: imported.games }); return reply(res, 200, JSON.stringify({ ok: true })); }

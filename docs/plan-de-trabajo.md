@@ -12,7 +12,7 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.5.1 terminada
+## Estado actual — implementación hasta 0.7 terminada
 
 La base local está terminada:
 
@@ -26,6 +26,9 @@ La base local está terminada:
 - Respaldo e importación de preferencias personales.
 - Aplicación de escritorio Electron y ejecutable portable de Windows.
 - Primera apertura corregida: la aplicación crea su inventario local antes de mostrar la biblioteca.
+- Navegación en Inicio, Biblioteca, Diagnóstico y Configuración.
+- Sistema visual de escritorio con estados de carga, vacío, error y confirmación.
+- Diagnóstico por plataforma y horario de indexación nocturna configurable desde la aplicación.
 - Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store cuando sus datos locales permiten resolverlas.
 
 La implementación está completa, pero la validación real de cada launcher sigue pendiente. Se evitó abrir juegos durante las pruebas automáticas.
@@ -41,24 +44,21 @@ La implementación está completa, pero la validación real de cada launcher sig
 | Validar escritorio | Abrir la aplicación portable y confirmar que conserva los datos entre ejecuciones. | Se abre sin navegador ni terminal y los cambios personales persisten. |
 | Validar personalización | Cargar una portada, editar la ficha y restaurar un respaldo. | Todos los datos se muestran tras reindexar o reiniciar. |
 
-## Siguiente — versión 0.6: experiencia de biblioteca
+## Versiones 0.6 y 0.7 — completadas
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
-| Fundaciones visuales | Definir paleta, tipografía, espaciado, iconos, estados y foco de teclado para una interfaz coherente. | Los controles comparten lenguaje visual, contraste legible y estados claros. |
-| Navegación de biblioteca | Crear una pantalla de inicio útil y jerarquizar Biblioteca, filtros, vistas y acciones frecuentes. | El usuario puede entender dónde está y llegar a favoritos, recientes o toda la biblioteca en un paso. |
-| Filtros y búsqueda | Reorganizar filtros en un panel claro, con filtros activos visibles, recuento y un restablecimiento inequívoco. | Buscar y combinar filtros no requiere leer instrucciones y el resultado se entiende de inmediato. |
-| Vistas de juegos | Refinar tarjetas, lista, explorador y detalle con información escaneable, portadas y acciones consistentes. | Cada vista sirve a un propósito distinguible y conserva las acciones principales. |
-| Ficha de juego | Convertir la edición en una ficha clara con agrupación, ayuda contextual y confirmaciones no intrusivas. | Editar metadatos, portada o lanzamiento no provoca dudas ni borra cambios por error. |
-| Estados de aplicación | Diseñar carga, biblioteca vacía, error, éxito y datos incompletos. | No aparecen mensajes técnicos en pantalla; cada estado ofrece una siguiente acción comprensible. |
-| Accesibilidad e interacción | Incorporar navegación por teclado, etiquetas, tamaños de objetivo y retroalimentación visual. | Las acciones frecuentes se pueden completar sin mouse y los controles tienen nombre visible o accesible. |
+| Experiencia de biblioteca | Navegación lateral, inicio con accesos rápidos, filtros reorganizados y cuatro vistas refinadas. | Disponible. |
+| Estados e interacción | Retroalimentación de éxito, biblioteca vacía, mensajes claros y atajos de teclado. | Disponible. |
+| Diagnóstico y horario | Panel de salud por plataforma y configuración visual de indexación nocturna. | Disponible. |
 
-## Después — versión 0.7: configuración y diagnóstico
+## Siguiente — versión 0.8: refinamiento y validación
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
-| Configuración de indexación | Gestionar desde la interfaz la hora y el estado de la tarea nocturna. | No hace falta editar scripts para los ajustes habituales. |
-| Diagnóstico de launcher | Explicar rutas incompletas y ofrecer acciones de corrección. | Cada problema tiene una causa y una siguiente acción visible. |
+| Validar lanzadores | Iniciar manualmente un juego representativo por plataforma. | Las plataformas compatibles se abren desde la biblioteca. |
+| Ajustar detección | Corregir juegos en revisión a partir de los diagnósticos. | Cada caso se resuelve o explica de forma útil. |
+| Pulido de UX | Incorporar correcciones surgidas del uso real. | La interfaz mantiene claridad y coherencia en los flujos frecuentes. |
 
 ## Más adelante — versión 1.0: bibliotecas compradas
 

@@ -25,7 +25,37 @@ const pageMeta = {
   diagnostics: ['ESTADO DEL SISTEMA', 'Diagnóstico'],
   settings: ['PREFERENCIAS', 'Configuración']
 };
-const viewNames = { explorer: 'Explorador', detail: 'Detalle', list: 'Lista', icons: 'Iconos' };
+const viewNames = { explorer: 'Tabla', detail: 'Detalle', list: 'Lista', icons: 'Portadas' };
+// Iconos de trazo (estilo Lucide, licencia ISC) dibujados inline para no sumar dependencias.
+const iconPaths = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  filter: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  panel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/>',
+  table: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
+  star: '<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z"/>',
+  pencil: '<path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  play: '<path d="M7 4v16l13-8z"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
+  gamepad: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/>'
+};
+function icon(name, filled = false) {
+  return (
+    '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="' +
+    (filled ? 'currentColor' : 'none') +
+    '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    iconPaths[name] +
+    '</svg>'
+  );
+}
+function hydrateIcons(root) {
+  root.querySelectorAll('[data-icon]').forEach((element) => {
+    element.innerHTML = icon(element.dataset.icon);
+  });
+}
 
 function say(message) {
   dialog.querySelector('p').textContent = message;
@@ -340,10 +370,157 @@ function detailPanel(game) {
   panel.append(actions);
   return panel;
 }
+// Portada en cuadrícula: un solo punto de Tab por grilla (tabindex itinerante) y atajos sobre la tarjeta enfocada.
+function makePosterCard(game) {
+  const cover = coverInfo(game);
+  const available = game.launch && game.launch.available;
+  const card = document.createElement('article');
+  card.className = 'poster ' + cover.palette + (game.key === state.selectedKey ? ' selected' : '');
+  card.dataset.key = game.key;
+  card.tabIndex = game.key === state.selectedKey ? 0 : -1;
+  card.setAttribute('aria-label', game.name + ', ' + game.platform + ', ' + statusText(game));
+  card.innerHTML =
+    '<div class="poster-art"><span class="cover-initial"></span></div>' +
+    '<div class="poster-overlay"><button type="button" class="poster-play" data-action="play" tabindex="-1">' +
+    icon(available ? 'play' : 'alert', available) +
+    '<span></span></button></div>' +
+    '<div class="poster-actions">' +
+    '<button type="button" class="icon-btn" data-action="favorite" tabindex="-1">' +
+    icon('star', game.favorite) +
+    '</button><button type="button" class="icon-btn" data-action="edit" tabindex="-1">' +
+    icon('pencil') +
+    '</button></div>' +
+    '<div class="poster-body"><h3 class="poster-title"></h3>' +
+    '<p class="poster-meta"><span class="platform-name"></span><span aria-hidden="true">·</span>' +
+    '<span class="status-pill"></span></p></div>';
+  applyCover(card.querySelector('.poster-art'), game, cover);
+  card.querySelector('.poster-title').textContent = game.name;
+  card.querySelector('.platform-name').textContent = game.platform;
+  const status = card.querySelector('.status-pill');
+  status.textContent = available ? 'Listo' : 'Requiere revisión';
+  status.classList.toggle('attention', !available);
+  const play = card.querySelector('.poster-play');
+  play.querySelector('span').textContent = available ? 'Jugar' : 'Revisar';
+  play.classList.toggle('review', !available);
+  play.setAttribute('aria-label', (available ? 'Jugar a ' : 'Revisar ') + game.name);
+  const favorite = card.querySelector('[data-action=favorite]');
+  favorite.setAttribute('aria-pressed', String(Boolean(game.favorite)));
+  favorite.setAttribute('aria-label', 'Favorito: ' + game.name);
+  favorite.title = game.favorite ? 'Quitar de favoritos' : 'Marcar como favorito';
+  const edit = card.querySelector('[data-action=edit]');
+  edit.setAttribute('aria-label', 'Editar ficha de ' + game.name);
+  edit.title = 'Editar ficha';
+  return card;
+}
+async function posterAction(game, action) {
+  if (action === 'play') return playOrReview(game);
+  if (action === 'edit') return editGame(game);
+  if (action === 'favorite') {
+    try {
+      await updatePreference(game, { favorite: !game.favorite });
+      notify(game.favorite ? game.name + ' se agregó a favoritos.' : game.name + ' se quitó de favoritos.');
+    } catch (error) {
+      say(error.message);
+    }
+  }
+}
+function selectPoster(card, focus) {
+  library.querySelectorAll('.poster').forEach((item) => {
+    const active = item === card;
+    item.classList.toggle('selected', active);
+    item.tabIndex = active ? 0 : -1;
+    item.querySelectorAll('button').forEach((button) => (button.tabIndex = active ? 0 : -1));
+  });
+  state.selectedKey = card.dataset.key;
+  if (focus) card.focus();
+}
+function posterNeighbor(card, key) {
+  const cards = [...library.querySelectorAll('.poster')];
+  const index = cards.indexOf(card);
+  const columns = cards.filter((item) => item.offsetTop === cards[0].offsetTop).length || 1;
+  const target = {
+    ArrowRight: index + 1,
+    ArrowLeft: index - 1,
+    ArrowDown: index + columns,
+    ArrowUp: index - columns,
+    Home: 0,
+    End: cards.length - 1
+  }[key];
+  return cards[Math.max(0, Math.min(cards.length - 1, target))];
+}
+library.addEventListener('click', (event) => {
+  const card = event.target.closest('.poster');
+  if (!card) return;
+  const game = state.games.find((item) => item.key === card.dataset.key);
+  const action = event.target.closest('[data-action]');
+  selectPoster(card, !action);
+  if (action) posterAction(game, action.dataset.action);
+});
+library.addEventListener('dblclick', (event) => {
+  const card = event.target.closest('.poster');
+  if (card && !event.target.closest('[data-action]'))
+    playOrReview(state.games.find((item) => item.key === card.dataset.key));
+});
+library.addEventListener('keydown', (event) => {
+  const card = event.target.closest('.poster');
+  if (!card || event.target !== card || event.altKey || event.ctrlKey || event.metaKey) return;
+  const game = state.games.find((item) => item.key === card.dataset.key);
+  if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+    event.preventDefault();
+    selectPoster(posterNeighbor(card, event.key), true);
+  } else if (event.key === 'Enter') posterAction(game, 'play');
+  else if (event.key.toLowerCase() === 'f') posterAction(game, 'favorite');
+  else if (event.key.toLowerCase() === 'e') posterAction(game, 'edit');
+});
+function renderLibraryState() {
+  const holder = document.querySelector('#library-state');
+  const view = state.loading ? 'loading' : state.loadError ? 'error' : state.games.length ? '' : 'empty';
+  holder.className = 'library-state ' + view + (view ? '' : ' hidden');
+  holder.setAttribute('aria-busy', String(view === 'loading'));
+  library.classList.toggle('hidden', Boolean(view));
+  if (view === 'loading')
+    holder.innerHTML =
+      '<span class="visually-hidden">Cargando biblioteca…</span>' +
+      '<div class="skeleton skeleton-poster"></div>'.repeat(8);
+  if (view === 'error') {
+    holder.innerHTML =
+      '<span class="state-icon">' +
+      icon('alert') +
+      '</span><h2>No pudimos cargar tu biblioteca</h2><p></p><button type="button" class="button">' +
+      icon('refresh') +
+      ' Reintentar</button>';
+    holder.querySelector('p').textContent = state.loadError;
+    holder.querySelector('button').onclick = () => load();
+  }
+  if (view === 'empty') {
+    holder.innerHTML =
+      '<span class="state-icon">' +
+      icon('gamepad') +
+      '</span><h2>Todavía no hay juegos en tu biblioteca</h2>' +
+      '<p>Buscamos instalaciones de Steam, Epic, Xbox, Ubisoft, EA y GOG en esta PC. Si ya tenés juegos instalados, actualizá el inventario.</p>' +
+      '<button type="button" class="button primary">' +
+      icon('refresh') +
+      ' Buscar juegos</button>';
+    holder.querySelector('button').onclick = () => document.querySelector('#refresh').click();
+  }
+  return Boolean(view);
+}
 function renderLibrary() {
   const games = visibleGames();
-  library.className = 'library ' + state.view;
+  // Si el foco estaba dentro de la grilla, se recupera sobre el mismo juego y acción tras redibujar.
+  const focused = library.contains(document.activeElement)
+    ? {
+        key: document.activeElement.closest('[data-key]')?.dataset.key,
+        action: document.activeElement.dataset.action
+      }
+    : null;
+  library.className = 'library ' + (state.view === 'icons' ? 'posters' : state.view);
   library.innerHTML = '';
+  if (renderLibraryState()) {
+    document.querySelector('#empty-state').classList.add('hidden');
+    document.querySelector('#counter').textContent = state.loading ? 'Cargando juegos…' : '';
+    return;
+  }
   if (!state.selectedKey && games[0]) state.selectedKey = games[0].key;
   if (state.view === 'explorer') {
     const table = document.createElement('section');
@@ -380,8 +557,18 @@ function renderLibrary() {
     results.className = 'detail-results';
     games.forEach((game) => results.append(makeCard(game, true)));
     library.append(results, detailPanel(games.find((game) => game.key === state.selectedKey)));
+  } else if (state.view === 'icons') {
+    if (!games.some((game) => game.key === state.selectedKey) && games[0]) state.selectedKey = games[0].key;
+    games.forEach((game) => library.append(makePosterCard(game)));
+    const active = library.querySelector('.poster.selected');
+    if (active) selectPoster(active, false);
+    const card = focused?.key && library.querySelector('.poster[data-key="' + CSS.escape(focused.key) + '"]');
+    if (card) (focused.action ? card.querySelector('[data-action="' + focused.action + '"]') : card)?.focus();
   } else games.forEach((game) => library.append(makeCard(game, state.view === 'list')));
-  document.querySelector('#counter').textContent = games.length + ' de ' + state.games.length + ' juegos';
+  document.querySelector('#counter').textContent =
+    games.length === state.games.length
+      ? games.length + ' juegos'
+      : games.length + ' de ' + state.games.length + ' juegos';
   document.querySelector('#view-label').textContent = viewNames[state.view];
   document.querySelector('#empty-state').classList.toggle('hidden', games.length > 0);
   renderActiveFilters();
@@ -457,17 +644,28 @@ function renderFilters() {
 }
 function renderActiveFilters() {
   const labels = [];
-  if (state.query) labels.push('“' + state.query + '”');
-  if (state.platform) labels.push(state.platform);
-  if (state.tag) labels.push('#' + state.tag);
-  if (state.drive) labels.push(state.drive);
-  if (state.favorite) labels.push('Favoritos');
+  if (state.query)
+    labels.push(['“' + state.query + '”', () => (document.querySelector('#search').value = state.query = '')]);
+  if (state.platform) labels.push([state.platform, () => (state.platform = '')]);
+  if (state.tag) labels.push(['#' + state.tag, () => (state.tag = '')]);
+  if (state.drive) labels.push([state.drive, () => (state.drive = '')]);
+  if (state.favorite)
+    labels.push(['Favoritos', () => (document.querySelector('#favorites-only').checked = state.favorite = false)]);
   const holder = document.querySelector('#active-filters');
   holder.innerHTML = '';
-  labels.forEach((label) => {
-    const chip = document.createElement('span');
+  labels.forEach(([label, remove]) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
     chip.className = 'active-filter';
-    chip.textContent = label;
+    chip.setAttribute('aria-label', 'Quitar filtro ' + label);
+    chip.innerHTML = '<span></span>' + icon('x');
+    chip.querySelector('span').textContent = label;
+    chip.onclick = () => {
+      remove();
+      renderFilters();
+      renderLibrary();
+      (document.querySelector('#active-filters button') || document.querySelector('#search')).focus();
+    };
     holder.append(chip);
   });
   const badge = document.querySelector('#active-filter-count');
@@ -687,14 +885,26 @@ function showPage(page) {
   if (page === 'library') document.querySelector('#search').focus();
 }
 async function load() {
-  const catalog = await request('/api/library');
-  state.games = catalog.games;
-  document.querySelector('#last-update').textContent = catalog.generatedAt
-    ? 'Actualizado ' + new Date(catalog.generatedAt).toLocaleString('es-AR')
-    : 'Aún no se indexó la biblioteca.';
+  Object.assign(state, { loading: !state.games.length, loadError: '' });
+  renderLibrary();
+  try {
+    const catalog = await request('/api/library');
+    state.games = catalog.games;
+    document.querySelector('#last-update').textContent = catalog.generatedAt
+      ? 'Actualizado ' + new Date(catalog.generatedAt).toLocaleString('es-AR')
+      : 'Aún no se indexó la biblioteca.';
+  } catch (error) {
+    state.loadError = error.message || 'Revisá que la aplicación siga abierta y volvé a intentarlo.';
+  } finally {
+    state.loading = false;
+  }
   renderHome();
   renderFilters();
   renderLibrary();
+}
+function setFiltersOpen(open) {
+  document.querySelector('#filter-panel').classList.toggle('hidden', !open);
+  document.querySelector('#toggle-filters').setAttribute('aria-expanded', String(open));
 }
 
 dialog.querySelector('button').onclick = () => dialog.close();
@@ -714,12 +924,15 @@ document.querySelector('#sort').onchange = (event) => {
 document.querySelector('#clear-filters').onclick = clearFilters;
 document.querySelector('#empty-clear').onclick = clearFilters;
 document.querySelector('#toggle-filters').onclick = () =>
-  document.querySelector('#filter-panel').classList.toggle('hidden');
+  setFiltersOpen(document.querySelector('#filter-panel').classList.contains('hidden'));
 document.querySelectorAll('#views button').forEach(
   (button) =>
     (button.onclick = () => {
       state.view = button.dataset.view;
-      document.querySelectorAll('#views button').forEach((item) => item.classList.toggle('active', item === button));
+      document.querySelectorAll('#views button').forEach((item) => {
+        item.classList.toggle('active', item === button);
+        item.setAttribute('aria-pressed', String(item === button));
+      });
       renderLibrary();
     })
 );
@@ -751,8 +964,10 @@ document.querySelector('#save-tags').onclick = async () => {
   }
 };
 document.querySelector('#refresh').onclick = async (event) => {
-  event.currentTarget.disabled = true;
-  event.currentTarget.textContent = 'Actualizando…';
+  // currentTarget deja de existir después del primer await; se guarda el botón antes.
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = 'Actualizando…';
   try {
     await request('/api/scan', { method: 'POST' });
     await load();
@@ -760,8 +975,8 @@ document.querySelector('#refresh').onclick = async (event) => {
   } catch (error) {
     say(error.message);
   } finally {
-    event.currentTarget.disabled = false;
-    event.currentTarget.innerHTML = '<span aria-hidden="true">↻</span> Actualizar';
+    button.disabled = false;
+    button.innerHTML = '<span aria-hidden="true">↻</span> Actualizar';
   }
 };
 document.querySelector('#export-preferences').onclick = exportPreferences;
@@ -849,8 +1064,9 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     showPage('library');
   }
-  if (event.key === 'Escape' && state.page === 'library')
-    document.querySelector('#filter-panel').classList.add('hidden');
+  if (event.key === 'Escape' && state.page === 'library' && !document.querySelector('dialog[open]'))
+    setFiltersOpen(false);
 });
+hydrateIcons(document);
 loadSettings();
-load().catch((error) => say(error.message));
+load();

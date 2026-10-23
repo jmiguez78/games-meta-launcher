@@ -6,6 +6,7 @@
     <title>Games Meta Launcher</title>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/explorer.css" />
+    <link rel="stylesheet" href="/library.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -62,25 +63,32 @@
         </section>
 
         <section id="library-page" class="page hidden">
-          <div class="library-toolbar">
+          <div class="library-toolbar" role="search">
             <label class="search"
-              ><span aria-hidden="true">⌕</span
+              ><span data-icon="search"></span><span class="visually-hidden">Buscar en la biblioteca</span
               ><input
                 id="search"
                 type="search"
-                placeholder="Buscar por juego, etiqueta o plataforma…"
-                autocomplete="off" /></label
-            ><button id="toggle-filters" class="button">
-              <span aria-hidden="true">☷</span> Filtros <span id="active-filter-count" class="badge hidden">0</span>
+                placeholder="Buscar por juego, género, etiqueta o plataforma"
+                autocomplete="off"
+                aria-keyshortcuts="/ Control+K"
+              /><kbd class="search-hint" aria-hidden="true">/</kbd></label
+            ><button id="toggle-filters" class="button" aria-expanded="false" aria-controls="filter-panel">
+              <span data-icon="filter"></span> Filtros <span id="active-filter-count" class="badge hidden">0</span>
             </button>
-            <div id="views" class="view-switch" aria-label="Vista">
-              <button data-view="explorer" title="Explorador" aria-label="Vista explorador">▤</button
-              ><button data-view="detail" title="Detalle" aria-label="Vista detalle">▥</button
-              ><button data-view="list" title="Lista" aria-label="Vista lista">☷</button
-              ><button data-view="icons" class="active" title="Iconos" aria-label="Vista iconos">▦</button>
+            <div id="views" class="segmented" role="group" aria-label="Vista de la biblioteca">
+              <button data-view="icons" class="active" aria-pressed="true" title="Portadas">
+                <span data-icon="grid"></span><span class="segment-label">Portadas</span></button
+              ><button data-view="list" aria-pressed="false" title="Lista">
+                <span data-icon="list"></span><span class="segment-label">Lista</span></button
+              ><button data-view="detail" aria-pressed="false" title="Detalle">
+                <span data-icon="panel"></span><span class="segment-label">Detalle</span></button
+              ><button data-view="explorer" aria-pressed="false" title="Tabla">
+                <span data-icon="table"></span><span class="segment-label">Tabla</span>
+              </button>
             </div>
           </div>
-          <section id="filter-panel" class="filter-panel" aria-label="Filtros de biblioteca">
+          <section id="filter-panel" class="filter-panel hidden" aria-label="Filtros de biblioteca">
             <div class="filter-heading">
               <div>
                 <h2>Filtrar biblioteca</h2>
@@ -116,16 +124,20 @@
           </section>
           <div class="library-heading">
             <div>
-              <p id="counter"></p>
-              <div id="active-filters" class="active-filters"></div>
+              <p id="counter" role="status"></p>
+              <div id="active-filters" class="active-filters" aria-label="Filtros activos"></div>
             </div>
-            <p id="view-label" class="muted">Iconos</p>
+            <p id="view-label" class="visually-hidden">Portadas</p>
           </div>
-          <section id="library" class="library icons" aria-live="polite"></section>
+          <p id="library-help" class="visually-hidden">
+            Usá las flechas para moverte entre los juegos. Enter juega, F marca como favorito y E edita la ficha.
+          </p>
+          <section id="library-state" class="library-state hidden" aria-live="polite"></section>
+          <section id="library" class="library icons" aria-label="Juegos" aria-describedby="library-help"></section>
           <section id="empty-state" class="empty-state hidden">
-            <span>⌕</span>
+            <span class="state-icon" data-icon="search"></span>
             <h2>No encontramos juegos con esos filtros</h2>
-            <p>Probá quitar alguno o buscá otro término.</p>
+            <p>Probá quitar alguno o buscar otro término.</p>
             <button id="empty-clear" class="button">Limpiar filtros</button>
           </section>
         </section>

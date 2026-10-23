@@ -19,7 +19,7 @@ flowchart LR
 - `src/indexer.mjs`: recorre bibliotecas conocidas y genera un catálogo normalizado.
 - `src/server.mjs`: expone la interfaz y una API local para leer, actualizar, lanzar títulos, guardar preferencias y configurar la tarea nocturna.
 - `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla.
-- `public/`: interfaz HTML, CSS y JavaScript sin dependencias externas de aplicación.
+- `public/`: interfaz HTML, CSS y JavaScript sin dependencias externas de aplicación. `style.css` define tokens y temas; `ui.css`, los componentes (ver [Sistema de diseño](sistema-de-diseno.md)).
 - `data/library.json`: inventario local generado; se excluye del control de versiones.
 - `test/`: pruebas automáticas con `node:test` de la API y del indexador.
 

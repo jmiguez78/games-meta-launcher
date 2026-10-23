@@ -13,7 +13,6 @@ const state = {
 };
 const library = document.querySelector('#library');
 const quickLibrary = document.querySelector('#quick-library');
-const template = document.querySelector('#card-template');
 const dialog = document.querySelector('#notice');
 const editor = document.querySelector('#editor');
 const toast = document.querySelector('#toast');
@@ -40,7 +39,23 @@ const iconPaths = {
   alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
   refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
-  gamepad: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/>'
+  gamepad: '<rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/>',
+  home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  settings:
+    '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  palette:
+    '<path d="M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-2a2 2 0 0 0-1.5 3.3A1.6 1.6 0 0 1 12 22z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/>',
+  monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  archive:
+    '<rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M10 13h4"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>'
 };
 function icon(name, filled = false) {
   return (
@@ -173,59 +188,53 @@ function applyCover(element, game, cover, preferHero = false) {
   };
   tryNext();
 }
-function makeCard(game, compact = false) {
-  const node = template.content.cloneNode(true);
-  const item = node.querySelector('.game-item');
-  const cover = coverInfo(game);
-  item.classList.add(cover.palette);
-  if (compact) item.classList.add('compact');
-  if (game.key === state.selectedKey) item.classList.add('selected');
-  applyCover(node.querySelector('.cover'), game, cover);
-  node.querySelector('.platform').textContent = game.platform;
-  node.querySelector('h3').textContent = game.name;
-  const status = node.querySelector('.status');
-  status.textContent = statusText(game) + ' · ' + (game.progress || 'Pendiente');
-  status.classList.toggle('attention', game.status === 'attention');
-  node.querySelector('.location').textContent = game.location;
-  const tags = node.querySelector('.tag-list');
-  tagsOf(game).forEach((tag) => {
-    const label = document.createElement('span');
-    label.textContent = '#' + tag;
-    tags.append(label);
+// Acciones compartidas por portadas, filas, tabla y ficha. Los botones nacen fuera del orden de Tab;
+// selectTile los habilita sólo en el elemento activo de cada colección.
+function playButtonHtml(game, className) {
+  const available = game.launch && game.launch.available;
+  return (
+    '<button type="button" class="' +
+    className +
+    '" data-action="play" tabindex="-1">' +
+    icon(available ? 'play' : 'alert', available) +
+    '<span class="label"></span></button>'
+  );
+}
+function iconActionsHtml(game) {
+  return (
+    '<button type="button" class="icon-btn" data-action="favorite" tabindex="-1">' +
+    icon('star', game.favorite) +
+    '</button><button type="button" class="icon-btn" data-action="edit" tabindex="-1">' +
+    icon('pencil') +
+    '</button>'
+  );
+}
+function decorateActions(root, game) {
+  const available = game.launch && game.launch.available;
+  root.querySelectorAll('[data-action=play]').forEach((button) => {
+    button.setAttribute('aria-label', (available ? 'Jugar a ' : 'Revisar ') + game.name);
+    button.querySelector('.label').textContent = available ? 'Jugar' : 'Revisar';
+    button.classList.toggle('review', !available);
   });
-  const favorite = node.querySelector('.favorite');
-  favorite.textContent = game.favorite ? '★' : '☆';
-  favorite.classList.toggle('selected', game.favorite);
-  favorite.onclick = async (event) => {
-    event.stopPropagation();
-    try {
-      await updatePreference(game, { favorite: !game.favorite });
-    } catch (error) {
-      say(error.message);
-    }
-  };
-  node.querySelector('.edit').onclick = (event) => {
-    event.stopPropagation();
-    editGame(game);
-  };
-  const play = node.querySelector('.play');
-  if (!(game.launch && game.launch.available)) {
-    play.textContent = 'Revisar';
-    play.onclick = (event) => {
-      event.stopPropagation();
-      say(game.evidence);
-    };
-  } else
-    play.onclick = (event) => {
-      event.stopPropagation();
-      playGame(game);
-    };
-  item.onclick = () => {
-    state.selectedKey = game.key;
-    if (state.page === 'home') showPage('library');
-    else if (state.view === 'detail') renderLibrary();
-  };
-  return node;
+  root.querySelectorAll('[data-action=favorite]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(Boolean(game.favorite)));
+    button.setAttribute('aria-label', 'Favorito: ' + game.name);
+    button.title = game.favorite ? 'Quitar de favoritos' : 'Marcar como favorito';
+  });
+  root.querySelectorAll('[data-action=edit]').forEach((button) => {
+    button.setAttribute('aria-label', 'Editar ficha de ' + game.name);
+    button.title = 'Editar ficha';
+  });
+}
+function metaLineHtml() {
+  return '<p class="poster-meta"><span class="platform-name"></span><span aria-hidden="true">·</span><span class="status-pill"></span></p>';
+}
+function fillMetaLine(root, game) {
+  const available = game.launch && game.launch.available;
+  root.querySelector('.platform-name').textContent = game.platform;
+  const status = root.querySelector('.status-pill');
+  status.textContent = available ? 'Listo' : 'Requiere revisión';
+  status.classList.toggle('attention', !available);
 }
 function lastPlayedText(game) {
   return game.lastLaunchedAt ? new Date(game.lastLaunchedAt).toLocaleDateString('es-AR') : 'Aún no registrado';
@@ -234,47 +243,91 @@ function playOrReview(game) {
   if (game.launch && game.launch.available) playGame(game);
   else say(game.evidence);
 }
-function makeExplorerRow(game) {
-  const row = document.createElement('div');
-  row.className = 'explorer-row' + (game.key === state.selectedKey ? ' selected' : '');
-  row.setAttribute('role', 'row');
-  row.tabIndex = 0;
-  row.title = 'Doble clic o Enter para jugar';
+// Fila para las vistas Lista y Detalle.
+function makeRow(game) {
+  const cover = coverInfo(game);
+  const row = document.createElement('article');
+  row.className = 'game-row tile ' + cover.palette + (game.key === state.selectedKey ? ' selected' : '');
+  row.dataset.key = game.key;
+  row.tabIndex = -1;
+  row.setAttribute('aria-label', game.name + ', ' + game.platform + ', ' + statusText(game));
   row.innerHTML =
-    '<span class="row-name"></span><span class="row-platform"></span><span class="row-drive"></span><span class="row-status"></span><span class="row-played"></span><span class="row-action"><button class="button play"></button></span>';
-  row.querySelector('.row-name').textContent = (game.favorite ? '★ ' : '') + game.name;
-  row.querySelector('.row-platform').textContent = game.platform;
-  row.querySelector('.row-drive').textContent = game.drive || '—';
-  const status = row.querySelector('.row-status');
-  status.textContent = statusText(game);
-  status.classList.toggle('attention', game.status === 'attention');
-  row.querySelector('.row-played').textContent = lastPlayedText(game);
-  const play = row.querySelector('.play');
-  const available = game.launch && game.launch.available;
-  play.textContent = available ? 'Jugar' : 'Revisar';
-  play.onclick = (event) => {
-    event.stopPropagation();
-    playOrReview(game);
-  };
-  // La selección se marca sin volver a dibujar la tabla para que el doble clic llegue a la misma fila.
-  row.onclick = () => {
-    state.selectedKey = game.key;
-    row.parentElement.querySelectorAll('.explorer-row.selected').forEach((item) => item.classList.remove('selected'));
-    row.classList.add('selected');
-  };
-  row.ondblclick = () => playOrReview(game);
-  row.onkeydown = (event) => {
-    if (event.key === 'Enter') playOrReview(game);
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      const next = event.key === 'ArrowDown' ? row.nextElementSibling : row.previousElementSibling;
-      if (next && next.classList.contains('explorer-row')) {
-        next.focus();
-        next.click();
-      }
-    }
-  };
+    '<div class="row-thumb"><span class="cover-initial"></span></div>' +
+    '<div class="row-main"><h3 class="row-title"></h3>' +
+    metaLineHtml() +
+    '</div><p class="row-played"></p><div class="row-actions">' +
+    playButtonHtml(game, 'button small') +
+    iconActionsHtml(game) +
+    '</div>';
+  applyCover(row.querySelector('.row-thumb'), game, cover);
+  row.querySelector('.row-title').textContent = game.name;
+  fillMetaLine(row, game);
+  row.querySelector('.row-played').textContent = game.lastLaunchedAt ? 'Jugado el ' + lastPlayedText(game) : '';
+  decorateActions(row, game);
   return row;
+}
+// Tabla semántica para la vista Tabla: encabezados ordenables con aria-sort.
+function makeTable(games) {
+  const table = document.createElement('table');
+  table.className = 'data-table';
+  table.innerHTML =
+    '<caption class="visually-hidden">Juegos de la biblioteca</caption><thead><tr></tr></thead><tbody></tbody>';
+  const headers = [
+    ['name', 'Nombre'],
+    ['platform', 'Plataforma'],
+    ['drive', 'Unidad'],
+    ['status', 'Estado'],
+    ['recent', 'Última vez jugado']
+  ];
+  const headRow = table.querySelector('thead tr');
+  headers.forEach(([field, label]) => {
+    const active = state.sort === field;
+    const th = document.createElement('th');
+    th.scope = 'col';
+    th.setAttribute('aria-sort', active ? (state.direction === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.innerHTML =
+      '<button type="button" class="sort-button"><span></span><span class="sort-indicator" aria-hidden="true"></span></button>';
+    th.querySelector('span').textContent = label;
+    th.querySelector('.sort-indicator').textContent = active ? (state.direction === 'asc' ? '↑' : '↓') : '↕';
+    th.querySelector('button').classList.toggle('active', active);
+    th.querySelector('button').onclick = () => {
+      state.direction =
+        state.sort === field ? (state.direction === 'asc' ? 'desc' : 'asc') : field === 'recent' ? 'desc' : 'asc';
+      state.sort = field;
+      renderLibrary();
+      library.querySelectorAll('.sort-button')[headers.findIndex(([name]) => name === field)].focus();
+    };
+    headRow.append(th);
+  });
+  const actionsHeader = document.createElement('th');
+  actionsHeader.scope = 'col';
+  actionsHeader.innerHTML = '<span class="visually-hidden">Acciones</span>';
+  headRow.append(actionsHeader);
+  const body = table.querySelector('tbody');
+  games.forEach((game) => {
+    const row = document.createElement('tr');
+    row.className = 'tile' + (game.key === state.selectedKey ? ' selected' : '');
+    row.dataset.key = game.key;
+    row.tabIndex = -1;
+    row.innerHTML =
+      '<th scope="row" class="cell-name"></th><td></td><td></td><td></td><td></td><td class="cell-actions">' +
+      playButtonHtml(game, 'button small') +
+      '</td>';
+    const name = row.querySelector('.cell-name');
+    name.textContent = game.name;
+    if (game.favorite)
+      name.insertAdjacentHTML('afterbegin', '<span class="favorite-mark">' + icon('star', true) + '</span>');
+    const cells = row.querySelectorAll('td');
+    cells[0].textContent = game.platform;
+    cells[1].textContent = game.drive || '—';
+    cells[2].innerHTML = '<span class="status-pill"></span>';
+    cells[2].firstChild.textContent = statusText(game);
+    cells[2].firstChild.classList.toggle('attention', !(game.launch && game.launch.available));
+    cells[3].textContent = lastPlayedText(game);
+    decorateActions(row, game);
+    body.append(row);
+  });
+  return table;
 }
 function metaSection(meta) {
   const section = document.createElement('section');
@@ -304,9 +357,18 @@ function metaSection(meta) {
     const summary = document.createElement('p');
     summary.className = 'meta-summary';
     summary.textContent = meta.summary;
-    summary.title = 'Clic para ver completo';
-    summary.onclick = () => summary.classList.toggle('expanded');
     section.append(summary);
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'text-button';
+    toggle.textContent = 'Leer más';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.onclick = () => {
+      const expanded = summary.classList.toggle('expanded');
+      toggle.textContent = expanded ? 'Leer menos' : 'Leer más';
+      toggle.setAttribute('aria-expanded', String(expanded));
+    };
+    section.append(toggle);
   }
   if (meta.url) {
     const link = document.createElement('a');
@@ -323,93 +385,75 @@ function detailPanel(game) {
   const panel = document.createElement('aside');
   panel.className = 'detail-panel';
   if (!game) {
-    panel.innerHTML = '<p>Elegí un juego para ver su información.</p>';
+    panel.innerHTML = '<p class="detail-empty">Elegí un juego para ver su ficha.</p>';
     return panel;
   }
   const cover = coverInfo(game);
+  panel.dataset.key = game.key;
+  panel.setAttribute('aria-label', 'Ficha de ' + game.name);
   panel.innerHTML =
-    '<div class="detail-cover ' +
+    '<div class="detail-hero ' +
     cover.palette +
-    '">' +
-    escapeHtml(cover.initials) +
-    '</div><p class="platform">' +
-    escapeHtml(game.platform) +
-    '</p><h2></h2><p class="detail-status"></p><dl><dt>Ubicación</dt><dd></dd><dt>Estado</dt><dd>' +
-    statusText(game) +
-    '</dd><dt>Progreso</dt><dd>' +
-    escapeHtml(game.progress || 'Pendiente') +
-    '</dd><dt>Puntuación</dt><dd>' +
-    (game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar') +
-    '</dd><dt>Última vez jugado</dt><dd>' +
-    lastPlayedText(game) +
-    '</dd><dt>Detección</dt><dd></dd></dl><p class="notes"></p><div class="tag-list"></div>';
-  applyCover(panel.querySelector('.detail-cover'), game, cover, true);
+    '"><span class="cover-initial"></span></div><div class="detail-body">' +
+    metaLineHtml() +
+    '<h2></h2><div class="detail-actions">' +
+    playButtonHtml(game, 'button primary') +
+    '<button type="button" class="button" data-action="favorite">' +
+    icon('star', game.favorite) +
+    '<span>' +
+    (game.favorite ? 'En favoritos' : 'Favorito') +
+    '</span></button><button type="button" class="button" data-action="edit">' +
+    icon('pencil') +
+    '<span>Editar</span></button></div>' +
+    '<dl class="detail-facts"><div><dt>Progreso</dt><dd></dd></div><div><dt>Tu puntuación</dt><dd></dd></div>' +
+    '<div><dt>Última vez jugado</dt><dd></dd></div><div><dt>Unidad</dt><dd></dd></div></dl>' +
+    '<section class="detail-section"><h3>Notas</h3><p class="notes"></p><div class="tag-list"></div></section>' +
+    '<details class="detail-section"><summary>Detalles técnicos</summary><dl class="detail-tech">' +
+    '<dt>Ubicación</dt><dd></dd><dt>Detección</dt><dd></dd></dl></details></div>';
+  applyCover(panel.querySelector('.detail-hero'), game, cover, true);
+  fillMetaLine(panel, game);
   panel.querySelector('h2').textContent = game.name;
-  panel.querySelector('.detail-status').textContent =
-    game.launch && game.launch.available ? 'Disponible para iniciar' : 'Inicio pendiente';
-  if (game.meta) panel.querySelector('.detail-status').after(metaSection(game.meta));
-  panel.querySelectorAll('dd')[0].textContent = game.location;
-  panel.querySelectorAll('dd')[5].textContent = game.evidence;
+  if (game.meta) panel.querySelector('.detail-actions').before(metaSection(game.meta));
+  const facts = panel.querySelectorAll('.detail-facts dd');
+  facts[0].textContent = game.progress || 'Pendiente';
+  facts[1].textContent = game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar';
+  facts[2].textContent = lastPlayedText(game);
+  facts[3].textContent = game.drive || '—';
+  const tech = panel.querySelectorAll('.detail-tech dd');
+  tech[0].textContent = game.location;
+  tech[1].textContent = game.evidence;
   panel.querySelector('.notes').textContent = game.notes || 'Sin notas personales.';
   tagsOf(game).forEach((tag) => {
     const label = document.createElement('span');
     label.textContent = '#' + tag;
     panel.querySelector('.tag-list').append(label);
   });
-  const actions = document.createElement('div');
-  actions.className = 'detail-actions';
-  const edit = document.createElement('button');
-  edit.className = 'button';
-  edit.textContent = 'Editar ficha';
-  edit.onclick = () => editGame(game);
-  const play = document.createElement('button');
-  play.className = 'button primary';
-  play.textContent = game.launch && game.launch.available ? 'Jugar' : 'Revisar';
-  play.onclick = () => (game.launch && game.launch.available ? playGame(game) : say(game.evidence));
-  actions.append(edit, play);
-  panel.append(actions);
+  decorateActions(panel, game);
+  panel.querySelectorAll('[data-action=favorite], [data-action=edit]').forEach((button) => (button.tabIndex = 0));
+  panel.querySelector('[data-action=play]').tabIndex = 0;
   return panel;
 }
-// Portada en cuadrícula: un solo punto de Tab por grilla (tabindex itinerante) y atajos sobre la tarjeta enfocada.
+// Portada en cuadrícula.
 function makePosterCard(game) {
   const cover = coverInfo(game);
-  const available = game.launch && game.launch.available;
   const card = document.createElement('article');
-  card.className = 'poster ' + cover.palette + (game.key === state.selectedKey ? ' selected' : '');
+  card.className = 'poster tile ' + cover.palette + (game.key === state.selectedKey ? ' selected' : '');
   card.dataset.key = game.key;
-  card.tabIndex = game.key === state.selectedKey ? 0 : -1;
+  card.tabIndex = -1;
   card.setAttribute('aria-label', game.name + ', ' + game.platform + ', ' + statusText(game));
   card.innerHTML =
     '<div class="poster-art"><span class="cover-initial"></span></div>' +
-    '<div class="poster-overlay"><button type="button" class="poster-play" data-action="play" tabindex="-1">' +
-    icon(available ? 'play' : 'alert', available) +
-    '<span></span></button></div>' +
-    '<div class="poster-actions">' +
-    '<button type="button" class="icon-btn" data-action="favorite" tabindex="-1">' +
-    icon('star', game.favorite) +
-    '</button><button type="button" class="icon-btn" data-action="edit" tabindex="-1">' +
-    icon('pencil') +
-    '</button></div>' +
-    '<div class="poster-body"><h3 class="poster-title"></h3>' +
-    '<p class="poster-meta"><span class="platform-name"></span><span aria-hidden="true">·</span>' +
-    '<span class="status-pill"></span></p></div>';
+    '<div class="poster-overlay">' +
+    playButtonHtml(game, 'poster-play') +
+    '</div><div class="poster-actions">' +
+    iconActionsHtml(game) +
+    '</div><div class="poster-body"><h3 class="poster-title"></h3>' +
+    metaLineHtml() +
+    '</div>';
   applyCover(card.querySelector('.poster-art'), game, cover);
   card.querySelector('.poster-title').textContent = game.name;
-  card.querySelector('.platform-name').textContent = game.platform;
-  const status = card.querySelector('.status-pill');
-  status.textContent = available ? 'Listo' : 'Requiere revisión';
-  status.classList.toggle('attention', !available);
-  const play = card.querySelector('.poster-play');
-  play.querySelector('span').textContent = available ? 'Jugar' : 'Revisar';
-  play.classList.toggle('review', !available);
-  play.setAttribute('aria-label', (available ? 'Jugar a ' : 'Revisar ') + game.name);
-  const favorite = card.querySelector('[data-action=favorite]');
-  favorite.setAttribute('aria-pressed', String(Boolean(game.favorite)));
-  favorite.setAttribute('aria-label', 'Favorito: ' + game.name);
-  favorite.title = game.favorite ? 'Quitar de favoritos' : 'Marcar como favorito';
-  const edit = card.querySelector('[data-action=edit]');
-  edit.setAttribute('aria-label', 'Editar ficha de ' + game.name);
-  edit.title = 'Editar ficha';
+  fillMetaLine(card, game);
+  decorateActions(card, game);
   return card;
 }
 async function posterAction(game, action) {
@@ -424,53 +468,77 @@ async function posterAction(game, action) {
     }
   }
 }
-function selectPoster(card, focus) {
-  library.querySelectorAll('.poster').forEach((item) => {
-    const active = item === card;
+// Navegación de colecciones: un único punto de Tab por colección (tabindex itinerante).
+// Flechas para moverse, Enter juega, F marca favorito y E edita.
+function tilesOf(container) {
+  return [...container.querySelectorAll('.tile')];
+}
+function selectTile(tile, focus, remember = true) {
+  const container = tile.closest('[data-tiles]');
+  tilesOf(container).forEach((item) => {
+    const active = item === tile;
     item.classList.toggle('selected', active);
     item.tabIndex = active ? 0 : -1;
     item.querySelectorAll('button').forEach((button) => (button.tabIndex = active ? 0 : -1));
   });
-  state.selectedKey = card.dataset.key;
-  if (focus) card.focus();
+  if (remember) state.selectedKey = tile.dataset.key;
+  if (focus) tile.focus();
 }
-function posterNeighbor(card, key) {
-  const cards = [...library.querySelectorAll('.poster')];
-  const index = cards.indexOf(card);
-  const columns = cards.filter((item) => item.offsetTop === cards[0].offsetTop).length || 1;
+function tileNeighbor(tile, key) {
+  const tiles = tilesOf(tile.closest('[data-tiles]'));
+  const index = tiles.indexOf(tile);
+  const columns = tiles.filter((item) => item.offsetTop === tiles[0].offsetTop).length || 1;
   const target = {
     ArrowRight: index + 1,
     ArrowLeft: index - 1,
     ArrowDown: index + columns,
     ArrowUp: index - columns,
     Home: 0,
-    End: cards.length - 1
+    End: tiles.length - 1
   }[key];
-  return cards[Math.max(0, Math.min(cards.length - 1, target))];
+  return tiles[Math.max(0, Math.min(tiles.length - 1, target))];
 }
-library.addEventListener('click', (event) => {
-  const card = event.target.closest('.poster');
-  if (!card) return;
-  const game = state.games.find((item) => item.key === card.dataset.key);
-  const action = event.target.closest('[data-action]');
-  selectPoster(card, !action);
-  if (action) posterAction(game, action.dataset.action);
-});
-library.addEventListener('dblclick', (event) => {
-  const card = event.target.closest('.poster');
-  if (card && !event.target.closest('[data-action]'))
-    playOrReview(state.games.find((item) => item.key === card.dataset.key));
-});
-library.addEventListener('keydown', (event) => {
-  const card = event.target.closest('.poster');
-  if (!card || event.target !== card || event.altKey || event.ctrlKey || event.metaKey) return;
-  const game = state.games.find((item) => item.key === card.dataset.key);
-  if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-    event.preventDefault();
-    selectPoster(posterNeighbor(card, event.key), true);
-  } else if (event.key === 'Enter') posterAction(game, 'play');
-  else if (event.key.toLowerCase() === 'f') posterAction(game, 'favorite');
-  else if (event.key.toLowerCase() === 'e') posterAction(game, 'edit');
+function gameFor(element) {
+  return state.games.find((item) => item.key === element.dataset.key);
+}
+function tileSelected(container, tile) {
+  container.dispatchEvent(new CustomEvent('tileselect', { detail: tile }));
+}
+function bindTiles(container) {
+  container.dataset.tiles = '';
+  container.addEventListener('click', (event) => {
+    const host = event.target.closest('[data-key]');
+    if (!host || !container.contains(host)) return;
+    const action = event.target.closest('[data-action]');
+    if (host.classList.contains('tile')) {
+      selectTile(host, !action);
+      tileSelected(container, host);
+    }
+    if (action) posterAction(gameFor(host), action.dataset.action);
+  });
+  container.addEventListener('dblclick', (event) => {
+    const tile = event.target.closest('.tile');
+    if (tile && !event.target.closest('button')) playOrReview(gameFor(tile));
+  });
+  container.addEventListener('keydown', (event) => {
+    const tile = event.target.closest('.tile');
+    if (!tile || event.target !== tile || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      const next = tileNeighbor(tile, event.key);
+      selectTile(next, true);
+      tileSelected(container, next);
+    } else if (event.key === 'Enter') posterAction(gameFor(tile), 'play');
+    else if (event.key.toLowerCase() === 'f') posterAction(gameFor(tile), 'favorite');
+    else if (event.key.toLowerCase() === 'e') posterAction(gameFor(tile), 'edit');
+  });
+}
+bindTiles(library);
+bindTiles(quickLibrary);
+// En la vista Detalle, elegir otro juego actualiza la ficha sin redibujar la lista.
+library.addEventListener('tileselect', (event) => {
+  if (state.view !== 'detail') return;
+  library.querySelector('.detail-panel').replaceWith(detailPanel(gameFor(event.detail)));
 });
 function renderLibraryState() {
   const holder = document.querySelector('#library-state');
@@ -514,57 +582,25 @@ function renderLibrary() {
         action: document.activeElement.dataset.action
       }
     : null;
-  library.className = 'library ' + (state.view === 'icons' ? 'posters' : state.view);
+  library.className = 'library ' + { icons: 'posters', list: 'rows', detail: 'detail', explorer: 'table' }[state.view];
   library.innerHTML = '';
   if (renderLibraryState()) {
     document.querySelector('#empty-state').classList.add('hidden');
     document.querySelector('#counter').textContent = state.loading ? 'Cargando juegos…' : '';
     return;
   }
-  if (!state.selectedKey && games[0]) state.selectedKey = games[0].key;
-  if (state.view === 'explorer') {
-    const table = document.createElement('section');
-    table.className = 'explorer-table';
-    const headers = [
-      ['name', 'Nombre'],
-      ['platform', 'Plataforma'],
-      ['drive', 'Unidad'],
-      ['status', 'Estado'],
-      ['recent', 'Última vez jugado']
-    ];
-    const head = document.createElement('div');
-    head.className = 'explorer-head';
-    headers.forEach(([field, label]) => {
-      const button = document.createElement('button');
-      const active = state.sort === field;
-      button.className = active ? 'active' : '';
-      button.textContent = label + (active ? (state.direction === 'asc' ? ' ↑' : ' ↓') : ' ↕');
-      button.setAttribute('aria-sort', active ? (state.direction === 'asc' ? 'ascending' : 'descending') : 'none');
-      button.onclick = () => {
-        state.direction =
-          state.sort === field ? (state.direction === 'asc' ? 'desc' : 'asc') : field === 'recent' ? 'desc' : 'asc';
-        state.sort = field;
-        renderLibrary();
-      };
-      head.append(button);
-    });
-    head.append(document.createElement('span'));
-    table.append(head);
-    games.forEach((game) => table.append(makeExplorerRow(game)));
-    library.append(table);
-  } else if (state.view === 'detail') {
+  if (!games.some((game) => game.key === state.selectedKey) && games[0]) state.selectedKey = games[0].key;
+  if (state.view === 'explorer') library.append(makeTable(games));
+  else if (state.view === 'detail') {
     const results = document.createElement('div');
     results.className = 'detail-results';
-    games.forEach((game) => results.append(makeCard(game, true)));
+    games.forEach((game) => results.append(makeRow(game)));
     library.append(results, detailPanel(games.find((game) => game.key === state.selectedKey)));
-  } else if (state.view === 'icons') {
-    if (!games.some((game) => game.key === state.selectedKey) && games[0]) state.selectedKey = games[0].key;
-    games.forEach((game) => library.append(makePosterCard(game)));
-    const active = library.querySelector('.poster.selected');
-    if (active) selectPoster(active, false);
-    const card = focused?.key && library.querySelector('.poster[data-key="' + CSS.escape(focused.key) + '"]');
-    if (card) (focused.action ? card.querySelector('[data-action="' + focused.action + '"]') : card)?.focus();
-  } else games.forEach((game) => library.append(makeCard(game, state.view === 'list')));
+  } else games.forEach((game) => library.append(state.view === 'icons' ? makePosterCard(game) : makeRow(game)));
+  const active = library.querySelector('.tile.selected') || library.querySelector('.tile');
+  if (active) selectTile(active, false);
+  const tile = focused?.key && library.querySelector('.tile[data-key="' + CSS.escape(focused.key) + '"]');
+  if (tile) (focused.action ? tile.querySelector('[data-action="' + focused.action + '"]') : tile)?.focus();
   document.querySelector('#counter').textContent =
     games.length === state.games.length
       ? games.length + ' juegos'
@@ -582,7 +618,9 @@ function renderHome() {
     .filter((game, index, all) => all.findIndex((item) => item.key === game.key) === index)
     .slice(0, 6);
   quickLibrary.innerHTML = '';
-  quick.forEach((game) => quickLibrary.append(makeCard(game)));
+  quick.forEach((game) => quickLibrary.append(makePosterCard(game)));
+  const first = quickLibrary.querySelector('.tile');
+  if (first) selectTile(first, false, false);
   document.querySelector('#quick-subtitle').textContent = favorites.length
     ? favorites.length + ' favorito' + (favorites.length === 1 ? '' : 's') + ' para volver a jugar.'
     : 'Marcá favoritos para encontrarlos siempre acá.';
@@ -774,28 +812,37 @@ async function loadHealth() {
   try {
     const data = await request('/api/health');
     const summary = document.querySelector('#health-summary');
-    summary.innerHTML =
-      '<article><span>Detectados</span><strong>' +
-      data.total +
-      '</strong><small>en tu colección</small></article><article><span>Listos</span><strong>' +
-      data.ready +
-      '</strong><small>con inicio disponible</small></article><article><span>Revisión</span><strong>' +
-      data.review +
-      '</strong><small>requieren atención</small></article><article><span>Índice</span><strong>' +
-      (data.generatedAt ? 'OK' : '—') +
-      '</strong><small>' +
-      (data.generatedAt ? 'actualizado localmente' : 'pendiente') +
-      '</small></article>';
+    const tiles = [
+      ['Detectados', data.total, 'en tu colección'],
+      ['Listos', data.ready, 'con inicio disponible'],
+      ['Revisión', data.review, data.review ? 'requieren atención' : 'sin alertas'],
+      ['Índice', data.generatedAt ? 'OK' : '—', data.generatedAt ? 'actualizado localmente' : 'pendiente']
+    ];
+    summary.innerHTML = '';
+    tiles.forEach(([label, value, hint]) => {
+      const tile = document.createElement('article');
+      tile.className = 'stat';
+      tile.innerHTML = '<span></span><strong></strong><small></small>';
+      tile.querySelector('span').textContent = label;
+      tile.querySelector('strong').textContent = value;
+      tile.querySelector('small').textContent = hint;
+      summary.append(tile);
+    });
     const rows = document.querySelector('#platform-health');
     rows.innerHTML = '';
     data.platforms.forEach((platform) => {
-      const row = document.createElement('div');
-      row.className = 'health-row';
-      row.innerHTML = '<strong></strong><span></span><span></span><span></span>';
-      row.querySelector('strong').textContent = platform.platform;
-      row.querySelectorAll('span')[0].textContent = platform.total + ' detectados';
-      row.querySelectorAll('span')[1].textContent = platform.ready + ' listos';
-      row.querySelectorAll('span')[2].textContent = platform.review ? platform.review + ' para revisar' : 'Sin alertas';
+      const row = document.createElement('tr');
+      row.innerHTML =
+        '<th scope="row"></th><td></td><td><div class="meter-cell"><span></span>' +
+        '<span class="meter" aria-hidden="true"><span></span></span></div></td><td><span class="status-pill"></span></td>';
+      row.querySelector('th').textContent = platform.platform;
+      row.querySelectorAll('td')[0].textContent = platform.total;
+      row.querySelector('.meter-cell span').textContent = platform.ready + ' de ' + platform.total;
+      row.querySelector('.meter span').style.width =
+        (platform.total ? (platform.ready / platform.total) * 100 : 0) + '%';
+      const status = row.querySelector('.status-pill');
+      status.textContent = platform.review ? platform.review + ' para revisar' : 'Sin alertas';
+      status.classList.toggle('attention', platform.review > 0);
       rows.append(row);
     });
   } catch (error) {
@@ -828,8 +875,7 @@ function applyTheme(theme) {
   else delete document.documentElement.dataset.theme;
   document.querySelectorAll('[data-theme-option]').forEach((button) => {
     const active = button.dataset.themeOption === theme;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-checked', String(active));
+    button.setAttribute('aria-pressed', String(active));
   });
 }
 async function loadSettings() {
@@ -872,9 +918,12 @@ function showPage(page) {
   Object.keys(pageMeta).forEach((name) =>
     document.querySelector('#' + name + '-page').classList.toggle('hidden', name !== page)
   );
-  document
-    .querySelectorAll('.nav-item')
-    .forEach((button) => button.classList.toggle('active', button.dataset.page === page));
+  document.querySelectorAll('.nav-item').forEach((button) => {
+    const current = button.dataset.page === page;
+    button.classList.toggle('active', current);
+    if (current) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
   document.querySelector('#page-kicker').textContent = pageMeta[page][0];
   document.querySelector('#page-title').textContent = pageMeta[page][1];
   if (page === 'diagnostics') loadHealth();
@@ -976,7 +1025,7 @@ document.querySelector('#refresh').onclick = async (event) => {
     say(error.message);
   } finally {
     button.disabled = false;
-    button.innerHTML = '<span aria-hidden="true">↻</span> Actualizar';
+    button.innerHTML = icon('refresh') + ' Actualizar';
   }
 };
 document.querySelector('#export-preferences').onclick = exportPreferences;

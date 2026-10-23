@@ -5,6 +5,9 @@
 - Modo oscuro: sigue el tema de Windows o se elige en **Configuración → Apariencia**. La barra de título acompaña la elección.
 - Información de juegos desde IGDB (opcional): descripción, géneros, año, desarrolladora, valoración y portadas para Epic y Ubisoft.
 - Al restaurar un respaldo se conservan las preferencias de la aplicación.
+- Interfaz renovada en todas las pantallas: portadas grandes, filas y ficha de juego rediseñadas, tabla ordenable accesible, íconos nuevos y estados de carga, error y biblioteca vacía.
+- Navegación completa por teclado en cada colección (flechas, Enter, F y E) y mejoras de accesibilidad WCAG 2.2 AA en contraste, foco y etiquetas.
+- Corregido el botón Actualizar, que podía quedar deshabilitado después de usarlo.
 
 ## 0.9.0 — 23 de octubre de 2026
 

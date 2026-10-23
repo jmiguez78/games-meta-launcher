@@ -43,6 +43,12 @@ async function request(url, options) {
   if (!response.ok) throw new Error(data.error || 'No se pudo completar la acción.');
   return data;
 }
+function escapeHtml(value) {
+  return String(value).replace(
+    /[&<>"']/g,
+    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]
+  );
+}
 function tagsOf(game) {
   return Array.isArray(game.tags) ? game.tags : [];
 }
@@ -94,7 +100,8 @@ function statusText(game) {
 }
 function applyCover(element, game, cover) {
   if (game.coverFile) {
-    element.style.backgroundImage = "linear-gradient(#10182722,#10182799),url('/covers/" + game.coverFile + "')";
+    element.style.backgroundImage =
+      "linear-gradient(#10182722,#10182799),url('/covers/" + encodeURIComponent(game.coverFile) + "')";
     element.classList.add('has-image');
   } else {
     const initial = element.querySelector('.cover-initial');
@@ -186,15 +193,15 @@ function detailPanel(game) {
     '<div class="detail-cover ' +
     cover.palette +
     '">' +
-    cover.initials +
+    escapeHtml(cover.initials) +
     '</div><p class="platform">' +
-    game.platform +
+    escapeHtml(game.platform) +
     '</p><h2></h2><p class="detail-status"></p><dl><dt>Ubicación</dt><dd></dd><dt>Estado</dt><dd>' +
     statusText(game) +
     '</dd><dt>Progreso</dt><dd>' +
-    (game.progress || 'Pendiente') +
+    escapeHtml(game.progress || 'Pendiente') +
     '</dd><dt>Puntuación</dt><dd>' +
-    (game.rating ? '★'.repeat(game.rating) : 'Sin puntuar') +
+    (game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar') +
     '</dd><dt>Última vez jugado</dt><dd>' +
     lastPlayedText(game) +
     '</dd><dt>Detección</dt><dd></dd></dl><p class="notes"></p><div class="tag-list"></div>';

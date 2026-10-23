@@ -1,5 +1,12 @@
 # Registro de cambios
 
+## 0.8.0 — 23 de octubre de 2026
+
+- Seguridad: los respaldos importados se validan igual que las ediciones de la ficha y la interfaz escapa los datos personales al mostrarlos.
+- Los juegos se inician sin pasar por `cmd.exe`; un ejecutable inexistente muestra un error claro.
+- Diagnóstico más útil: los juegos cuya carpeta ya no existe indican cómo resolverlo desde Steam o Epic.
+- Pruebas automáticas de la API y del indexador (`npm test`) y código fuente formateado para facilitar su mantenimiento.
+
 ## 0.7.2 — 23 de octubre de 2026
 
 - Seguridad: el servidor local sólo acepta conexiones desde esta PC y rechaza solicitudes de otros sitios web, que antes podían modificar rutas de lanzamiento e iniciar programas.

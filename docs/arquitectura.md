@@ -21,10 +21,12 @@ flowchart LR
 - `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla.
 - `public/`: interfaz HTML, CSS y JavaScript sin dependencias externas de aplicación.
 - `data/library.json`: inventario local generado; se excluye del control de versiones.
+- `test/`: pruebas automáticas con `node:test` de la API y del indexador.
 
 ## Decisiones iniciales
 
-- La aplicación se ejecuta sólo en `localhost`.
+- El servidor escucha sólo en `127.0.0.1` y rechaza solicitudes con otro origen o `Host`, para que ningún sitio web ni equipo de la red pueda modificar rutas de lanzamiento.
+- Los juegos se inician con `explorer.exe` o con su ejecutable, nunca a través de `cmd.exe`.
 - El catálogo usa ID de plataforma cuando está disponible, evitando depender únicamente del nombre del juego.
 - Las rutas de lanzamiento se resuelven con URI, AppsFolder o ejecutable local según la plataforma y la información encontrada.
 - La fecha de última vez jugado se conserva únicamente para los inicios solicitados desde la aplicación.

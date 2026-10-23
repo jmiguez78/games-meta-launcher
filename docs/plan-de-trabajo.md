@@ -12,7 +12,7 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.7.1 terminada
+## Estado actual — implementación hasta 0.8.0 terminada
 
 La base local está terminada:
 
@@ -31,6 +31,8 @@ La base local está terminada:
 - Diagnóstico por plataforma y horario de indexación nocturna configurable desde la aplicación.
 - Fecha de última vez jugado registrada al iniciar un título desde Games Meta Launcher.
 - Explorador en tabla única, ordenable de forma ascendente o descendente por nombre, plataforma, unidad, estado y fecha de juego.
+- Servidor local restringido a esta PC, respaldos validados y lanzamiento sin `cmd.exe` (0.7.2 y 0.8.0).
+- Pruebas automáticas (`npm test`) y código fuente formateado.
 - Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store cuando sus datos locales permiten resolverlas.
 
 La implementación está completa, pero la validación real de cada launcher sigue pendiente. Se evitó abrir juegos durante las pruebas automáticas.
@@ -55,12 +57,12 @@ La implementación está completa, pero la validación real de cada launcher sig
 | Diagnóstico y horario | Panel de salud por plataforma y configuración visual de indexación nocturna. | Disponible. |
 | Fecha de juego y Explorador | Registro local del último inicio y tabla de Explorador ordenable. | Disponible. |
 
-## Siguiente — versión 0.8: refinamiento y validación
+## Siguiente — versión 0.8.1: validación manual
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
 | Validar lanzadores | Iniciar manualmente un juego representativo por plataforma. | Las plataformas compatibles se abren desde la biblioteca. |
-| Ajustar detección | Corregir juegos en revisión a partir de los diagnósticos. | Cada caso se resuelve o explica de forma útil. |
+| Ajustar detección | Corregir juegos en revisión a partir de los diagnósticos. Tiny Lands (Epic) ya explica que su carpeta no existe. | Cada caso se resuelve o explica de forma útil. |
 | Pulido de UX | Incorporar correcciones surgidas del uso real. | La interfaz mantiene claridad y coherencia en los flujos frecuentes. |
 
 ## Más adelante — versión 1.0: bibliotecas compradas

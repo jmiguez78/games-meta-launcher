@@ -53,7 +53,14 @@
 
 - Servidor accesible sólo desde `127.0.0.1` y protegido contra solicitudes de otros orígenes.
 
-## 0.8.0 — Refinamiento y validación
+## 0.8.0 — Refinamiento y validación · Completada
 
-- Validación manual de lanzamientos por plataforma.
+- Validación de respaldos importados y escape de datos personales en la interfaz.
+- Lanzamiento sin `cmd.exe` y errores claros cuando falta un ejecutable.
+- Diagnóstico con acciones concretas para juegos cuya carpeta ya no existe.
+- Pruebas automáticas y código fuente formateado.
+
+## 0.8.1 — Validación manual
+
+- Iniciar un juego representativo por plataforma desde la aplicación portable.
 - Correcciones de detección y mejoras derivadas del uso cotidiano.

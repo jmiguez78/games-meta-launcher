@@ -66,7 +66,16 @@ function visibleGames() {
         (!state.drive || game.drive === state.drive) &&
         (!state.tag || tagsOf(game).includes(state.tag)) &&
         (!state.favorite || game.favorite) &&
-        (game.name + ' ' + game.platform + ' ' + game.location + ' ' + tagsOf(game).join(' '))
+        (
+          game.name +
+          ' ' +
+          game.platform +
+          ' ' +
+          game.location +
+          ' ' +
+          tagsOf(game).join(' ') +
+          (game.meta ? ' ' + (game.meta.genres || []).join(' ') + ' ' + (game.meta.developers || []).join(' ') : '')
+        )
           .toLowerCase()
           .includes(state.query.toLowerCase())
     )
@@ -237,6 +246,49 @@ function makeExplorerRow(game) {
   };
   return row;
 }
+function metaSection(meta) {
+  const section = document.createElement('section');
+  section.className = 'game-meta';
+  const facts = [
+    meta.year,
+    (meta.developers || []).join(', '),
+    meta.rating ? 'Valoración ' + meta.rating + '/100' : ''
+  ].filter(Boolean);
+  if (facts.length) {
+    const line = document.createElement('p');
+    line.className = 'meta-facts';
+    line.textContent = facts.join(' · ');
+    section.append(line);
+  }
+  if (meta.genres && meta.genres.length) {
+    const genres = document.createElement('div');
+    genres.className = 'tag-list meta-genres';
+    meta.genres.forEach((genre) => {
+      const label = document.createElement('span');
+      label.textContent = genre;
+      genres.append(label);
+    });
+    section.append(genres);
+  }
+  if (meta.summary) {
+    const summary = document.createElement('p');
+    summary.className = 'meta-summary';
+    summary.textContent = meta.summary;
+    summary.title = 'Clic para ver completo';
+    summary.onclick = () => summary.classList.toggle('expanded');
+    section.append(summary);
+  }
+  if (meta.url) {
+    const link = document.createElement('a');
+    link.className = 'meta-source';
+    link.href = meta.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = 'Datos de IGDB.com';
+    section.append(link);
+  }
+  return section;
+}
 function detailPanel(game) {
   const panel = document.createElement('aside');
   panel.className = 'detail-panel';
@@ -265,6 +317,7 @@ function detailPanel(game) {
   panel.querySelector('h2').textContent = game.name;
   panel.querySelector('.detail-status').textContent =
     game.launch && game.launch.available ? 'Disponible para iniciar' : 'Inicio pendiente';
+  if (game.meta) panel.querySelector('.detail-status').after(metaSection(game.meta));
   panel.querySelectorAll('dd')[0].textContent = game.location;
   panel.querySelectorAll('dd')[5].textContent = game.evidence;
   panel.querySelector('.notes').textContent = game.notes || 'Sin notas personales.';
@@ -571,6 +624,34 @@ async function loadSchedule() {
     document.querySelector('#schedule-status').textContent = error.message;
   }
 }
+let igdbPoll;
+function describeIgdbStatus(settings, status) {
+  if (status.running) return 'Buscando información… ' + status.done + ' de ' + status.total + ' juegos.';
+  if (status.error) return status.error;
+  if (status.finishedAt)
+    return 'Listo: se encontró información de ' + status.matched + ' de ' + status.total + ' juegos.';
+  return settings.configured
+    ? 'Conectado. Usá «Actualizar información» cuando agregues juegos.'
+    : 'Sin conectar. Creá una aplicación en Twitch y pegá aquí sus credenciales.';
+}
+async function loadIgdb() {
+  try {
+    const [settings, status] = await Promise.all([request('/api/integrations/igdb'), request('/api/metadata/status')]);
+    document.querySelector('#igdb-client-id').value = settings.clientId;
+    document.querySelector('#igdb-secret').placeholder = settings.configured ? 'Guardado de forma segura' : '';
+    document.querySelector('#igdb-refresh').disabled = !settings.configured || status.running;
+    document.querySelector('#igdb-remove').classList.toggle('hidden', !settings.configured);
+    document.querySelector('#igdb-status').textContent = describeIgdbStatus(settings, status);
+    clearTimeout(igdbPoll);
+    if (status.running) igdbPoll = setTimeout(loadIgdb, 1000);
+    else if (status.finishedAt && status.finishedAt !== state.metadataLoadedAt) {
+      state.metadataLoadedAt = status.finishedAt;
+      await load();
+    }
+  } catch (error) {
+    document.querySelector('#igdb-status').textContent = error.message;
+  }
+}
 function showPage(page) {
   state.page = page;
   Object.keys(pageMeta).forEach((name) =>
@@ -582,7 +663,10 @@ function showPage(page) {
   document.querySelector('#page-kicker').textContent = pageMeta[page][0];
   document.querySelector('#page-title').textContent = pageMeta[page][1];
   if (page === 'diagnostics') loadHealth();
-  if (page === 'settings') loadSchedule();
+  if (page === 'settings') {
+    loadSchedule();
+    loadIgdb();
+  }
   if (page === 'library') document.querySelector('#search').focus();
 }
 async function load() {
@@ -685,6 +769,43 @@ document.querySelector('#schedule-form').onsubmit = async (event) => {
     say(error.message);
   } finally {
     button.disabled = false;
+  }
+};
+document.querySelector('#igdb-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector('button[type=submit]');
+  const secret = document.querySelector('#igdb-secret');
+  button.disabled = true;
+  try {
+    await request('/api/integrations/igdb', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ clientId: document.querySelector('#igdb-client-id').value, clientSecret: secret.value })
+    });
+    secret.value = '';
+    notify('IGDB conectado. Buscando información de tus juegos…');
+    await loadIgdb();
+  } catch (error) {
+    say(error.message);
+  } finally {
+    button.disabled = false;
+  }
+};
+document.querySelector('#igdb-refresh').onclick = async () => {
+  try {
+    await request('/api/metadata/refresh', { method: 'POST' });
+    await loadIgdb();
+  } catch (error) {
+    say(error.message);
+  }
+};
+document.querySelector('#igdb-remove').onclick = async () => {
+  try {
+    await request('/api/integrations/igdb', { method: 'DELETE' });
+    notify('IGDB desconectado. La información ya descargada se conserva.');
+    await loadIgdb();
+  } catch (error) {
+    say(error.message);
   }
 };
 document.addEventListener('keydown', (event) => {

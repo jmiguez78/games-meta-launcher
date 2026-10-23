@@ -55,6 +55,23 @@ let base;
 before(async () => {
   await fs.writeFile(path.join(dataDir, 'library.json'), JSON.stringify(catalog));
   await fs.writeFile(path.join(dataDir, 'portada-local.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  await fs.writeFile(
+    path.join(dataDir, 'metadata.json'),
+    JSON.stringify({
+      games: {
+        'gog galaxy:roto': {
+          igdbId: 7,
+          title: 'Roto',
+          summary: 'Resumen',
+          genres: ['RPG'],
+          cover: 'co7',
+          artwork: null,
+          fetchedAt: 'x'
+        },
+        'epic games:x': { igdbId: null, fetchedAt: 'x' }
+      }
+    })
+  );
   server = createServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -178,4 +195,24 @@ test('sirve la imagen local y responde 404 cuando no hay ninguna fuente', async 
   assert.deepEqual([...new Uint8Array(await local.arrayBuffer())], [0xff, 0xd8, 0xff, 0xd9]);
   assert.equal((await fetch(`${base}/api/art/cover/${encodeURIComponent('epic games:x')}`)).status, 404);
   assert.equal((await fetch(`${base}/api/art/otro/steam%3A10`)).status, 404);
+});
+
+test('agrega los metadatos de IGDB sin exponer identificadores internos de imágenes', async () => {
+  const library = await (await fetch(`${base}/api/library`)).json();
+  const roto = library.games.find((game) => game.key === 'gog galaxy:roto');
+  assert.deepEqual(roto.meta, { igdbId: 7, title: 'Roto', summary: 'Resumen', genres: ['RPG'] });
+  assert.deepEqual(roto.artwork, { cover: 'portrait', hero: false, background: null });
+  assert.equal(library.games.find((game) => game.key === 'epic games:x').meta, null);
+});
+
+test('la integración informa que no está configurada y no expone secretos', async () => {
+  assert.deepEqual(await (await fetch(`${base}/api/integrations/igdb`)).json(), { configured: false, clientId: '' });
+  const refresh = await fetch(`${base}/api/metadata/refresh`, { method: 'POST' });
+  assert.equal(refresh.status, 400);
+  const invalid = await fetch(`${base}/api/integrations/igdb`, {
+    method: 'PUT',
+    ...json({ clientId: 'abc; rm', clientSecret: 'x' })
+  });
+  assert.equal(invalid.status, 500);
+  assert.match((await invalid.json()).error, /letras y números/);
 });

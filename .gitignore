@@ -7,3 +7,5 @@ data/art-cache/
 dist/
 *.log
 release*/
+data/integrations.json
+data/metadata.json

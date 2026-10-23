@@ -1144,3 +1144,37 @@ legend {
 .detail-cover.has-image {
   color: transparent;
 }
+.game-meta {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+.meta-facts {
+  margin: 0;
+  color: #536078;
+  font-weight: 700;
+}
+.meta-genres span {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.meta-summary {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #3c475d;
+  cursor: pointer;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+.meta-summary.expanded {
+  display: block;
+}
+.meta-source {
+  color: var(--muted);
+  font-size: 12px;
+}
+.settings-card a {
+  color: var(--accent);
+  font-weight: 700;
+}

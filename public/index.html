@@ -182,6 +182,29 @@
                 /></label>
               </div>
             </section>
+            <section class="settings-card">
+              <span class="card-icon">ⓘ</span>
+              <div>
+                <h2>Información de juegos</h2>
+                <p>
+                  Descripción, géneros, desarrolladora y portadas faltantes desde
+                  <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB</a>. Requiere una aplicación de
+                  <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">Twitch</a>.
+                </p>
+              </div>
+              <form id="igdb-form" class="schedule-form" autocomplete="off">
+                <label for="igdb-client-id">ID de cliente</label>
+                <input id="igdb-client-id" spellcheck="false" />
+                <label for="igdb-secret">Secreto</label>
+                <input id="igdb-secret" type="password" spellcheck="false" />
+                <div class="button-row">
+                  <button class="button primary" type="submit">Conectar</button
+                  ><button id="igdb-refresh" class="button" type="button">Actualizar información</button
+                  ><button id="igdb-remove" class="text-button" type="button">Desconectar</button>
+                </div>
+                <p id="igdb-status" class="helper-text">Consultando la conexión…</p>
+              </form>
+            </section>
           </div>
         </section>
       </main>

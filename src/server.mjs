@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { CATALOG_SCHEMA, scanLibrary } from './indexer.mjs';
+import { createIgdb, imageUrl } from './igdb.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -55,26 +56,35 @@ function safeOverride(value) {
     ? { type: value.type, target: value.target.trim(), available: true }
     : null;
 }
-// Imágenes: primero las que guardan los launchers en esta PC; si faltan, la CDN pública de Steam.
+// Imágenes: primero las que guardan los launchers en esta PC; si faltan, la CDN de Steam y después IGDB.
 const artCacheDir = path.join(dataDir, 'art-cache');
 const ART_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 const steamCdnAssets = { cover: ['library_600x900.jpg', 'header.jpg'], hero: ['library_hero.jpg'] };
+const igdbImageSizes = { cover: 't_cover_big', hero: 't_1080p' };
 const pendingDownloads = new Map();
-function hasSteamCdn(game) {
-  return game.platform === 'Steam' && /^\d+$/.test(game.id);
+const igdb = createIgdb(dataDir);
+function onlineSources(game, meta, kind) {
+  const sources = [];
+  if (game.platform === 'Steam' && /^\d+$/.test(game.id))
+    sources.push(
+      ...steamCdnAssets[kind].map((asset) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.id}/${asset}`)
+    );
+  const igdbImage = imageUrl(kind === 'hero' ? meta?.artwork : meta?.cover, igdbImageSizes[kind]);
+  if (igdbImage) sources.push(igdbImage);
+  return sources;
 }
-function artwork(game, art = {}) {
-  const online = hasSteamCdn(game);
+function artwork(game, art, meta) {
+  const online = (kind) => onlineSources(game, meta, kind).length > 0;
   const cover = art?.portrait
     ? 'portrait'
     : art?.landscape
       ? 'landscape'
       : art?.logo
         ? 'logo'
-        : online
+        : online('cover')
           ? 'portrait'
           : null;
-  return { cover, hero: Boolean(art?.hero || online), background: art?.background ?? null };
+  return { cover, hero: Boolean(art?.hero || online('hero')), background: art?.background ?? null };
 }
 async function localArt(art = {}, kind) {
   const candidates = kind === 'hero' ? [art?.hero] : [art?.portrait, art?.landscape, art?.logo];
@@ -89,13 +99,11 @@ async function localArt(art = {}, kind) {
   }
   return null;
 }
-async function downloadSteamArt(id, kind, file, missFile) {
+async function downloadArt(sources, file, missFile) {
   let reachable = false;
-  for (const asset of steamCdnAssets[kind]) {
+  for (const source of sources) {
     try {
-      const response = await fetch(`https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/${asset}`, {
-        signal: AbortSignal.timeout(8000)
-      });
+      const response = await fetch(source, { signal: AbortSignal.timeout(8000) });
       reachable = true;
       if (!response.ok || !String(response.headers.get('content-type')).startsWith('image/')) continue;
       const bytes = Buffer.from(await response.arrayBuffer());
@@ -107,16 +115,22 @@ async function downloadSteamArt(id, kind, file, missFile) {
       /* sin conexión o recurso inválido: se prueba el siguiente */
     }
   }
-  // Sólo se recuerda la ausencia si Steam respondió; sin conexión se reintenta en la próxima carga.
+  // Sólo se recuerda la ausencia si algún servidor respondió; sin conexión se reintenta en la próxima carga.
   if (reachable) {
     await fs.mkdir(artCacheDir, { recursive: true });
     await fs.writeFile(missFile, '');
   }
   return null;
 }
-async function onlineArt(game, kind) {
-  if (!hasSteamCdn(game)) return null;
-  const name = crypto.createHash('sha256').update(`${game.key}:${kind}`).digest('hex').slice(0, 20);
+async function onlineArt(game, meta, kind) {
+  const sources = onlineSources(game, meta, kind);
+  if (!sources.length) return null;
+  // El nombre depende de las fuentes: si IGDB aporta una imagen nueva, no la bloquea una ausencia anterior.
+  const name = crypto
+    .createHash('sha256')
+    .update(`${game.key}:${kind}:${sources.join('|')}`)
+    .digest('hex')
+    .slice(0, 20);
   const file = path.join(artCacheDir, `${name}.jpg`);
   const missFile = path.join(artCacheDir, `${name}.miss`);
   try {
@@ -132,25 +146,31 @@ async function onlineArt(game, kind) {
   if (!pendingDownloads.has(file))
     pendingDownloads.set(
       file,
-      downloadSteamArt(game.id, kind, file, missFile).finally(() => pendingDownloads.delete(file))
+      downloadArt(sources, file, missFile).finally(() => pendingDownloads.delete(file))
     );
   return pendingDownloads.get(file);
 }
 async function gameArt(key, kind) {
-  const catalog = await rawLibrary();
+  const [catalog, metadata] = await Promise.all([rawLibrary(), igdb.metadata()]);
   const game = catalog.games.find((item) => item.key === key);
   if (!game) return null;
-  return (await localArt(game.art, kind)) ?? (await onlineArt(game, kind));
+  return (await localArt(game.art, kind)) ?? (await onlineArt(game, metadata[key], kind));
+}
+function publicMeta(meta) {
+  if (!meta?.igdbId) return null;
+  const { cover, artwork: igdbArtwork, fetchedAt, ...rest } = meta;
+  return rest;
 }
 async function library() {
-  const [catalog, prefs] = await Promise.all([rawLibrary(), preferences()]);
+  const [catalog, prefs, metadata] = await Promise.all([rawLibrary(), preferences(), igdb.metadata()]);
   return {
     ...catalog,
     games: catalog.games.map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
       return {
         ...game,
-        artwork: artwork(game, art),
+        artwork: artwork(game, art, metadata[game.key]),
+        meta: publicMeta(metadata[game.key]),
         favorite: false,
         tags: [],
         progress: 'Pendiente',
@@ -299,6 +319,27 @@ export function createServer() {
       }
       if (req.method === 'POST' && url.pathname === '/api/scan')
         return reply(res, 200, JSON.stringify(await scanLibrary()));
+      if (url.pathname === '/api/integrations/igdb') {
+        if (req.method === 'GET') return reply(res, 200, JSON.stringify(await igdb.settings()));
+        if (req.method === 'PUT') {
+          const update = await body(req);
+          await igdb.connect(String(update.clientId ?? '').trim(), String(update.clientSecret ?? '').trim());
+          igdb.start((await rawLibrary()).games);
+          return reply(res, 200, JSON.stringify({ ...(await igdb.settings()), status: igdb.status() }));
+        }
+        if (req.method === 'DELETE') {
+          await igdb.disconnect();
+          return reply(res, 200, JSON.stringify(await igdb.settings()));
+        }
+      }
+      if (req.method === 'GET' && url.pathname === '/api/metadata/status')
+        return reply(res, 200, JSON.stringify(igdb.status()));
+      if (req.method === 'POST' && url.pathname === '/api/metadata/refresh') {
+        if (!(await igdb.settings()).configured)
+          return reply(res, 400, JSON.stringify({ error: 'Conectá IGDB en Configuración primero.' }));
+        igdb.start((await rawLibrary()).games);
+        return reply(res, 202, JSON.stringify(igdb.status()));
+      }
       if (req.method === 'GET' && url.pathname === '/api/preferences/export')
         return reply(res, 200, JSON.stringify(await preferences()), 'application/json; charset=utf-8');
       if (req.method === 'POST' && url.pathname === '/api/preferences/import') {

@@ -661,26 +661,6 @@ body {
   color: var(--muted);
   font-size: 12px;
 }
-.toast {
-  position: fixed;
-  right: 26px;
-  bottom: 25px;
-  z-index: 5;
-  max-width: 360px;
-  padding: 12px 15px;
-  border-radius: 10px;
-  background: #1d2944;
-  color: #fff;
-  box-shadow: var(--shadow-lg);
-  opacity: 0;
-  transform: translateY(12px);
-  pointer-events: none;
-  transition: 0.2s;
-}
-.toast.show {
-  opacity: 1;
-  transform: none;
-}
 dialog {
   width: min(550px, calc(100vw - 32px));
   padding: 0;

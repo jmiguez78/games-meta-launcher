@@ -15,9 +15,8 @@ const library = document.querySelector('#library');
 const quickLibrary = document.querySelector('#quick-library');
 const dialog = document.querySelector('#notice');
 const editor = document.querySelector('#editor');
-const toast = document.querySelector('#toast');
+const toasts = document.querySelector('#toasts');
 let editing = null;
-let toastTimer;
 const pageMeta = {
   home: ['TU COLECCIÓN', 'Para jugar ahora'],
   library: ['BIBLIOTECA', 'Tu colección'],
@@ -54,6 +53,7 @@ const iconPaths = {
   archive:
     '<rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M10 13h4"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>'
 };
@@ -76,11 +76,97 @@ function say(message) {
   dialog.querySelector('p').textContent = message;
   dialog.showModal();
 }
-function notify(message) {
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 3600);
+// Avisos apilados que no interrumpen. type: info, success, error o loading; action: { label, run }.
+// Éxitos e información se cierran solos y se pausan con el puntero o el foco encima (WCAG 2.2.1);
+// errores y cargas quedan hasta que el usuario los cierra o la operación termina con update().
+const toastIcons = { info: 'info', success: 'check', error: 'alert', loading: 'refresh' };
+function notify(message, options = {}) {
+  const item = document.createElement('div');
+  item.className = 'toast';
+  item.innerHTML =
+    '<span class="toast-icon" aria-hidden="true"></span><p class="toast-text"></p><span class="toast-actions"></span>' +
+    '<button type="button" class="toast-close" aria-label="Cerrar aviso">' +
+    icon('x') +
+    '</button>';
+  let timer;
+  let deadline = 0;
+  let remaining = 0;
+  const holds = new Set();
+  const dismiss = () => {
+    clearTimeout(timer);
+    if (item.contains(document.activeElement)) document.querySelector('.nav-item.active').focus();
+    item.classList.remove('show');
+    setTimeout(() => item.remove(), 200);
+  };
+  const schedule = (ms) => {
+    clearTimeout(timer);
+    remaining = ms;
+    deadline = Date.now() + ms;
+    if (ms && !holds.size) timer = setTimeout(dismiss, ms);
+  };
+  const hold = (reason) => {
+    if (!holds.size && remaining) remaining = Math.max(1500, deadline - Date.now());
+    holds.add(reason);
+    clearTimeout(timer);
+  };
+  const release = (reason) => {
+    holds.delete(reason);
+    if (!holds.size && remaining) schedule(remaining);
+  };
+  const update = (text, next = {}) => {
+    const type = next.type || 'info';
+    item.dataset.type = type;
+    item.querySelector('.toast-icon').innerHTML = icon(toastIcons[type]);
+    item.querySelector('.toast-text').textContent = text;
+    const actions = item.querySelector('.toast-actions');
+    actions.innerHTML = '';
+    if (next.action) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'toast-action';
+      button.textContent = next.action.label;
+      button.onclick = () => {
+        dismiss();
+        next.action.run();
+      };
+      actions.append(button);
+    }
+    schedule(type === 'error' || type === 'loading' ? 0 : next.action ? 8000 : 5000);
+  };
+  item.querySelector('.toast-close').onclick = dismiss;
+  item.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') dismiss();
+  });
+  item.addEventListener('pointerenter', () => hold('pointer'));
+  item.addEventListener('pointerleave', () => release('pointer'));
+  item.addEventListener('focusin', () => hold('focus'));
+  item.addEventListener('focusout', (event) => {
+    if (!item.contains(event.relatedTarget)) release('focus');
+  });
+  update(message, options);
+  toasts.append(item);
+  requestAnimationFrame(() => item.classList.add('show'));
+  // Como máximo tres a la vista: se descarta el más viejo que no sea una carga en curso.
+  const stack = [...toasts.children].filter((toast) => toast.dataset.type !== 'loading');
+  if (toasts.children.length > 3 && stack[0]) stack[0].remove();
+  return { update, dismiss };
+}
+function notifyError(error, retry) {
+  return notify(error.message || 'No se pudo completar la acción.', {
+    type: 'error',
+    action: retry && { label: 'Reintentar', run: retry }
+  });
+}
+// Deshace un cambio de preferencias sobre la versión vigente del juego (load() reemplaza los objetos).
+function undoPreference(game, patch, message) {
+  return async () => {
+    try {
+      await updatePreference(state.games.find((item) => item.key === game.key) || game, patch);
+      notify(message, { type: 'success' });
+    } catch (error) {
+      notifyError(error);
+    }
+  };
 }
 async function request(url, options) {
   const response = await fetch(url, options);
@@ -460,11 +546,22 @@ async function posterAction(game, action) {
   if (action === 'play') return playOrReview(game);
   if (action === 'edit') return editGame(game);
   if (action === 'favorite') {
+    const previous = Boolean(game.favorite);
     try {
-      await updatePreference(game, { favorite: !game.favorite });
-      notify(game.favorite ? game.name + ' se agregó a favoritos.' : game.name + ' se quitó de favoritos.');
+      await updatePreference(game, { favorite: !previous });
+      notify(previous ? game.name + ' se quitó de favoritos.' : game.name + ' se agregó a favoritos.', {
+        type: 'success',
+        action: {
+          label: 'Deshacer',
+          run: undoPreference(
+            game,
+            { favorite: previous },
+            previous ? game.name + ' volvió a favoritos.' : game.name + ' ya no está en favoritos.'
+          )
+        }
+      });
     } catch (error) {
-      say(error.message);
+      notifyError(error);
     }
   }
 }
@@ -776,9 +873,9 @@ async function playGame(game) {
     game.lastLaunchedAt = new Date().toISOString();
     renderHome();
     renderLibrary();
-    notify(game.name + ': inicio solicitado.');
+    notify(game.name + ': inicio solicitado.', { type: 'success' });
   } catch (error) {
-    say(error.message);
+    notifyError(error, () => playGame(game));
   }
 }
 async function exportPreferences() {
@@ -789,23 +886,48 @@ async function exportPreferences() {
     link.download = 'games-meta-launcher-preferencias.json';
     link.click();
     URL.revokeObjectURL(link.href);
-    notify('Respaldo preparado.');
+    notify('Respaldo preparado.', { type: 'success' });
   } catch (error) {
-    say(error.message);
+    notifyError(error, exportPreferences);
   }
 }
+function restorePreferences(data) {
+  return request('/api/preferences/import', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+// Antes de restaurar se guarda una copia de lo actual para poder deshacer.
 async function importPreferences(file) {
+  const notice = notify('Restaurando respaldo…', { type: 'loading' });
   try {
-    const data = JSON.parse(await file.text());
-    await request('/api/preferences/import', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+    } catch {
+      throw new Error('El archivo no es un respaldo de Games Meta Launcher.');
+    }
+    const previous = await request('/api/preferences/export');
+    await restorePreferences(data);
     await load();
-    notify('Preferencias restauradas.');
+    notice.update('Preferencias restauradas.', {
+      type: 'success',
+      action: {
+        label: 'Deshacer',
+        run: async () => {
+          try {
+            await restorePreferences(previous);
+            await load();
+            notify('Se recuperaron tus preferencias anteriores.', { type: 'success' });
+          } catch (error) {
+            notifyError(error);
+          }
+        }
+      }
+    });
   } catch (error) {
-    say(error.message || 'No se pudo restaurar el respaldo.');
+    notice.update(error.message || 'No se pudo restaurar el respaldo.', { type: 'error' });
   }
 }
 async function loadHealth() {
@@ -846,7 +968,7 @@ async function loadHealth() {
       rows.append(row);
     });
   } catch (error) {
-    say(error.message);
+    notifyError(error, loadHealth);
   }
 }
 async function loadSchedule() {
@@ -1007,9 +1129,9 @@ document.querySelector('#save-tags').onclick = async () => {
     if (cover) await uploadCover(editing, cover);
     renderHome();
     renderLibrary();
-    notify('Ficha actualizada.');
+    notify('Ficha actualizada.', { type: 'success' });
   } catch (error) {
-    say(error.message);
+    notifyError(error);
   }
 };
 document.querySelector('#refresh').onclick = async (event) => {
@@ -1017,12 +1139,16 @@ document.querySelector('#refresh').onclick = async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
   button.textContent = 'Actualizando…';
+  const notice = notify('Buscando juegos instalados…', { type: 'loading' });
   try {
     await request('/api/scan', { method: 'POST' });
     await load();
-    notify('Inventario actualizado.');
+    notice.update('Inventario actualizado: ' + state.games.length + ' juegos.', { type: 'success' });
   } catch (error) {
-    say(error.message);
+    notice.update(error.message, {
+      type: 'error',
+      action: { label: 'Reintentar', run: () => document.querySelector('#refresh').click() }
+    });
   } finally {
     button.disabled = false;
     button.innerHTML = icon('refresh') + ' Actualizar';
@@ -1045,9 +1171,9 @@ document.querySelector('#schedule-form').onsubmit = async (event) => {
       body: JSON.stringify({ time: document.querySelector('#schedule-time').value })
     });
     await loadSchedule();
-    notify('Horario de indexación guardado.');
+    notify('Horario de indexación guardado.', { type: 'success' });
   } catch (error) {
-    say(error.message);
+    notifyError(error);
   } finally {
     button.disabled = false;
   }
@@ -1063,7 +1189,7 @@ document.querySelectorAll('[data-theme-option]').forEach((button) => {
         body: JSON.stringify({ theme })
       });
     } catch (error) {
-      say(error.message);
+      notifyError(error, () => button.click());
     }
   };
 });
@@ -1079,10 +1205,10 @@ document.querySelector('#igdb-form').onsubmit = async (event) => {
       body: JSON.stringify({ clientId: document.querySelector('#igdb-client-id').value, clientSecret: secret.value })
     });
     secret.value = '';
-    notify('IGDB conectado. Buscando información de tus juegos…');
+    notify('IGDB conectado. Buscando información de tus juegos…', { type: 'success' });
     await loadIgdb();
   } catch (error) {
-    say(error.message);
+    notifyError(error);
   } finally {
     button.disabled = false;
   }
@@ -1092,16 +1218,16 @@ document.querySelector('#igdb-refresh').onclick = async () => {
     await request('/api/metadata/refresh', { method: 'POST' });
     await loadIgdb();
   } catch (error) {
-    say(error.message);
+    notifyError(error);
   }
 };
 document.querySelector('#igdb-remove').onclick = async () => {
   try {
     await request('/api/integrations/igdb', { method: 'DELETE' });
-    notify('IGDB desconectado. La información ya descargada se conserva.');
+    notify('IGDB desconectado. La información ya descargada se conserva.', { type: 'success' });
     await loadIgdb();
   } catch (error) {
-    say(error.message);
+    notifyError(error);
   }
 };
 document.addEventListener('keydown', (event) => {

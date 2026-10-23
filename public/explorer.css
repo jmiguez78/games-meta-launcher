@@ -11,7 +11,8 @@
 .explorer-head,
 .explorer-row {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) minmax(130px, 1fr) 82px minmax(140px, 1fr) minmax(145px, 1fr);
+  grid-template-columns: minmax(220px, 2fr) minmax(130px, 1fr) 82px minmax(140px, 1fr) minmax(145px, 1fr) 96px;
+  align-items: center;
 }
 .explorer-head {
   background: #f8faff;
@@ -63,12 +64,33 @@
 .row-status {
   color: var(--success);
 }
+.row-status.attention {
+  color: var(--danger);
+}
+.explorer-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.explorer-row .row-action {
+  padding: 5px 10px 5px 0;
+  text-align: right;
+  overflow: visible;
+}
+.row-action .play {
+  width: 100%;
+}
+.explorer-row.selected .play,
+.explorer-row:hover .play {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
 @media (max-width: 740px) {
   .explorer-table {
     overflow-x: auto;
   }
   .explorer-head,
   .explorer-row {
-    min-width: 720px;
+    min-width: 816px;
   }
 }

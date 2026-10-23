@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.8.1 — 23 de octubre de 2026
+
+- El Explorador permite jugar desde cada fila: botón **Jugar**, doble clic o Enter. Las flechas recorren la tabla.
+- Corregida la franja vacía sobre el encabezado al filtrar plataformas con pocos juegos.
+- Lanzamientos validados manualmente en Steam, Epic, Xbox y Ubisoft.
+
 ## 0.8.0 — 23 de octubre de 2026
 
 - Seguridad: los respaldos importados se validan igual que las ediciones de la ficha y la interfaz escapa los datos personales al mostrarlos.

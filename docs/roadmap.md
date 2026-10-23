@@ -60,7 +60,11 @@
 - Diagnóstico con acciones concretas para juegos cuya carpeta ya no existe.
 - Pruebas automáticas y código fuente formateado.
 
-## 0.8.1 — Validación manual
+## 0.8.1 — Validación y Explorador · Completada
 
-- Iniciar un juego representativo por plataforma desde la aplicación portable.
-- Correcciones de detección y mejoras derivadas del uso cotidiano.
+- Lanzamientos validados manualmente por plataforma.
+- Juego directo desde el Explorador y corrección del encabezado con pocos resultados.
+
+## 0.9.0 — Portadas automáticas (en evaluación)
+
+- Imágenes de juegos obtenidas de los datos locales de cada launcher, con la portada manual como prioridad.

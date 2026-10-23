@@ -165,19 +165,49 @@ function makeCard(game, compact = false) {
 function lastPlayedText(game) {
   return game.lastLaunchedAt ? new Date(game.lastLaunchedAt).toLocaleDateString('es-AR') : 'Aún no registrado';
 }
+function playOrReview(game) {
+  if (game.launch && game.launch.available) playGame(game);
+  else say(game.evidence);
+}
 function makeExplorerRow(game) {
-  const row = document.createElement('button');
+  const row = document.createElement('div');
   row.className = 'explorer-row' + (game.key === state.selectedKey ? ' selected' : '');
+  row.setAttribute('role', 'row');
+  row.tabIndex = 0;
+  row.title = 'Doble clic o Enter para jugar';
   row.innerHTML =
-    '<span class="row-name"></span><span class="row-platform"></span><span class="row-drive"></span><span class="row-status"></span><span class="row-played"></span>';
+    '<span class="row-name"></span><span class="row-platform"></span><span class="row-drive"></span><span class="row-status"></span><span class="row-played"></span><span class="row-action"><button class="button play"></button></span>';
   row.querySelector('.row-name').textContent = (game.favorite ? '★ ' : '') + game.name;
   row.querySelector('.row-platform').textContent = game.platform;
   row.querySelector('.row-drive').textContent = game.drive || '—';
-  row.querySelector('.row-status').textContent = statusText(game);
+  const status = row.querySelector('.row-status');
+  status.textContent = statusText(game);
+  status.classList.toggle('attention', game.status === 'attention');
   row.querySelector('.row-played').textContent = lastPlayedText(game);
+  const play = row.querySelector('.play');
+  const available = game.launch && game.launch.available;
+  play.textContent = available ? 'Jugar' : 'Revisar';
+  play.onclick = (event) => {
+    event.stopPropagation();
+    playOrReview(game);
+  };
+  // La selección se marca sin volver a dibujar la tabla para que el doble clic llegue a la misma fila.
   row.onclick = () => {
     state.selectedKey = game.key;
-    renderLibrary();
+    row.parentElement.querySelectorAll('.explorer-row.selected').forEach((item) => item.classList.remove('selected'));
+    row.classList.add('selected');
+  };
+  row.ondblclick = () => playOrReview(game);
+  row.onkeydown = (event) => {
+    if (event.key === 'Enter') playOrReview(game);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = event.key === 'ArrowDown' ? row.nextElementSibling : row.previousElementSibling;
+      if (next && next.classList.contains('explorer-row')) {
+        next.focus();
+        next.click();
+      }
+    }
   };
   return row;
 }
@@ -262,6 +292,7 @@ function renderLibrary() {
       };
       head.append(button);
     });
+    head.append(document.createElement('span'));
     table.append(head);
     games.forEach((game) => table.append(makeExplorerRow(game)));
     library.append(table);

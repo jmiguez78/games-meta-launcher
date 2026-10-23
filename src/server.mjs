@@ -278,7 +278,9 @@ export function createServer() {
 }
 export function startServer(port = Number(process.env.PORT || 4321)) {
   const server = createServer();
-  server.listen(port, '127.0.0.1', () => console.log(`Games Meta Launcher disponible en http://127.0.0.1:${port}`));
+  server.listen(port, '127.0.0.1', () =>
+    console.log(`Games Meta Launcher disponible en http://127.0.0.1:${server.address().port}`)
+  );
   return server;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) startServer();

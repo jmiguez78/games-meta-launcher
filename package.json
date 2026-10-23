@@ -1,6 +1,6 @@
 {
   "name": "games-meta-launcher",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
@@ -36,7 +36,7 @@
     ],
     "asar": false,
     "directories": {
-      "output": "release-v080"
+      "output": "release-v081"
     }
   }
 }

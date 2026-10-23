@@ -10,43 +10,45 @@ flowchart LR
   D --> E[Integraciones de cuentas]
 ```
 
-## Estado actual
+## Estado actual — implementación hasta 0.3 terminada
 
 La base local está terminada:
 
 - Repositorio Git inicializado y primer commit creado.
 - Inventario local de Steam, Epic Games, Xbox/Microsoft Store y Ubisoft.
-- Interfaz retro con búsqueda, filtros por plataforma y unidad, y ordenamiento.
+- Interfaz híbrida: cabecera retro y controles de aplicación de escritorio.
 - Actualización manual y tarea diaria a las 03:00.
-- Lanzamiento de títulos de Steam mediante URI local.
+- Vistas Explorador, Detalle, Lista e Iconos grandes.
+- Favoritos, etiquetas y últimos lanzamientos locales.
+- Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store cuando sus datos locales permiten resolverlas.
 
-## Ahora — consolidar la versión 0.1
+La implementación está completa, pero la validación real de cada launcher sigue pendiente. Se evitó abrir juegos durante las pruebas automáticas.
+
+## Ahora — validación de la versión 0.3
 
 | Iniciativa | Resultado | Criterio de aceptación |
 | --- | --- | --- |
-| Robustecer el indexador | El inventario detecta bibliotecas Steam configuradas y evita rutas fijas cuando sea posible. | Se vuelven a indexar las bibliotecas conocidas sin duplicados ni juegos ausentes por cambios de unidad. |
-| Clasificar el catálogo | Cada tarjeta indica claramente si está instalado, pendiente o es una referencia residual. | Los filtros de estado devuelven resultados correctos. |
-| Mejorar la experiencia visual | Las tarjetas incorporan arte local o íconos por plataforma y estados claros de carga/error. | La interfaz sigue siendo legible en pantalla chica y escritorio. |
-| Pruebas de uso | Verificar escaneo manual, escaneo automático y lanzamiento de Steam. | Las tres acciones terminan sin error y el catálogo conserva 50 juegos detectados. |
+| Validar lanzadores | Confirmar las rutas de inicio de Steam, Epic, Ubisoft y Xbox/Microsoft Store. | Se inicia al menos un juego de cada plataforma compatible desde la biblioteca. |
+| Validar vistas y filtros | Comprobar los cuatro modos de presentación, búsquedas y filtros combinados. | No aparecen errores y el mismo conjunto de juegos se refleja en todas las vistas. |
+| Validar la tarea nocturna | Confirmar que la tarea se ejecuta sin abrir ventanas ni alterar preferencias. | La fecha de escaneo cambia y favoritos/etiquetas permanecen intactos. |
+| Ajustar detección | Resolver los juegos marcados como “Requiere revisión”. | Cada caso muestra una explicación correcta o queda excluido por decisión explícita. |
 
-## Siguiente — versión 0.2: lanzar desde una sola biblioteca
+## Siguiente — versión 0.4: calidad y personalización
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
-| Epic Games | Detectar ejecutable o URI fiable por manifiesto. | Un juego Epic instalado se abre desde su tarjeta. |
-| Ubisoft Connect | Obtener el identificador de lanzamiento desde sus metadatos locales. | Anno 1800 se abre desde la interfaz. |
-| Xbox/Microsoft Store | Resolver el identificador `AppsFolder` de cada paquete. | Un título de Game Pass/Microsoft Store se abre desde la interfaz. |
-| EA app y GOG | Incorporar detectores de instalación. | La interfaz muestra esos juegos y deja claro si se pueden iniciar. |
-| Favoritos y recientes | Modelo de preferencias local. | Se pueden marcar favoritos y ver los últimos lanzados. |
+| Portadas reales opcionales | Incorporar carátulas desde archivos locales o una fuente que autorices. | Se puede elegir entre portada real y portada generada. |
+| Metadatos editables | Añadir género, estado de avance, puntuación y notas personales. | Los datos persisten tras reindexar. |
+| Lanzamiento configurable | Permitir corregir manualmente una ruta o URI de lanzamiento. | Un juego no detectado automáticamente puede iniciarse tras configurar su ruta. |
+| Importar/exportar preferencias | Respaldar favoritos y etiquetas. | Un archivo de respaldo restaura una biblioteca personal. |
 
-## Después — versión 0.3: convertir el inventario en biblioteca personal
+## Después — versión 0.5: empaquetado de escritorio
 
 | Iniciativa | Valor | Criterio de aceptación |
 | --- | --- | --- |
-| Carátulas y metadatos | Biblioteca más reconocible y agradable de recorrer. | Cada juego tiene portada o un diseño alternativo consistente. |
-| Etiquetas personales | Filtros por género, completado, pendiente y favoritos. | Las etiquetas se editan localmente y sobreviven una reindexación. |
-| Diagnóstico de instalaciones | Distinguir juego incompleto, movido o no disponible. | Los casos dudosos se muestran con una explicación y nunca se lanzan por error. |
-| Empaquetado para Windows | Abrir la app sin una terminal visible. | Se instala o ejecuta como aplicación de Escritorio mediante el acceso directo. |
+| Ejecutable de Windows | Empaquetar el lanzador para no depender de Node ni del navegador. | Se abre desde el Escritorio como aplicación nativa. |
+| Configuración en pantalla | Gestionar hora de indexación, rutas y preferencias desde la interfaz. | No hace falta editar scripts o archivos para los ajustes comunes. |
+| Diagnóstico de instalación | Mostrar un panel de salud para rutas y launchers. | Los problemas se explican y proponen una acción de resolución. |
 
 ## Más adelante — versión 1.0: bibliotecas compradas
 

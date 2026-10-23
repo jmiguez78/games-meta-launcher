@@ -1,5 +1,10 @@
 # Registro de cambios
 
+## 0.7.1 — 23 de octubre de 2026
+
+- Fecha de última vez jugado disponible en ficha y Explorador para los inicios realizados desde Games Meta Launcher.
+- Explorador simplificado como tabla única, con orden ascendente o descendente por cada columna.
+
 ## 0.7.0 — 23 de octubre de 2026
 
 - Panel de diagnóstico con juegos detectados, disponibles y que requieren revisión por plataforma.

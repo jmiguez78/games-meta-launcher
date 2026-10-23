@@ -31,7 +31,14 @@
 - Ejecutable portable para distribución local.
 - Datos de biblioteca aislados en el perfil local de la aplicación.
 
-## 0.6.0 — Configuración y diagnóstico
+## 0.6.0 — Experiencia de biblioteca
+
+- Sistema visual coherente: controles, estados, iconos, tipografía y accesibilidad.
+- Navegación y pantalla de inicio enfocadas en jugar, favoritos y actividad reciente.
+- Filtros, vistas y ficha de juego más claras y rápidas de usar.
+- Estados de carga, vacío, error y éxito orientados a acciones concretas.
+
+## 0.7.0 — Configuración y diagnóstico
 
 - Configuración en pantalla de la indexación nocturna.
 - Panel de salud para launchers, rutas y detecciones incompletas.

@@ -7,10 +7,12 @@ flowchart LR
   A[Base local] --> B[Lanzamiento multitienda]
   B --> C[Calidad de biblioteca]
   C --> D[Aplicación de escritorio]
-  D --> E[Integraciones de cuentas]
+  D --> E[Experiencia de biblioteca]
+  E --> F[Configuración y diagnóstico]
+  F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.5 terminada
+## Estado actual — implementación hasta 0.5.1 terminada
 
 La base local está terminada:
 
@@ -23,6 +25,7 @@ La base local está terminada:
 - Portadas locales, progreso, puntuación, notas y rutas de lanzamiento manuales.
 - Respaldo e importación de preferencias personales.
 - Aplicación de escritorio Electron y ejecutable portable de Windows.
+- Primera apertura corregida: la aplicación crea su inventario local antes de mostrar la biblioteca.
 - Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store cuando sus datos locales permiten resolverlas.
 
 La implementación está completa, pero la validación real de cada launcher sigue pendiente. Se evitó abrir juegos durante las pruebas automáticas.
@@ -38,7 +41,19 @@ La implementación está completa, pero la validación real de cada launcher sig
 | Validar escritorio | Abrir la aplicación portable y confirmar que conserva los datos entre ejecuciones. | Se abre sin navegador ni terminal y los cambios personales persisten. |
 | Validar personalización | Cargar una portada, editar la ficha y restaurar un respaldo. | Todos los datos se muestran tras reindexar o reiniciar. |
 
-## Siguiente — versión 0.6: configuración y diagnóstico
+## Siguiente — versión 0.6: experiencia de biblioteca
+
+| Iniciativa | Dependencia | Criterio de aceptación |
+| --- | --- | --- |
+| Fundaciones visuales | Definir paleta, tipografía, espaciado, iconos, estados y foco de teclado para una interfaz coherente. | Los controles comparten lenguaje visual, contraste legible y estados claros. |
+| Navegación de biblioteca | Crear una pantalla de inicio útil y jerarquizar Biblioteca, filtros, vistas y acciones frecuentes. | El usuario puede entender dónde está y llegar a favoritos, recientes o toda la biblioteca en un paso. |
+| Filtros y búsqueda | Reorganizar filtros en un panel claro, con filtros activos visibles, recuento y un restablecimiento inequívoco. | Buscar y combinar filtros no requiere leer instrucciones y el resultado se entiende de inmediato. |
+| Vistas de juegos | Refinar tarjetas, lista, explorador y detalle con información escaneable, portadas y acciones consistentes. | Cada vista sirve a un propósito distinguible y conserva las acciones principales. |
+| Ficha de juego | Convertir la edición en una ficha clara con agrupación, ayuda contextual y confirmaciones no intrusivas. | Editar metadatos, portada o lanzamiento no provoca dudas ni borra cambios por error. |
+| Estados de aplicación | Diseñar carga, biblioteca vacía, error, éxito y datos incompletos. | No aparecen mensajes técnicos en pantalla; cada estado ofrece una siguiente acción comprensible. |
+| Accesibilidad e interacción | Incorporar navegación por teclado, etiquetas, tamaños de objetivo y retroalimentación visual. | Las acciones frecuentes se pueden completar sin mouse y los controles tienen nombre visible o accesible. |
+
+## Después — versión 0.7: configuración y diagnóstico
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
@@ -61,4 +76,4 @@ Para mantener el ritmo, cada ciclo reservará aproximadamente 70% para funciones
 
 ## Revisión del plan
 
-Revisar este documento después de completar cada versión menor (`0.1`, `0.2`, `0.3`). Si aparece una nueva idea, se agrega al final como candidata y sólo sube de prioridad si reemplaza una tarea ya planificada.
+Revisar este documento después de completar cada versión menor. Si aparece una nueva idea, se agrega al final como candidata y sólo sube de prioridad si reemplaza una tarea ya planificada.

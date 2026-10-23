@@ -15,6 +15,14 @@
 | Superficie, línea y sombra | Tarjetas, paneles y separación visual. |
 | Radio | Bordes de controles y superficies. |
 
+Todos los colores de superficies, textos y bordes se toman de los tokens de `:root` en `public/style.css`; no se escriben colores directos en los componentes claros. Los elementos que ya son oscuros por diseño (barra lateral, banner, portadas y notificaciones) mantienen sus colores propios.
+
+### Temas claro y oscuro
+
+- La paleta oscura redefine los mismos tokens. Se aplica con `data-theme="dark"` o, si no hay elección explícita, cuando Windows usa el tema oscuro (`prefers-color-scheme`).
+- `--accent` es el relleno de acciones primarias (texto blanco encima); `--accent-text` es el acento usado como color de texto, más claro en modo oscuro para mantener el contraste.
+- La elección (Sistema, Claro u Oscuro) se guarda en `preferences.json` y la aplicación de escritorio la aplica también a la barra de título.
+
 ## Componentes
 
 | Componente | Variantes | Uso |

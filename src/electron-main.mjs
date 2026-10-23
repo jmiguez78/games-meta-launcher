@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, nativeTheme, shell } from 'electron';
 
 let server;
 async function runScan() {
@@ -9,8 +9,13 @@ async function runScan() {
 }
 async function openWindow() {
   process.env.GML_DATA_DIR = app.getPath('userData');
-  const { startServer } = await import('./server.mjs');
-  server = startServer(0);
+  const { startServer, appSettings } = await import('./server.mjs');
+  // El tema elegido también gobierna la barra de título y prefers-color-scheme de la ventana.
+  const applyTheme = ({ theme }) => {
+    nativeTheme.themeSource = theme;
+  };
+  applyTheme(await appSettings());
+  server = startServer(0, { onSettingsChange: applyTheme });
   await new Promise((resolve) => server.once('listening', resolve));
   const port = server.address().port;
   const window = new BrowserWindow({
@@ -19,13 +24,13 @@ async function openWindow() {
     minWidth: 920,
     minHeight: 650,
     title: 'Games Meta Launcher',
-    backgroundColor: '#eef1f6',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0e121c' : '#f5f7fb',
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, nodeIntegration: false }
   });
   await window.loadURL(`http://127.0.0.1:${port}`);
   window.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (/^https:\/\//i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
 }

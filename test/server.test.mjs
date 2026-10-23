@@ -216,3 +216,13 @@ test('la integración informa que no está configurada y no expone secretos', as
   assert.equal(invalid.status, 500);
   assert.match((await invalid.json()).error, /letras y números/);
 });
+
+test('guarda el tema y lo conserva al restaurar un respaldo', async () => {
+  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'system' });
+  const invalid = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ theme: 'rosa' }) });
+  assert.equal(invalid.status, 400);
+  const saved = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ theme: 'dark' }) });
+  assert.deepEqual(await saved.json(), { theme: 'dark' });
+  await fetch(`${base}/api/preferences/import`, { method: 'POST', ...json({ games: {} }) });
+  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'dark' });
+});

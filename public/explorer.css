@@ -15,7 +15,7 @@
   align-items: center;
 }
 .explorer-head {
-  background: #f8faff;
+  background: var(--surface-soft);
   border-bottom: 1px solid var(--line);
 }
 .explorer-head button {
@@ -33,13 +33,13 @@
 .explorer-head button:hover,
 .explorer-head button.active {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .explorer-row {
   gap: 0;
   padding: 0;
   border: 0;
-  border-bottom: 1px solid #edf0f5;
+  border-bottom: 1px solid var(--line-soft);
 }
 .explorer-row:last-child {
   border-bottom: 0;

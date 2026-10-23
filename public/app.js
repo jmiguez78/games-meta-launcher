@@ -624,6 +624,23 @@ async function loadSchedule() {
     document.querySelector('#schedule-status').textContent = error.message;
   }
 }
+// Con «Sistema» no se fija atributo y el CSS sigue prefers-color-scheme.
+function applyTheme(theme) {
+  if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('[data-theme-option]').forEach((button) => {
+    const active = button.dataset.themeOption === theme;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-checked', String(active));
+  });
+}
+async function loadSettings() {
+  try {
+    applyTheme((await request('/api/settings')).theme);
+  } catch {
+    applyTheme('system');
+  }
+}
 let igdbPoll;
 function describeIgdbStatus(settings, status) {
   if (status.running) return 'Buscando información… ' + status.done + ' de ' + status.total + ' juegos.';
@@ -771,6 +788,21 @@ document.querySelector('#schedule-form').onsubmit = async (event) => {
     button.disabled = false;
   }
 };
+document.querySelectorAll('[data-theme-option]').forEach((button) => {
+  button.onclick = async () => {
+    const theme = button.dataset.themeOption;
+    applyTheme(theme);
+    try {
+      await request('/api/settings', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ theme })
+      });
+    } catch (error) {
+      say(error.message);
+    }
+  };
+});
 document.querySelector('#igdb-form').onsubmit = async (event) => {
   event.preventDefault();
   const button = event.currentTarget.querySelector('button[type=submit]');
@@ -820,4 +852,5 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && state.page === 'library')
     document.querySelector('#filter-panel').classList.add('hidden');
 });
+loadSettings();
 load().catch((error) => say(error.message));

@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## Sin publicar
+
+- Modo oscuro: sigue el tema de Windows o se elige en **Configuración → Apariencia**. La barra de título acompaña la elección.
+- Información de juegos desde IGDB (opcional): descripción, géneros, año, desarrolladora, valoración y portadas para Epic y Ubisoft.
+- Al restaurar un respaldo se conservan las preferencias de la aplicación.
+
 ## 0.9.0 — 23 de octubre de 2026
 
 - Portadas automáticas: se usan las imágenes que Steam y Xbox ya guardan en esta PC. La ficha muestra la imagen panorámica del juego cuando existe.

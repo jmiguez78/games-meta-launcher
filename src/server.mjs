@@ -302,11 +302,26 @@ function trustedRequest(req) {
   const origin = req.headers.origin;
   return req.method === 'GET' || !origin || origin.toLowerCase() === `http://${host}`.toLowerCase();
 }
-export function createServer() {
+const themes = ['system', 'light', 'dark'];
+export async function appSettings() {
+  const theme = (await preferences()).settings?.theme;
+  return { theme: themes.includes(theme) ? theme : 'system' };
+}
+export function createServer({ onSettingsChange } = {}) {
   return http.createServer(async (req, res) => {
     try {
       if (!trustedRequest(req)) return reply(res, 403, JSON.stringify({ error: 'Solicitud no permitida.' }));
       const url = new URL(req.url, `http://${req.headers.host}`);
+      if (url.pathname === '/api/settings') {
+        if (req.method === 'PUT') {
+          const update = await body(req);
+          if (!themes.includes(update.theme)) return reply(res, 400, JSON.stringify({ error: 'Tema no válido.' }));
+          const prefs = await preferences();
+          await writePreferences({ ...prefs, settings: { ...prefs.settings, theme: update.theme } });
+          onSettingsChange?.(await appSettings());
+        }
+        if (req.method === 'GET' || req.method === 'PUT') return reply(res, 200, JSON.stringify(await appSettings()));
+      }
       if (req.method === 'GET' && url.pathname === '/api/library')
         return reply(res, 200, JSON.stringify(await library()));
       if (req.method === 'GET' && url.pathname === '/api/health')
@@ -351,7 +366,7 @@ export function createServer() {
             .filter(([, saved]) => saved && typeof saved === 'object')
             .map(([key, saved]) => [key, importedGame(saved)])
         );
-        await writePreferences({ games });
+        await writePreferences({ ...(await preferences()), games });
         return reply(res, 200, JSON.stringify({ ok: true }));
       }
       if (req.method === 'POST' && url.pathname === '/api/covers') {
@@ -412,8 +427,8 @@ export function createServer() {
     }
   });
 }
-export function startServer(port = Number(process.env.PORT || 4321)) {
-  const server = createServer();
+export function startServer(port = Number(process.env.PORT || 4321), options = {}) {
+  const server = createServer(options);
   server.listen(port, '127.0.0.1', () =>
     console.log(`Games Meta Launcher disponible en http://127.0.0.1:${server.address().port}`)
   );

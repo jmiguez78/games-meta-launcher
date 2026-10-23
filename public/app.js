@@ -1,4 +1,16 @@
-const state = { games: [], platform: '', drive: '', tag: '', query: '', favorite: false, sort: 'name', direction: 'asc', view: 'icons', selectedKey: '', page: 'home' };
+const state = {
+  games: [],
+  platform: '',
+  drive: '',
+  tag: '',
+  query: '',
+  favorite: false,
+  sort: 'name',
+  direction: 'asc',
+  view: 'icons',
+  selectedKey: '',
+  page: 'home'
+};
 const library = document.querySelector('#library');
 const quickLibrary = document.querySelector('#quick-library');
 const template = document.querySelector('#card-template');
@@ -7,93 +19,620 @@ const editor = document.querySelector('#editor');
 const toast = document.querySelector('#toast');
 let editing = null;
 let toastTimer;
-const pageMeta = { home: ['TU COLECCIÓN', 'Para jugar ahora'], library: ['BIBLIOTECA', 'Tu colección'], diagnostics: ['ESTADO DEL SISTEMA', 'Diagnóstico'], settings: ['PREFERENCIAS', 'Configuración'] };
+const pageMeta = {
+  home: ['TU COLECCIÓN', 'Para jugar ahora'],
+  library: ['BIBLIOTECA', 'Tu colección'],
+  diagnostics: ['ESTADO DEL SISTEMA', 'Diagnóstico'],
+  settings: ['PREFERENCIAS', 'Configuración']
+};
 const viewNames = { explorer: 'Explorador', detail: 'Detalle', list: 'Lista', icons: 'Iconos' };
 
-function say(message) { dialog.querySelector('p').textContent = message; dialog.showModal(); }
-function notify(message) { toast.textContent = message; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 3600); }
-async function request(url, options) { const response = await fetch(url, options); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'No se pudo completar la acción.'); return data; }
-function tagsOf(game) { return Array.isArray(game.tags) ? game.tags : []; }
-function sortValue(game, field) { if (field === 'recent') return game.lastLaunchedAt || ''; if (field === 'status') return statusText(game); return game[field] || ''; }
-function visibleGames() { const factor = state.direction === 'asc' ? 1 : -1; return state.games.filter((game) => (!state.platform || game.platform === state.platform) && (!state.drive || game.drive === state.drive) && (!state.tag || tagsOf(game).includes(state.tag)) && (!state.favorite || game.favorite) && (game.name + ' ' + game.platform + ' ' + game.location + ' ' + tagsOf(game).join(' ')).toLowerCase().includes(state.query.toLowerCase())).sort((a, b) => String(sortValue(a, state.sort)).localeCompare(String(sortValue(b, state.sort)), 'es') * factor); }
-function coverInfo(game) { const palette = { Steam: 'steam', 'Epic Games': 'epic', 'Xbox / Microsoft Store': 'xbox', 'Ubisoft Connect': 'ubisoft', 'EA app': 'ea', 'GOG Galaxy': 'gog' }; return { initials: game.name.split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase(), palette: palette[game.platform] || 'other' }; }
-function statusText(game) { return game.status === 'installed' ? (game.launch && game.launch.available ? 'Listo para jugar' : 'Inicio pendiente') : 'Requiere revisión'; }
-function applyCover(element, game, cover) { if (game.coverFile) { element.style.backgroundImage = "linear-gradient(#10182722,#10182799),url('/covers/" + game.coverFile + "')"; element.classList.add('has-image'); } else { const initial = element.querySelector('.cover-initial'); if (initial) initial.textContent = cover.initials || 'G'; } }
+function say(message) {
+  dialog.querySelector('p').textContent = message;
+  dialog.showModal();
+}
+function notify(message) {
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3600);
+}
+async function request(url, options) {
+  const response = await fetch(url, options);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'No se pudo completar la acción.');
+  return data;
+}
+function tagsOf(game) {
+  return Array.isArray(game.tags) ? game.tags : [];
+}
+function sortValue(game, field) {
+  if (field === 'recent') return game.lastLaunchedAt || '';
+  if (field === 'status') return statusText(game);
+  return game[field] || '';
+}
+function visibleGames() {
+  const factor = state.direction === 'asc' ? 1 : -1;
+  return state.games
+    .filter(
+      (game) =>
+        (!state.platform || game.platform === state.platform) &&
+        (!state.drive || game.drive === state.drive) &&
+        (!state.tag || tagsOf(game).includes(state.tag)) &&
+        (!state.favorite || game.favorite) &&
+        (game.name + ' ' + game.platform + ' ' + game.location + ' ' + tagsOf(game).join(' '))
+          .toLowerCase()
+          .includes(state.query.toLowerCase())
+    )
+    .sort((a, b) => String(sortValue(a, state.sort)).localeCompare(String(sortValue(b, state.sort)), 'es') * factor);
+}
+function coverInfo(game) {
+  const palette = {
+    Steam: 'steam',
+    'Epic Games': 'epic',
+    'Xbox / Microsoft Store': 'xbox',
+    'Ubisoft Connect': 'ubisoft',
+    'EA app': 'ea',
+    'GOG Galaxy': 'gog'
+  };
+  return {
+    initials: game.name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase(),
+    palette: palette[game.platform] || 'other'
+  };
+}
+function statusText(game) {
+  return game.status === 'installed'
+    ? game.launch && game.launch.available
+      ? 'Listo para jugar'
+      : 'Inicio pendiente'
+    : 'Requiere revisión';
+}
+function applyCover(element, game, cover) {
+  if (game.coverFile) {
+    element.style.backgroundImage = "linear-gradient(#10182722,#10182799),url('/covers/" + game.coverFile + "')";
+    element.classList.add('has-image');
+  } else {
+    const initial = element.querySelector('.cover-initial');
+    if (initial) initial.textContent = cover.initials || 'G';
+  }
+}
 function makeCard(game, compact = false) {
-  const node = template.content.cloneNode(true); const item = node.querySelector('.game-item'); const cover = coverInfo(game);
-  item.classList.add(cover.palette); if (compact) item.classList.add('compact'); if (game.key === state.selectedKey) item.classList.add('selected');
-  applyCover(node.querySelector('.cover'), game, cover); node.querySelector('.platform').textContent = game.platform; node.querySelector('h3').textContent = game.name;
-  const status = node.querySelector('.status'); status.textContent = statusText(game) + ' · ' + (game.progress || 'Pendiente'); status.classList.toggle('attention', game.status === 'attention'); node.querySelector('.location').textContent = game.location;
-  const tags = node.querySelector('.tag-list'); tagsOf(game).forEach((tag) => { const label = document.createElement('span'); label.textContent = '#' + tag; tags.append(label); });
-  const favorite = node.querySelector('.favorite'); favorite.textContent = game.favorite ? '★' : '☆'; favorite.classList.toggle('selected', game.favorite);
-  favorite.onclick = async (event) => { event.stopPropagation(); try { await updatePreference(game, { favorite: !game.favorite }); } catch (error) { say(error.message); } };
-  node.querySelector('.edit').onclick = (event) => { event.stopPropagation(); editGame(game); };
+  const node = template.content.cloneNode(true);
+  const item = node.querySelector('.game-item');
+  const cover = coverInfo(game);
+  item.classList.add(cover.palette);
+  if (compact) item.classList.add('compact');
+  if (game.key === state.selectedKey) item.classList.add('selected');
+  applyCover(node.querySelector('.cover'), game, cover);
+  node.querySelector('.platform').textContent = game.platform;
+  node.querySelector('h3').textContent = game.name;
+  const status = node.querySelector('.status');
+  status.textContent = statusText(game) + ' · ' + (game.progress || 'Pendiente');
+  status.classList.toggle('attention', game.status === 'attention');
+  node.querySelector('.location').textContent = game.location;
+  const tags = node.querySelector('.tag-list');
+  tagsOf(game).forEach((tag) => {
+    const label = document.createElement('span');
+    label.textContent = '#' + tag;
+    tags.append(label);
+  });
+  const favorite = node.querySelector('.favorite');
+  favorite.textContent = game.favorite ? '★' : '☆';
+  favorite.classList.toggle('selected', game.favorite);
+  favorite.onclick = async (event) => {
+    event.stopPropagation();
+    try {
+      await updatePreference(game, { favorite: !game.favorite });
+    } catch (error) {
+      say(error.message);
+    }
+  };
+  node.querySelector('.edit').onclick = (event) => {
+    event.stopPropagation();
+    editGame(game);
+  };
   const play = node.querySelector('.play');
-  if (!(game.launch && game.launch.available)) { play.textContent = 'Revisar'; play.onclick = (event) => { event.stopPropagation(); say(game.evidence); }; } else play.onclick = (event) => { event.stopPropagation(); playGame(game); };
-  item.onclick = () => { state.selectedKey = game.key; if (state.page === 'home') showPage('library'); else if (state.view === 'detail') renderLibrary(); };
+  if (!(game.launch && game.launch.available)) {
+    play.textContent = 'Revisar';
+    play.onclick = (event) => {
+      event.stopPropagation();
+      say(game.evidence);
+    };
+  } else
+    play.onclick = (event) => {
+      event.stopPropagation();
+      playGame(game);
+    };
+  item.onclick = () => {
+    state.selectedKey = game.key;
+    if (state.page === 'home') showPage('library');
+    else if (state.view === 'detail') renderLibrary();
+  };
   return node;
 }
-function lastPlayedText(game) { return game.lastLaunchedAt ? new Date(game.lastLaunchedAt).toLocaleDateString('es-AR') : 'Aún no registrado'; }
+function lastPlayedText(game) {
+  return game.lastLaunchedAt ? new Date(game.lastLaunchedAt).toLocaleDateString('es-AR') : 'Aún no registrado';
+}
 function makeExplorerRow(game) {
-  const row = document.createElement('button'); row.className = 'explorer-row' + (game.key === state.selectedKey ? ' selected' : '');
-  row.innerHTML = '<span class="row-name"></span><span class="row-platform"></span><span class="row-drive"></span><span class="row-status"></span><span class="row-played"></span>';
-  row.querySelector('.row-name').textContent = (game.favorite ? '★ ' : '') + game.name; row.querySelector('.row-platform').textContent = game.platform; row.querySelector('.row-drive').textContent = game.drive || '—'; row.querySelector('.row-status').textContent = statusText(game); row.querySelector('.row-played').textContent = lastPlayedText(game); row.onclick = () => { state.selectedKey = game.key; renderLibrary(); }; return row;
+  const row = document.createElement('button');
+  row.className = 'explorer-row' + (game.key === state.selectedKey ? ' selected' : '');
+  row.innerHTML =
+    '<span class="row-name"></span><span class="row-platform"></span><span class="row-drive"></span><span class="row-status"></span><span class="row-played"></span>';
+  row.querySelector('.row-name').textContent = (game.favorite ? '★ ' : '') + game.name;
+  row.querySelector('.row-platform').textContent = game.platform;
+  row.querySelector('.row-drive').textContent = game.drive || '—';
+  row.querySelector('.row-status').textContent = statusText(game);
+  row.querySelector('.row-played').textContent = lastPlayedText(game);
+  row.onclick = () => {
+    state.selectedKey = game.key;
+    renderLibrary();
+  };
+  return row;
 }
 function detailPanel(game) {
-  const panel = document.createElement('aside'); panel.className = 'detail-panel';
-  if (!game) { panel.innerHTML = '<p>Elegí un juego para ver su información.</p>'; return panel; }
+  const panel = document.createElement('aside');
+  panel.className = 'detail-panel';
+  if (!game) {
+    panel.innerHTML = '<p>Elegí un juego para ver su información.</p>';
+    return panel;
+  }
   const cover = coverInfo(game);
-  panel.innerHTML = '<div class="detail-cover ' + cover.palette + '">' + cover.initials + '</div><p class="platform">' + game.platform + '</p><h2></h2><p class="detail-status"></p><dl><dt>Ubicación</dt><dd></dd><dt>Estado</dt><dd>' + statusText(game) + '</dd><dt>Progreso</dt><dd>' + (game.progress || 'Pendiente') + '</dd><dt>Puntuación</dt><dd>' + (game.rating ? '★'.repeat(game.rating) : 'Sin puntuar') + '</dd><dt>Última vez jugado</dt><dd>' + lastPlayedText(game) + '</dd><dt>Detección</dt><dd></dd></dl><p class="notes"></p><div class="tag-list"></div>';
-  applyCover(panel.querySelector('.detail-cover'), game, cover); panel.querySelector('h2').textContent = game.name; panel.querySelector('.detail-status').textContent = game.launch && game.launch.available ? 'Disponible para iniciar' : 'Inicio pendiente';
-  panel.querySelectorAll('dd')[0].textContent = game.location; panel.querySelectorAll('dd')[5].textContent = game.evidence; panel.querySelector('.notes').textContent = game.notes || 'Sin notas personales.';
-  tagsOf(game).forEach((tag) => { const label = document.createElement('span'); label.textContent = '#' + tag; panel.querySelector('.tag-list').append(label); });
-  const actions = document.createElement('div'); actions.className = 'detail-actions'; const edit = document.createElement('button'); edit.className = 'button'; edit.textContent = 'Editar ficha'; edit.onclick = () => editGame(game); const play = document.createElement('button'); play.className = 'button primary'; play.textContent = game.launch && game.launch.available ? 'Jugar' : 'Revisar'; play.onclick = () => game.launch && game.launch.available ? playGame(game) : say(game.evidence); actions.append(edit, play); panel.append(actions); return panel;
+  panel.innerHTML =
+    '<div class="detail-cover ' +
+    cover.palette +
+    '">' +
+    cover.initials +
+    '</div><p class="platform">' +
+    game.platform +
+    '</p><h2></h2><p class="detail-status"></p><dl><dt>Ubicación</dt><dd></dd><dt>Estado</dt><dd>' +
+    statusText(game) +
+    '</dd><dt>Progreso</dt><dd>' +
+    (game.progress || 'Pendiente') +
+    '</dd><dt>Puntuación</dt><dd>' +
+    (game.rating ? '★'.repeat(game.rating) : 'Sin puntuar') +
+    '</dd><dt>Última vez jugado</dt><dd>' +
+    lastPlayedText(game) +
+    '</dd><dt>Detección</dt><dd></dd></dl><p class="notes"></p><div class="tag-list"></div>';
+  applyCover(panel.querySelector('.detail-cover'), game, cover);
+  panel.querySelector('h2').textContent = game.name;
+  panel.querySelector('.detail-status').textContent =
+    game.launch && game.launch.available ? 'Disponible para iniciar' : 'Inicio pendiente';
+  panel.querySelectorAll('dd')[0].textContent = game.location;
+  panel.querySelectorAll('dd')[5].textContent = game.evidence;
+  panel.querySelector('.notes').textContent = game.notes || 'Sin notas personales.';
+  tagsOf(game).forEach((tag) => {
+    const label = document.createElement('span');
+    label.textContent = '#' + tag;
+    panel.querySelector('.tag-list').append(label);
+  });
+  const actions = document.createElement('div');
+  actions.className = 'detail-actions';
+  const edit = document.createElement('button');
+  edit.className = 'button';
+  edit.textContent = 'Editar ficha';
+  edit.onclick = () => editGame(game);
+  const play = document.createElement('button');
+  play.className = 'button primary';
+  play.textContent = game.launch && game.launch.available ? 'Jugar' : 'Revisar';
+  play.onclick = () => (game.launch && game.launch.available ? playGame(game) : say(game.evidence));
+  actions.append(edit, play);
+  panel.append(actions);
+  return panel;
 }
 function renderLibrary() {
-  const games = visibleGames(); library.className = 'library ' + state.view; library.innerHTML = ''; if (!state.selectedKey && games[0]) state.selectedKey = games[0].key;
-  if (state.view === 'explorer') { const table = document.createElement('section'); table.className = 'explorer-table'; const headers = [['name', 'Nombre'], ['platform', 'Plataforma'], ['drive', 'Unidad'], ['status', 'Estado'], ['recent', 'Última vez jugado']]; const head = document.createElement('div'); head.className = 'explorer-head'; headers.forEach(([field, label]) => { const button = document.createElement('button'); const active = state.sort === field; button.className = active ? 'active' : ''; button.textContent = label + (active ? (state.direction === 'asc' ? ' ↑' : ' ↓') : ' ↕'); button.setAttribute('aria-sort', active ? (state.direction === 'asc' ? 'ascending' : 'descending') : 'none'); button.onclick = () => { state.direction = state.sort === field ? (state.direction === 'asc' ? 'desc' : 'asc') : (field === 'recent' ? 'desc' : 'asc'); state.sort = field; renderLibrary(); }; head.append(button); }); table.append(head); games.forEach((game) => table.append(makeExplorerRow(game))); library.append(table); }
-  else if (state.view === 'detail') { const results = document.createElement('div'); results.className = 'detail-results'; games.forEach((game) => results.append(makeCard(game, true))); library.append(results, detailPanel(games.find((game) => game.key === state.selectedKey))); }
-  else games.forEach((game) => library.append(makeCard(game, state.view === 'list')));
-  document.querySelector('#counter').textContent = games.length + ' de ' + state.games.length + ' juegos'; document.querySelector('#view-label').textContent = viewNames[state.view]; document.querySelector('#empty-state').classList.toggle('hidden', games.length > 0); renderActiveFilters();
+  const games = visibleGames();
+  library.className = 'library ' + state.view;
+  library.innerHTML = '';
+  if (!state.selectedKey && games[0]) state.selectedKey = games[0].key;
+  if (state.view === 'explorer') {
+    const table = document.createElement('section');
+    table.className = 'explorer-table';
+    const headers = [
+      ['name', 'Nombre'],
+      ['platform', 'Plataforma'],
+      ['drive', 'Unidad'],
+      ['status', 'Estado'],
+      ['recent', 'Última vez jugado']
+    ];
+    const head = document.createElement('div');
+    head.className = 'explorer-head';
+    headers.forEach(([field, label]) => {
+      const button = document.createElement('button');
+      const active = state.sort === field;
+      button.className = active ? 'active' : '';
+      button.textContent = label + (active ? (state.direction === 'asc' ? ' ↑' : ' ↓') : ' ↕');
+      button.setAttribute('aria-sort', active ? (state.direction === 'asc' ? 'ascending' : 'descending') : 'none');
+      button.onclick = () => {
+        state.direction =
+          state.sort === field ? (state.direction === 'asc' ? 'desc' : 'asc') : field === 'recent' ? 'desc' : 'asc';
+        state.sort = field;
+        renderLibrary();
+      };
+      head.append(button);
+    });
+    table.append(head);
+    games.forEach((game) => table.append(makeExplorerRow(game)));
+    library.append(table);
+  } else if (state.view === 'detail') {
+    const results = document.createElement('div');
+    results.className = 'detail-results';
+    games.forEach((game) => results.append(makeCard(game, true)));
+    library.append(results, detailPanel(games.find((game) => game.key === state.selectedKey)));
+  } else games.forEach((game) => library.append(makeCard(game, state.view === 'list')));
+  document.querySelector('#counter').textContent = games.length + ' de ' + state.games.length + ' juegos';
+  document.querySelector('#view-label').textContent = viewNames[state.view];
+  document.querySelector('#empty-state').classList.toggle('hidden', games.length > 0);
+  renderActiveFilters();
 }
 function renderHome() {
-  const favorites = state.games.filter((game) => game.favorite); const recent = [...state.games].filter((game) => game.lastLaunchedAt).sort((a, b) => String(b.lastLaunchedAt).localeCompare(String(a.lastLaunchedAt)));
-  const quick = [...favorites, ...recent, ...state.games.filter((game) => game.launch && game.launch.available)].filter((game, index, all) => all.findIndex((item) => item.key === game.key) === index).slice(0, 6);
-  quickLibrary.innerHTML = ''; quick.forEach((game) => quickLibrary.append(makeCard(game))); document.querySelector('#quick-subtitle').textContent = favorites.length ? favorites.length + ' favorito' + (favorites.length === 1 ? '' : 's') + ' para volver a jugar.' : 'Marcá favoritos para encontrarlos siempre acá.';
-  document.querySelector('#stat-total').textContent = state.games.length; document.querySelector('#stat-ready').textContent = state.games.filter((game) => game.launch && game.launch.available).length; document.querySelector('#stat-favorites').textContent = favorites.length; document.querySelector('#stat-progress').textContent = state.games.filter((game) => game.progress === 'Jugando').length;
+  const favorites = state.games.filter((game) => game.favorite);
+  const recent = [...state.games]
+    .filter((game) => game.lastLaunchedAt)
+    .sort((a, b) => String(b.lastLaunchedAt).localeCompare(String(a.lastLaunchedAt)));
+  const quick = [...favorites, ...recent, ...state.games.filter((game) => game.launch && game.launch.available)]
+    .filter((game, index, all) => all.findIndex((item) => item.key === game.key) === index)
+    .slice(0, 6);
+  quickLibrary.innerHTML = '';
+  quick.forEach((game) => quickLibrary.append(makeCard(game)));
+  document.querySelector('#quick-subtitle').textContent = favorites.length
+    ? favorites.length + ' favorito' + (favorites.length === 1 ? '' : 's') + ' para volver a jugar.'
+    : 'Marcá favoritos para encontrarlos siempre acá.';
+  document.querySelector('#stat-total').textContent = state.games.length;
+  document.querySelector('#stat-ready').textContent = state.games.filter(
+    (game) => game.launch && game.launch.available
+  ).length;
+  document.querySelector('#stat-favorites').textContent = favorites.length;
+  document.querySelector('#stat-progress').textContent = state.games.filter(
+    (game) => game.progress === 'Jugando'
+  ).length;
 }
-function chips(holder, options, selected, allLabel, choose) { holder.innerHTML = ''; [allLabel, ...options].forEach((value) => { const button = document.createElement('button'); button.className = 'chip ' + ((!selected && value === allLabel) || selected === value ? 'active' : ''); button.textContent = value; button.onclick = () => choose(value === allLabel ? '' : value); holder.append(button); }); }
+function chips(holder, options, selected, allLabel, choose) {
+  holder.innerHTML = '';
+  [allLabel, ...options].forEach((value) => {
+    const button = document.createElement('button');
+    button.className = 'chip ' + ((!selected && value === allLabel) || selected === value ? 'active' : '');
+    button.textContent = value;
+    button.onclick = () => choose(value === allLabel ? '' : value);
+    holder.append(button);
+  });
+}
 function renderFilters() {
-  chips(document.querySelector('#platforms'), [...new Set(state.games.map((game) => game.platform))].sort(), state.platform, 'Todas las plataformas', (value) => { state.platform = value; renderFilters(); renderLibrary(); });
-  const select = (selector, label, values, current, set) => { const element = document.querySelector(selector); element.innerHTML = '<option value="">' + label + '</option>'; values.forEach((value) => element.add(new Option(value, value))); element.value = current; element.onchange = (event) => { set(event.target.value); renderLibrary(); }; };
-  select('#drive', 'Todas las unidades', [...new Set(state.games.map((game) => game.drive))].sort(), state.drive, (value) => state.drive = value); select('#tag', 'Todas las etiquetas', [...new Set(state.games.flatMap(tagsOf))].sort((a, b) => a.localeCompare(b, 'es')), state.tag, (value) => state.tag = value);
+  chips(
+    document.querySelector('#platforms'),
+    [...new Set(state.games.map((game) => game.platform))].sort(),
+    state.platform,
+    'Todas las plataformas',
+    (value) => {
+      state.platform = value;
+      renderFilters();
+      renderLibrary();
+    }
+  );
+  const select = (selector, label, values, current, set) => {
+    const element = document.querySelector(selector);
+    element.innerHTML = '<option value="">' + label + '</option>';
+    values.forEach((value) => element.add(new Option(value, value)));
+    element.value = current;
+    element.onchange = (event) => {
+      set(event.target.value);
+      renderLibrary();
+    };
+  };
+  select(
+    '#drive',
+    'Todas las unidades',
+    [...new Set(state.games.map((game) => game.drive))].sort(),
+    state.drive,
+    (value) => (state.drive = value)
+  );
+  select(
+    '#tag',
+    'Todas las etiquetas',
+    [...new Set(state.games.flatMap(tagsOf))].sort((a, b) => a.localeCompare(b, 'es')),
+    state.tag,
+    (value) => (state.tag = value)
+  );
 }
-function renderActiveFilters() { const labels = []; if (state.query) labels.push('“' + state.query + '”'); if (state.platform) labels.push(state.platform); if (state.tag) labels.push('#' + state.tag); if (state.drive) labels.push(state.drive); if (state.favorite) labels.push('Favoritos'); const holder = document.querySelector('#active-filters'); holder.innerHTML = ''; labels.forEach((label) => { const chip = document.createElement('span'); chip.className = 'active-filter'; chip.textContent = label; holder.append(chip); }); const badge = document.querySelector('#active-filter-count'); badge.textContent = labels.length; badge.classList.toggle('hidden', labels.length === 0); }
-function clearFilters() { Object.assign(state, { platform: '', drive: '', tag: '', query: '', favorite: false, sort: 'name', direction: 'asc' }); document.querySelector('#search').value = ''; document.querySelector('#favorites-only').checked = false; document.querySelector('#sort').value = 'name'; renderFilters(); renderLibrary(); }
-async function updatePreference(game, patch) { const saved = await request('/api/preferences', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: game.key, ...patch }) }); Object.assign(game, saved); renderHome(); renderFilters(); renderLibrary(); return saved; }
-function editGame(game) { editing = game; document.querySelector('#editor-title').textContent = 'Ficha · ' + game.name; document.querySelector('#tags-input').value = tagsOf(game).join(', '); document.querySelector('#progress-input').value = game.progress || 'Pendiente'; document.querySelector('#rating-input').value = game.rating || 0; document.querySelector('#notes-input').value = game.notes || ''; document.querySelector('#cover-input').value = ''; document.querySelector('#launch-type').value = game.launchOverride?.type || ''; document.querySelector('#launch-target').value = game.launchOverride?.target || ''; editor.showModal(); }
-async function uploadCover(game, file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = async () => { try { const saved = await request('/api/covers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: game.key, dataUrl: reader.result }) }); game.coverFile = saved.coverFile; resolve(); } catch (error) { reject(error); } }; reader.onerror = () => reject(new Error('No se pudo leer la portada.')); reader.readAsDataURL(file); }); }
-async function playGame(game) { try { await request('/api/launch/' + encodeURIComponent(game.key), { method: 'POST' }); game.lastLaunchedAt = new Date().toISOString(); renderHome(); renderLibrary(); notify(game.name + ': inicio solicitado.'); } catch (error) { say(error.message); } }
-async function exportPreferences() { try { const data = await request('/api/preferences/export'); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); link.download = 'games-meta-launcher-preferencias.json'; link.click(); URL.revokeObjectURL(link.href); notify('Respaldo preparado.'); } catch (error) { say(error.message); } }
-async function importPreferences(file) { try { const data = JSON.parse(await file.text()); await request('/api/preferences/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }); await load(); notify('Preferencias restauradas.'); } catch (error) { say(error.message || 'No se pudo restaurar el respaldo.'); } }
-async function loadHealth() { try { const data = await request('/api/health'); const summary = document.querySelector('#health-summary'); summary.innerHTML = '<article><span>Detectados</span><strong>' + data.total + '</strong><small>en tu colección</small></article><article><span>Listos</span><strong>' + data.ready + '</strong><small>con inicio disponible</small></article><article><span>Revisión</span><strong>' + data.review + '</strong><small>requieren atención</small></article><article><span>Índice</span><strong>' + (data.generatedAt ? 'OK' : '—') + '</strong><small>' + (data.generatedAt ? 'actualizado localmente' : 'pendiente') + '</small></article>'; const rows = document.querySelector('#platform-health'); rows.innerHTML = ''; data.platforms.forEach((platform) => { const row = document.createElement('div'); row.className = 'health-row'; row.innerHTML = '<strong></strong><span></span><span></span><span></span>'; row.querySelector('strong').textContent = platform.platform; row.querySelectorAll('span')[0].textContent = platform.total + ' detectados'; row.querySelectorAll('span')[1].textContent = platform.ready + ' listos'; row.querySelectorAll('span')[2].textContent = platform.review ? platform.review + ' para revisar' : 'Sin alertas'; rows.append(row); }); } catch (error) { say(error.message); } }
-async function loadSchedule() { try { const data = await request('/api/schedule'); const status = document.querySelector('#schedule-status'); if (!data.supported) { status.textContent = 'La tarea programada sólo está disponible en Windows.'; return; } if (!data.configured) { status.textContent = 'No hay una tarea creada. Guardá un horario para activarla.'; return; } document.querySelector('#schedule-time').value = data.time || '03:00'; status.textContent = data.enabled ? 'Activa. Se ejecuta todos los días a las ' + (data.time || '03:00') + '.' : 'La tarea existe, pero está desactivada.'; } catch (error) { document.querySelector('#schedule-status').textContent = error.message; } }
-function showPage(page) { state.page = page; Object.keys(pageMeta).forEach((name) => document.querySelector('#' + name + '-page').classList.toggle('hidden', name !== page)); document.querySelectorAll('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.page === page)); document.querySelector('#page-kicker').textContent = pageMeta[page][0]; document.querySelector('#page-title').textContent = pageMeta[page][1]; if (page === 'diagnostics') loadHealth(); if (page === 'settings') loadSchedule(); if (page === 'library') document.querySelector('#search').focus(); }
-async function load() { const catalog = await request('/api/library'); state.games = catalog.games; document.querySelector('#last-update').textContent = catalog.generatedAt ? 'Actualizado ' + new Date(catalog.generatedAt).toLocaleString('es-AR') : 'Aún no se indexó la biblioteca.'; renderHome(); renderFilters(); renderLibrary(); }
+function renderActiveFilters() {
+  const labels = [];
+  if (state.query) labels.push('“' + state.query + '”');
+  if (state.platform) labels.push(state.platform);
+  if (state.tag) labels.push('#' + state.tag);
+  if (state.drive) labels.push(state.drive);
+  if (state.favorite) labels.push('Favoritos');
+  const holder = document.querySelector('#active-filters');
+  holder.innerHTML = '';
+  labels.forEach((label) => {
+    const chip = document.createElement('span');
+    chip.className = 'active-filter';
+    chip.textContent = label;
+    holder.append(chip);
+  });
+  const badge = document.querySelector('#active-filter-count');
+  badge.textContent = labels.length;
+  badge.classList.toggle('hidden', labels.length === 0);
+}
+function clearFilters() {
+  Object.assign(state, {
+    platform: '',
+    drive: '',
+    tag: '',
+    query: '',
+    favorite: false,
+    sort: 'name',
+    direction: 'asc'
+  });
+  document.querySelector('#search').value = '';
+  document.querySelector('#favorites-only').checked = false;
+  document.querySelector('#sort').value = 'name';
+  renderFilters();
+  renderLibrary();
+}
+async function updatePreference(game, patch) {
+  const saved = await request('/api/preferences', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ key: game.key, ...patch })
+  });
+  Object.assign(game, saved);
+  renderHome();
+  renderFilters();
+  renderLibrary();
+  return saved;
+}
+function editGame(game) {
+  editing = game;
+  document.querySelector('#editor-title').textContent = 'Ficha · ' + game.name;
+  document.querySelector('#tags-input').value = tagsOf(game).join(', ');
+  document.querySelector('#progress-input').value = game.progress || 'Pendiente';
+  document.querySelector('#rating-input').value = game.rating || 0;
+  document.querySelector('#notes-input').value = game.notes || '';
+  document.querySelector('#cover-input').value = '';
+  document.querySelector('#launch-type').value = game.launchOverride?.type || '';
+  document.querySelector('#launch-target').value = game.launchOverride?.target || '';
+  editor.showModal();
+}
+async function uploadCover(game, file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const saved = await request('/api/covers', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ key: game.key, dataUrl: reader.result })
+        });
+        game.coverFile = saved.coverFile;
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer la portada.'));
+    reader.readAsDataURL(file);
+  });
+}
+async function playGame(game) {
+  try {
+    await request('/api/launch/' + encodeURIComponent(game.key), { method: 'POST' });
+    game.lastLaunchedAt = new Date().toISOString();
+    renderHome();
+    renderLibrary();
+    notify(game.name + ': inicio solicitado.');
+  } catch (error) {
+    say(error.message);
+  }
+}
+async function exportPreferences() {
+  try {
+    const data = await request('/api/preferences/export');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    link.download = 'games-meta-launcher-preferencias.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    notify('Respaldo preparado.');
+  } catch (error) {
+    say(error.message);
+  }
+}
+async function importPreferences(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    await request('/api/preferences/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    await load();
+    notify('Preferencias restauradas.');
+  } catch (error) {
+    say(error.message || 'No se pudo restaurar el respaldo.');
+  }
+}
+async function loadHealth() {
+  try {
+    const data = await request('/api/health');
+    const summary = document.querySelector('#health-summary');
+    summary.innerHTML =
+      '<article><span>Detectados</span><strong>' +
+      data.total +
+      '</strong><small>en tu colección</small></article><article><span>Listos</span><strong>' +
+      data.ready +
+      '</strong><small>con inicio disponible</small></article><article><span>Revisión</span><strong>' +
+      data.review +
+      '</strong><small>requieren atención</small></article><article><span>Índice</span><strong>' +
+      (data.generatedAt ? 'OK' : '—') +
+      '</strong><small>' +
+      (data.generatedAt ? 'actualizado localmente' : 'pendiente') +
+      '</small></article>';
+    const rows = document.querySelector('#platform-health');
+    rows.innerHTML = '';
+    data.platforms.forEach((platform) => {
+      const row = document.createElement('div');
+      row.className = 'health-row';
+      row.innerHTML = '<strong></strong><span></span><span></span><span></span>';
+      row.querySelector('strong').textContent = platform.platform;
+      row.querySelectorAll('span')[0].textContent = platform.total + ' detectados';
+      row.querySelectorAll('span')[1].textContent = platform.ready + ' listos';
+      row.querySelectorAll('span')[2].textContent = platform.review ? platform.review + ' para revisar' : 'Sin alertas';
+      rows.append(row);
+    });
+  } catch (error) {
+    say(error.message);
+  }
+}
+async function loadSchedule() {
+  try {
+    const data = await request('/api/schedule');
+    const status = document.querySelector('#schedule-status');
+    if (!data.supported) {
+      status.textContent = 'La tarea programada sólo está disponible en Windows.';
+      return;
+    }
+    if (!data.configured) {
+      status.textContent = 'No hay una tarea creada. Guardá un horario para activarla.';
+      return;
+    }
+    document.querySelector('#schedule-time').value = data.time || '03:00';
+    status.textContent = data.enabled
+      ? 'Activa. Se ejecuta todos los días a las ' + (data.time || '03:00') + '.'
+      : 'La tarea existe, pero está desactivada.';
+  } catch (error) {
+    document.querySelector('#schedule-status').textContent = error.message;
+  }
+}
+function showPage(page) {
+  state.page = page;
+  Object.keys(pageMeta).forEach((name) =>
+    document.querySelector('#' + name + '-page').classList.toggle('hidden', name !== page)
+  );
+  document
+    .querySelectorAll('.nav-item')
+    .forEach((button) => button.classList.toggle('active', button.dataset.page === page));
+  document.querySelector('#page-kicker').textContent = pageMeta[page][0];
+  document.querySelector('#page-title').textContent = pageMeta[page][1];
+  if (page === 'diagnostics') loadHealth();
+  if (page === 'settings') loadSchedule();
+  if (page === 'library') document.querySelector('#search').focus();
+}
+async function load() {
+  const catalog = await request('/api/library');
+  state.games = catalog.games;
+  document.querySelector('#last-update').textContent = catalog.generatedAt
+    ? 'Actualizado ' + new Date(catalog.generatedAt).toLocaleString('es-AR')
+    : 'Aún no se indexó la biblioteca.';
+  renderHome();
+  renderFilters();
+  renderLibrary();
+}
 
 dialog.querySelector('button').onclick = () => dialog.close();
-document.querySelector('#search').oninput = (event) => { state.query = event.target.value; renderLibrary(); };
-document.querySelector('#favorites-only').onchange = (event) => { state.favorite = event.target.checked; renderLibrary(); };
-document.querySelector('#sort').onchange = (event) => { state.sort = event.target.value; state.direction = event.target.value === 'recent' ? 'desc' : 'asc'; renderLibrary(); };
-document.querySelector('#clear-filters').onclick = clearFilters; document.querySelector('#empty-clear').onclick = clearFilters;
-document.querySelector('#toggle-filters').onclick = () => document.querySelector('#filter-panel').classList.toggle('hidden');
-document.querySelectorAll('#views button').forEach((button) => button.onclick = () => { state.view = button.dataset.view; document.querySelectorAll('#views button').forEach((item) => item.classList.toggle('active', item === button)); renderLibrary(); });
-document.querySelectorAll('.nav-item').forEach((button) => button.onclick = () => showPage(button.dataset.page));
-document.querySelectorAll('[data-go-library]').forEach((button) => button.onclick = () => showPage('library'));
-document.querySelector('#save-tags').onclick = async () => { if (!editing) return; try { const type = document.querySelector('#launch-type').value; const target = document.querySelector('#launch-target').value.trim(); await updatePreference(editing, { tags: document.querySelector('#tags-input').value.split(',').map((tag) => tag.trim()).filter(Boolean), progress: document.querySelector('#progress-input').value, rating: Number(document.querySelector('#rating-input').value), notes: document.querySelector('#notes-input').value, launchOverride: type && target ? { type, target } : null }); const cover = document.querySelector('#cover-input').files[0]; if (cover) await uploadCover(editing, cover); renderHome(); renderLibrary(); notify('Ficha actualizada.'); } catch (error) { say(error.message); } };
-document.querySelector('#refresh').onclick = async (event) => { event.currentTarget.disabled = true; event.currentTarget.textContent = 'Actualizando…'; try { await request('/api/scan', { method: 'POST' }); await load(); notify('Inventario actualizado.'); } catch (error) { say(error.message); } finally { event.currentTarget.disabled = false; event.currentTarget.innerHTML = '<span aria-hidden="true">↻</span> Actualizar'; } };
+document.querySelector('#search').oninput = (event) => {
+  state.query = event.target.value;
+  renderLibrary();
+};
+document.querySelector('#favorites-only').onchange = (event) => {
+  state.favorite = event.target.checked;
+  renderLibrary();
+};
+document.querySelector('#sort').onchange = (event) => {
+  state.sort = event.target.value;
+  state.direction = event.target.value === 'recent' ? 'desc' : 'asc';
+  renderLibrary();
+};
+document.querySelector('#clear-filters').onclick = clearFilters;
+document.querySelector('#empty-clear').onclick = clearFilters;
+document.querySelector('#toggle-filters').onclick = () =>
+  document.querySelector('#filter-panel').classList.toggle('hidden');
+document.querySelectorAll('#views button').forEach(
+  (button) =>
+    (button.onclick = () => {
+      state.view = button.dataset.view;
+      document.querySelectorAll('#views button').forEach((item) => item.classList.toggle('active', item === button));
+      renderLibrary();
+    })
+);
+document.querySelectorAll('.nav-item').forEach((button) => (button.onclick = () => showPage(button.dataset.page)));
+document.querySelectorAll('[data-go-library]').forEach((button) => (button.onclick = () => showPage('library')));
+document.querySelector('#save-tags').onclick = async () => {
+  if (!editing) return;
+  try {
+    const type = document.querySelector('#launch-type').value;
+    const target = document.querySelector('#launch-target').value.trim();
+    await updatePreference(editing, {
+      tags: document
+        .querySelector('#tags-input')
+        .value.split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      progress: document.querySelector('#progress-input').value,
+      rating: Number(document.querySelector('#rating-input').value),
+      notes: document.querySelector('#notes-input').value,
+      launchOverride: type && target ? { type, target } : null
+    });
+    const cover = document.querySelector('#cover-input').files[0];
+    if (cover) await uploadCover(editing, cover);
+    renderHome();
+    renderLibrary();
+    notify('Ficha actualizada.');
+  } catch (error) {
+    say(error.message);
+  }
+};
+document.querySelector('#refresh').onclick = async (event) => {
+  event.currentTarget.disabled = true;
+  event.currentTarget.textContent = 'Actualizando…';
+  try {
+    await request('/api/scan', { method: 'POST' });
+    await load();
+    notify('Inventario actualizado.');
+  } catch (error) {
+    say(error.message);
+  } finally {
+    event.currentTarget.disabled = false;
+    event.currentTarget.innerHTML = '<span aria-hidden="true">↻</span> Actualizar';
+  }
+};
 document.querySelector('#export-preferences').onclick = exportPreferences;
-document.querySelector('#import-preferences').onchange = (event) => { const file = event.target.files[0]; if (file) importPreferences(file); event.target.value = ''; };
-document.querySelector('#schedule-form').onsubmit = async (event) => { event.preventDefault(); const button = event.currentTarget.querySelector('button'); button.disabled = true; try { await request('/api/schedule', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ time: document.querySelector('#schedule-time').value }) }); await loadSchedule(); notify('Horario de indexación guardado.'); } catch (error) { say(error.message); } finally { button.disabled = false; } };
-document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); showPage('library'); } if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { event.preventDefault(); showPage('library'); } if (event.key === 'Escape' && state.page === 'library') document.querySelector('#filter-panel').classList.add('hidden'); });
+document.querySelector('#import-preferences').onchange = (event) => {
+  const file = event.target.files[0];
+  if (file) importPreferences(file);
+  event.target.value = '';
+};
+document.querySelector('#schedule-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector('button');
+  button.disabled = true;
+  try {
+    await request('/api/schedule', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ time: document.querySelector('#schedule-time').value })
+    });
+    await loadSchedule();
+    notify('Horario de indexación guardado.');
+  } catch (error) {
+    say(error.message);
+  } finally {
+    button.disabled = false;
+  }
+};
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    showPage('library');
+  }
+  if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+    event.preventDefault();
+    showPage('library');
+  }
+  if (event.key === 'Escape' && state.page === 'library')
+    document.querySelector('#filter-panel').classList.add('hidden');
+});
 load().catch((error) => say(error.message));

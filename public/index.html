@@ -1,53 +1,273 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Games Meta Launcher</title>
-  <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="/explorer.css">
-</head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>Games Meta<br><strong>Launcher</strong></span></div>
-      <nav class="navigation" aria-label="Navegación principal">
-        <button class="nav-item active" data-page="home"><span>⌂</span> Inicio</button>
-        <button class="nav-item" data-page="library"><span>▦</span> Biblioteca</button>
-        <button class="nav-item" data-page="diagnostics"><span>⌁</span> Diagnóstico</button>
-        <button class="nav-item" data-page="settings"><span>⚙</span> Configuración</button>
-      </nav>
-      <div class="sidebar-footer"><span class="status-dot"></span><span>Biblioteca local</span></div>
-    </aside>
-    <main class="workspace">
-      <header class="topbar">
-        <div><p class="kicker" id="page-kicker">TU COLECCIÓN</p><h1 id="page-title">Para jugar ahora</h1></div>
-        <div class="top-actions"><span id="last-update" class="last-update">Cargando inventario…</span><button id="refresh" class="button primary"><span aria-hidden="true">↻</span> Actualizar</button></div>
-      </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Games Meta Launcher</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/explorer.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">✦</span><span>Games Meta<br /><strong>Launcher</strong></span>
+        </div>
+        <nav class="navigation" aria-label="Navegación principal">
+          <button class="nav-item active" data-page="home"><span>⌂</span> Inicio</button>
+          <button class="nav-item" data-page="library"><span>▦</span> Biblioteca</button>
+          <button class="nav-item" data-page="diagnostics"><span>⌁</span> Diagnóstico</button>
+          <button class="nav-item" data-page="settings"><span>⚙</span> Configuración</button>
+        </nav>
+        <div class="sidebar-footer"><span class="status-dot"></span><span>Biblioteca local</span></div>
+      </aside>
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="kicker" id="page-kicker">TU COLECCIÓN</p>
+            <h1 id="page-title">Para jugar ahora</h1>
+          </div>
+          <div class="top-actions">
+            <span id="last-update" class="last-update">Cargando inventario…</span
+            ><button id="refresh" class="button primary"><span aria-hidden="true">↻</span> Actualizar</button>
+          </div>
+        </header>
 
-      <section id="home-page" class="page">
-        <div class="welcome-banner"><div><p class="eyebrow">PLAYER ONE · BIBLIOTECA LOCAL</p><h2>Elegí tu próxima partida.</h2><p>Tu colección, tus accesos directos y tus notas en un único lugar.</p><button class="button primary" data-go-library>Ver biblioteca <span aria-hidden="true">→</span></button></div><div class="banner-token" aria-hidden="true">★</div></div>
-        <section class="stat-grid" aria-label="Resumen de biblioteca"><article><span>Total</span><strong id="stat-total">—</strong><small>juegos detectados</small></article><article><span>Listos</span><strong id="stat-ready">—</strong><small>para iniciar</small></article><article><span>Favoritos</span><strong id="stat-favorites">—</strong><small>elegidos por vos</small></article><article><span>En curso</span><strong id="stat-progress">—</strong><small>partidas activas</small></article></section>
-        <section class="section-heading"><div><h2>Acceso rápido</h2><p id="quick-subtitle">Tus favoritos y juegos recientes.</p></div><button class="text-button" data-go-library>Explorar todo</button></section>
-        <section id="quick-library" class="library icons compact-cards" aria-live="polite"></section>
-      </section>
+        <section id="home-page" class="page">
+          <div class="welcome-banner">
+            <div>
+              <p class="eyebrow">PLAYER ONE · BIBLIOTECA LOCAL</p>
+              <h2>Elegí tu próxima partida.</h2>
+              <p>Tu colección, tus accesos directos y tus notas en un único lugar.</p>
+              <button class="button primary" data-go-library>Ver biblioteca <span aria-hidden="true">→</span></button>
+            </div>
+            <div class="banner-token" aria-hidden="true">★</div>
+          </div>
+          <section class="stat-grid" aria-label="Resumen de biblioteca">
+            <article><span>Total</span><strong id="stat-total">—</strong><small>juegos detectados</small></article>
+            <article><span>Listos</span><strong id="stat-ready">—</strong><small>para iniciar</small></article>
+            <article>
+              <span>Favoritos</span><strong id="stat-favorites">—</strong><small>elegidos por vos</small>
+            </article>
+            <article><span>En curso</span><strong id="stat-progress">—</strong><small>partidas activas</small></article>
+          </section>
+          <section class="section-heading">
+            <div>
+              <h2>Acceso rápido</h2>
+              <p id="quick-subtitle">Tus favoritos y juegos recientes.</p>
+            </div>
+            <button class="text-button" data-go-library>Explorar todo</button>
+          </section>
+          <section id="quick-library" class="library icons compact-cards" aria-live="polite"></section>
+        </section>
 
-      <section id="library-page" class="page hidden">
-        <div class="library-toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Buscar por juego, etiqueta o plataforma…" autocomplete="off"></label><button id="toggle-filters" class="button"><span aria-hidden="true">☷</span> Filtros <span id="active-filter-count" class="badge hidden">0</span></button><div id="views" class="view-switch" aria-label="Vista"><button data-view="explorer" title="Explorador" aria-label="Vista explorador">▤</button><button data-view="detail" title="Detalle" aria-label="Vista detalle">▥</button><button data-view="list" title="Lista" aria-label="Vista lista">☷</button><button data-view="icons" class="active" title="Iconos" aria-label="Vista iconos">▦</button></div></div>
-        <section id="filter-panel" class="filter-panel" aria-label="Filtros de biblioteca"><div class="filter-heading"><div><h2>Filtrar biblioteca</h2><p>Combiná los filtros para encontrar lo que buscás.</p></div><button id="clear-filters" class="text-button">Restablecer</button></div><div id="platforms" class="chips"></div><div class="filter-grid"><div><label for="tag">Etiqueta</label><select id="tag"><option value="">Todas las etiquetas</option></select></div><div><label for="drive">Unidad</label><select id="drive"><option value="">Todas las unidades</option></select></div><div><label for="sort">Ordenar</label><select id="sort"><option value="name">Nombre (A–Z)</option><option value="platform">Plataforma</option><option value="drive">Unidad</option><option value="recent">Últimos lanzados</option></select></div><label class="check"><input id="favorites-only" type="checkbox"><span>Solo favoritos</span></label></div></section>
-        <div class="library-heading"><div><p id="counter"></p><div id="active-filters" class="active-filters"></div></div><p id="view-label" class="muted">Iconos</p></div>
-        <section id="library" class="library icons" aria-live="polite"></section>
-        <section id="empty-state" class="empty-state hidden"><span>⌕</span><h2>No encontramos juegos con esos filtros</h2><p>Probá quitar alguno o buscá otro término.</p><button id="empty-clear" class="button">Limpiar filtros</button></section>
-      </section>
+        <section id="library-page" class="page hidden">
+          <div class="library-toolbar">
+            <label class="search"
+              ><span aria-hidden="true">⌕</span
+              ><input
+                id="search"
+                type="search"
+                placeholder="Buscar por juego, etiqueta o plataforma…"
+                autocomplete="off" /></label
+            ><button id="toggle-filters" class="button">
+              <span aria-hidden="true">☷</span> Filtros <span id="active-filter-count" class="badge hidden">0</span>
+            </button>
+            <div id="views" class="view-switch" aria-label="Vista">
+              <button data-view="explorer" title="Explorador" aria-label="Vista explorador">▤</button
+              ><button data-view="detail" title="Detalle" aria-label="Vista detalle">▥</button
+              ><button data-view="list" title="Lista" aria-label="Vista lista">☷</button
+              ><button data-view="icons" class="active" title="Iconos" aria-label="Vista iconos">▦</button>
+            </div>
+          </div>
+          <section id="filter-panel" class="filter-panel" aria-label="Filtros de biblioteca">
+            <div class="filter-heading">
+              <div>
+                <h2>Filtrar biblioteca</h2>
+                <p>Combiná los filtros para encontrar lo que buscás.</p>
+              </div>
+              <button id="clear-filters" class="text-button">Restablecer</button>
+            </div>
+            <div id="platforms" class="chips"></div>
+            <div class="filter-grid">
+              <div>
+                <label for="tag">Etiqueta</label
+                ><select id="tag">
+                  <option value="">Todas las etiquetas</option>
+                </select>
+              </div>
+              <div>
+                <label for="drive">Unidad</label
+                ><select id="drive">
+                  <option value="">Todas las unidades</option>
+                </select>
+              </div>
+              <div>
+                <label for="sort">Ordenar</label
+                ><select id="sort">
+                  <option value="name">Nombre (A–Z)</option>
+                  <option value="platform">Plataforma</option>
+                  <option value="drive">Unidad</option>
+                  <option value="recent">Últimos lanzados</option>
+                </select>
+              </div>
+              <label class="check"><input id="favorites-only" type="checkbox" /><span>Solo favoritos</span></label>
+            </div>
+          </section>
+          <div class="library-heading">
+            <div>
+              <p id="counter"></p>
+              <div id="active-filters" class="active-filters"></div>
+            </div>
+            <p id="view-label" class="muted">Iconos</p>
+          </div>
+          <section id="library" class="library icons" aria-live="polite"></section>
+          <section id="empty-state" class="empty-state hidden">
+            <span>⌕</span>
+            <h2>No encontramos juegos con esos filtros</h2>
+            <p>Probá quitar alguno o buscá otro término.</p>
+            <button id="empty-clear" class="button">Limpiar filtros</button>
+          </section>
+        </section>
 
-      <section id="diagnostics-page" class="page hidden"><div class="page-intro"><h2>Estado de la colección</h2><p>Revisá qué plataformas están listas para iniciar y qué juegos necesitan una corrección.</p></div><section id="health-summary" class="stat-grid"></section><section class="diagnostic-panel"><div class="section-heading"><div><h2>Por plataforma</h2><p>Información basada en la última indexación local.</p></div></div><div id="platform-health" class="health-list"></div></section></section>
+        <section id="diagnostics-page" class="page hidden">
+          <div class="page-intro">
+            <h2>Estado de la colección</h2>
+            <p>Revisá qué plataformas están listas para iniciar y qué juegos necesitan una corrección.</p>
+          </div>
+          <section id="health-summary" class="stat-grid"></section>
+          <section class="diagnostic-panel">
+            <div class="section-heading">
+              <div>
+                <h2>Por plataforma</h2>
+                <p>Información basada en la última indexación local.</p>
+              </div>
+            </div>
+            <div id="platform-health" class="health-list"></div>
+          </section>
+        </section>
 
-      <section id="settings-page" class="page hidden"><div class="page-intro"><h2>Configuración</h2><p>Administrá el mantenimiento de tu biblioteca y tus datos personales.</p></div><div class="settings-grid"><section class="settings-card"><span class="card-icon">◷</span><div><h2>Indexación nocturna</h2><p>Actualiza el inventario cada día sin abrir la aplicación.</p></div><form id="schedule-form" class="schedule-form"><label for="schedule-time">Hora de ejecución</label><div><input id="schedule-time" type="time" value="03:00"><button class="button primary" type="submit">Guardar horario</button></div><p id="schedule-status" class="helper-text">Consultando la tarea programada…</p></form></section><section class="settings-card"><span class="card-icon">⇄</span><div><h2>Tu biblioteca personal</h2><p>Guardá una copia de favoritos, notas, etiquetas, portadas y rutas personalizadas.</p></div><div class="button-row"><button id="export-preferences" class="button">Respaldar</button><label class="button import-button">Restaurar<input id="import-preferences" type="file" accept="application/json" hidden></label></div></section></div></section>
-    </main>
-  </div>
-  <template id="card-template"><article class="game-item"><div class="cover"><span class="cover-initial">G</span><span class="cover-stars">✦✦</span></div><div class="game-main"><p class="platform"></p><h3></h3><p class="status"></p><p class="location"></p><div class="tag-list"></div></div><div class="actions"><button class="icon-button favorite" title="Marcar favorito" aria-label="Marcar favorito">☆</button><button class="icon-button edit" title="Editar ficha">Editar</button><button class="button play">Jugar</button></div></article></template>
-  <dialog id="notice"><p></p><button class="button primary">Entendido</button></dialog>
-  <dialog id="editor"><form method="dialog"><div class="dialog-heading"><div><p class="kicker">BIBLIOTECA PERSONAL</p><h2 id="editor-title">Ficha del juego</h2></div><button value="cancel" class="dialog-close" aria-label="Cerrar">×</button></div><label>Etiquetas<input id="tags-input" type="text" placeholder="simracing, pendiente, cooperativo" autocomplete="off"></label><div class="editor-grid"><label>Estado<select id="progress-input"><option>Pendiente</option><option>Jugando</option><option>Completado</option><option>Abandonado</option></select></label><label>Puntuación<select id="rating-input"><option value="0">Sin puntuar</option><option value="1">★</option><option value="2">★★</option><option value="3">★★★</option><option value="4">★★★★</option><option value="5">★★★★★</option></select></label></div><label>Notas<textarea id="notes-input" rows="4" placeholder="Objetivos, mods o recordatorios personales…"></textarea></label><label>Portada local<input id="cover-input" type="file" accept="image/png,image/jpeg,image/webp"></label><fieldset><legend>Lanzamiento personalizado</legend><p class="helper-text">Usalo sólo si la detección automática no alcanza.</p><div class="editor-grid"><select id="launch-type"><option value="">Usar detección automática</option><option value="uri">URI de launcher</option><option value="file">Archivo ejecutable</option><option value="appsFolder">AppsFolder de Microsoft</option></select><input id="launch-target" type="text" placeholder="Ruta o URI"></div></fieldset><div class="dialog-actions"><button value="cancel" class="button">Cancelar</button><button id="save-tags" value="default" class="button primary">Guardar cambios</button></div></form></dialog>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/app.js"></script>
-</body></html>
+        <section id="settings-page" class="page hidden">
+          <div class="page-intro">
+            <h2>Configuración</h2>
+            <p>Administrá el mantenimiento de tu biblioteca y tus datos personales.</p>
+          </div>
+          <div class="settings-grid">
+            <section class="settings-card">
+              <span class="card-icon">◷</span>
+              <div>
+                <h2>Indexación nocturna</h2>
+                <p>Actualiza el inventario cada día sin abrir la aplicación.</p>
+              </div>
+              <form id="schedule-form" class="schedule-form">
+                <label for="schedule-time">Hora de ejecución</label>
+                <div>
+                  <input id="schedule-time" type="time" value="03:00" /><button class="button primary" type="submit">
+                    Guardar horario
+                  </button>
+                </div>
+                <p id="schedule-status" class="helper-text">Consultando la tarea programada…</p>
+              </form>
+            </section>
+            <section class="settings-card">
+              <span class="card-icon">⇄</span>
+              <div>
+                <h2>Tu biblioteca personal</h2>
+                <p>Guardá una copia de favoritos, notas, etiquetas, portadas y rutas personalizadas.</p>
+              </div>
+              <div class="button-row">
+                <button id="export-preferences" class="button">Respaldar</button
+                ><label class="button import-button"
+                  >Restaurar<input id="import-preferences" type="file" accept="application/json" hidden
+                /></label>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+    <template id="card-template"
+      ><article class="game-item">
+        <div class="cover"><span class="cover-initial">G</span><span class="cover-stars">✦✦</span></div>
+        <div class="game-main">
+          <p class="platform"></p>
+          <h3></h3>
+          <p class="status"></p>
+          <p class="location"></p>
+          <div class="tag-list"></div>
+        </div>
+        <div class="actions">
+          <button class="icon-button favorite" title="Marcar favorito" aria-label="Marcar favorito">☆</button
+          ><button class="icon-button edit" title="Editar ficha">Editar</button
+          ><button class="button play">Jugar</button>
+        </div>
+      </article></template
+    >
+    <dialog id="notice">
+      <p></p>
+      <button class="button primary">Entendido</button>
+    </dialog>
+    <dialog id="editor">
+      <form method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="kicker">BIBLIOTECA PERSONAL</p>
+            <h2 id="editor-title">Ficha del juego</h2>
+          </div>
+          <button value="cancel" class="dialog-close" aria-label="Cerrar">×</button>
+        </div>
+        <label
+          >Etiquetas<input
+            id="tags-input"
+            type="text"
+            placeholder="simracing, pendiente, cooperativo"
+            autocomplete="off"
+        /></label>
+        <div class="editor-grid">
+          <label
+            >Estado<select id="progress-input">
+              <option>Pendiente</option>
+              <option>Jugando</option>
+              <option>Completado</option>
+              <option>Abandonado</option>
+            </select></label
+          ><label
+            >Puntuación<select id="rating-input">
+              <option value="0">Sin puntuar</option>
+              <option value="1">★</option>
+              <option value="2">★★</option>
+              <option value="3">★★★</option>
+              <option value="4">★★★★</option>
+              <option value="5">★★★★★</option>
+            </select></label
+          >
+        </div>
+        <label
+          >Notas<textarea
+            id="notes-input"
+            rows="4"
+            placeholder="Objetivos, mods o recordatorios personales…"
+          ></textarea></label
+        ><label>Portada local<input id="cover-input" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+        <fieldset>
+          <legend>Lanzamiento personalizado</legend>
+          <p class="helper-text">Usalo sólo si la detección automática no alcanza.</p>
+          <div class="editor-grid">
+            <select id="launch-type">
+              <option value="">Usar detección automática</option>
+              <option value="uri">URI de launcher</option>
+              <option value="file">Archivo ejecutable</option>
+              <option value="appsFolder">AppsFolder de Microsoft</option></select
+            ><input id="launch-target" type="text" placeholder="Ruta o URI" />
+          </div>
+        </fieldset>
+        <div class="dialog-actions">
+          <button value="cancel" class="button">Cancelar</button
+          ><button id="save-tags" value="default" class="button primary">Guardar cambios</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

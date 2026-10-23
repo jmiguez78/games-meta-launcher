@@ -12,9 +12,39 @@ const { createServer } = await import('../src/server.mjs');
 const catalog = {
   generatedAt: '2026-10-23T00:00:00.000Z',
   games: [
-    { key: 'steam:10', id: '10', name: 'Counter-Strike', platform: 'Steam', drive: 'C:', location: 'C:\\Steam\\cs', launch: { type: 'uri', target: 'steam://run/10', available: true }, status: 'installed', evidence: '' },
-    { key: 'epic games:x', id: 'x', name: 'Tiny Lands', platform: 'Epic Games', drive: 'E:', location: 'E:\\Epic\\tiny', launch: null, status: 'attention', evidence: '' },
-    { key: 'gog galaxy:roto', id: 'roto', name: 'Juego roto', platform: 'GOG Galaxy', drive: 'C:', location: 'C:\no-existe', launch: { type: 'file', target: 'C:\no-existe\juego.exe', available: true }, status: 'installed', evidence: '' }
+    {
+      key: 'steam:10',
+      id: '10',
+      name: 'Counter-Strike',
+      platform: 'Steam',
+      drive: 'C:',
+      location: 'C:\\Steam\\cs',
+      launch: { type: 'uri', target: 'steam://run/10', available: true },
+      status: 'installed',
+      evidence: ''
+    },
+    {
+      key: 'epic games:x',
+      id: 'x',
+      name: 'Tiny Lands',
+      platform: 'Epic Games',
+      drive: 'E:',
+      location: 'E:\\Epic\\tiny',
+      launch: null,
+      status: 'attention',
+      evidence: ''
+    },
+    {
+      key: 'gog galaxy:roto',
+      id: 'roto',
+      name: 'Juego roto',
+      platform: 'GOG Galaxy',
+      drive: 'C:',
+      location: 'C:\no-existe',
+      launch: { type: 'file', target: 'C:\no-existe\juego.exe', available: true },
+      status: 'installed',
+      evidence: ''
+    }
   ]
 };
 
@@ -33,16 +63,28 @@ after(async () => {
 
 const json = (body) => ({ headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 // fetch normaliza rutas y fija Host; http.request envía la solicitud tal cual.
-const rawStatus = (target, headers = {}) => new Promise((resolve, reject) => {
-  http.request({ host: '127.0.0.1', port: server.address().port, path: target, headers }, (res) => { res.resume(); resolve(res.statusCode); }).on('error', reject).end();
-});
-const preferencesFile =async () => JSON.parse(await fs.readFile(path.join(dataDir, 'preferences.json'), 'utf8'));
+const rawStatus = (target, headers = {}) =>
+  new Promise((resolve, reject) => {
+    http
+      .request({ host: '127.0.0.1', port: server.address().port, path: target, headers }, (res) => {
+        res.resume();
+        resolve(res.statusCode);
+      })
+      .on('error', reject)
+      .end();
+  });
+const preferencesFile = async () => JSON.parse(await fs.readFile(path.join(dataDir, 'preferences.json'), 'utf8'));
 
 test('la biblioteca combina el inventario con valores personales por defecto', async () => {
   const library = await (await fetch(`${base}/api/library`)).json();
   assert.equal(library.games.length, 3);
   assert.deepEqual(
-    { favorite: library.games[0].favorite, tags: library.games[0].tags, progress: library.games[0].progress, rating: library.games[0].rating },
+    {
+      favorite: library.games[0].favorite,
+      tags: library.games[0].tags,
+      progress: library.games[0].progress,
+      rating: library.games[0].rating
+    },
     { favorite: false, tags: [], progress: 'Pendiente', rating: 0 }
   );
 });
@@ -52,11 +94,17 @@ test('el diagnóstico agrupa juegos listos y en revisión por plataforma', async
   assert.equal(health.total, 3);
   assert.equal(health.ready, 2);
   assert.equal(health.review, 1);
-  assert.deepEqual(health.platforms.map((item) => item.platform), ['Epic Games', 'GOG Galaxy', 'Steam']);
+  assert.deepEqual(
+    health.platforms.map((item) => item.platform),
+    ['Epic Games', 'GOG Galaxy', 'Steam']
+  );
 });
 
 test('las preferencias ignoran valores inválidos', async () => {
-  const response = await fetch(`${base}/api/preferences`, { method: 'PUT', ...json({ key: 'steam:10', favorite: true, rating: 9, progress: '<b>x</b>', tags: [' rpg ', '', 'coop'] }) });
+  const response = await fetch(`${base}/api/preferences`, {
+    method: 'PUT',
+    ...json({ key: 'steam:10', favorite: true, rating: 9, progress: '<b>x</b>', tags: [' rpg ', '', 'coop'] })
+  });
   assert.equal(response.status, 200);
   const saved = await response.json();
   assert.equal(saved.favorite, true);
@@ -66,7 +114,18 @@ test('las preferencias ignoran valores inválidos', async () => {
 });
 
 test('la importación valida cada juego del respaldo', async () => {
-  const backup = { games: { 'steam:10': { favorite: true, progress: '<img src=x onerror=alert(1)>', rating: 4, notes: 'ok', lastLaunchedAt: 'ayer', coverFile: '../../evil.png' } } };
+  const backup = {
+    games: {
+      'steam:10': {
+        favorite: true,
+        progress: '<img src=x onerror=alert(1)>',
+        rating: 4,
+        notes: 'ok',
+        lastLaunchedAt: 'ayer',
+        coverFile: '../../evil.png'
+      }
+    }
+  };
   const response = await fetch(`${base}/api/preferences/import`, { method: 'POST', ...json(backup) });
   assert.equal(response.status, 200);
   const saved = (await preferencesFile()).games['steam:10'];
@@ -74,7 +133,11 @@ test('la importación valida cada juego del respaldo', async () => {
 });
 
 test('rechaza solicitudes de otros orígenes o con Host ajeno', async () => {
-  const crossOrigin = await fetch(`${base}/api/preferences`, { method: 'PUT', headers: { origin: 'https://evil.example' }, body: '{"key":"steam:10","favorite":false}' });
+  const crossOrigin = await fetch(`${base}/api/preferences`, {
+    method: 'PUT',
+    headers: { origin: 'https://evil.example' },
+    body: '{"key":"steam:10","favorite":false}'
+  });
   assert.equal(crossOrigin.status, 403);
   assert.equal(await rawStatus('/api/library', { host: 'evil.example' }), 403);
 });

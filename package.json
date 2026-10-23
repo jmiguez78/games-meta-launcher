@@ -10,20 +10,33 @@
     "start": "node src/server.mjs",
     "scan": "node src/indexer.mjs",
     "test": "node --test \"test/*.test.mjs\"",
+    "format": "prettier --write src public test",
     "check": "node --check src/server.mjs && node --check src/indexer.mjs && node --check public/app.js",
     "desktop": "electron .",
     "package": "electron-builder --win portable"
   },
   "devDependencies": {
     "electron": "^39.2.7",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "prettier": "3.6.2"
   },
   "build": {
     "appId": "com.jorgemiguez.gamesmetalauncher",
     "productName": "Games Meta Launcher",
-    "files": ["public/**/*", "src/**/*", "package.json"],
-    "extraResources": [{ "from": "data/library.sample.json", "to": "library.sample.json" }],
+    "files": [
+      "public/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "data/library.sample.json",
+        "to": "library.sample.json"
+      }
+    ],
     "asar": false,
-    "directories": { "output": "release-v072" }
+    "directories": {
+      "output": "release-v072"
+    }
   }
 }

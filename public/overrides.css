@@ -1,0 +1,12 @@
+/* Controles de biblioteca: conservan el encabezado retro y priorizan legibilidad. */
+dialog { width: min(540px, calc(100vw - 32px)); border: 1px solid #cbd5e1; border-radius: 16px; box-shadow: 0 24px 64px rgb(15 23 42 / 28%); }
+dialog form { display: grid; gap: 14px; }
+dialog label { display: grid; gap: 7px; color: #334155; font-size: .86rem; font-weight: 700; }
+dialog input, dialog select, dialog textarea { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #172033; font: inherit; padding: 10px 11px; }
+dialog textarea { min-height: 96px; resize: vertical; line-height: 1.45; }
+dialog fieldset { display: grid; gap: 10px; border: 1px solid #d7dee9; border-radius: 10px; padding: 12px; }
+dialog legend { padding: 0 5px; color: #475569; font-size: .82rem; font-weight: 700; }
+.editor-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.import-button { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.cover.has-image, .detail-cover.has-image { color: transparent; background-position: center; background-size: cover; }
+@media (max-width: 580px) { .editor-grid { grid-template-columns: 1fr; } }

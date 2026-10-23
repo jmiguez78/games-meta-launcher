@@ -10,7 +10,7 @@ flowchart LR
   D --> E[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.3 terminada
+## Estado actual — implementación hasta 0.5 terminada
 
 La base local está terminada:
 
@@ -20,11 +20,14 @@ La base local está terminada:
 - Actualización manual y tarea diaria a las 03:00.
 - Vistas Explorador, Detalle, Lista e Iconos grandes.
 - Favoritos, etiquetas y últimos lanzamientos locales.
+- Portadas locales, progreso, puntuación, notas y rutas de lanzamiento manuales.
+- Respaldo e importación de preferencias personales.
+- Aplicación de escritorio Electron y ejecutable portable de Windows.
 - Rutas de lanzamiento implementadas para Steam, Epic, Ubisoft y Xbox/Microsoft Store cuando sus datos locales permiten resolverlas.
 
 La implementación está completa, pero la validación real de cada launcher sigue pendiente. Se evitó abrir juegos durante las pruebas automáticas.
 
-## Ahora — validación de la versión 0.3
+## Ahora — validación de las versiones 0.3 a 0.5
 
 | Iniciativa | Resultado | Criterio de aceptación |
 | --- | --- | --- |
@@ -32,23 +35,15 @@ La implementación está completa, pero la validación real de cada launcher sig
 | Validar vistas y filtros | Comprobar los cuatro modos de presentación, búsquedas y filtros combinados. | No aparecen errores y el mismo conjunto de juegos se refleja en todas las vistas. |
 | Validar la tarea nocturna | Confirmar que la tarea se ejecuta sin abrir ventanas ni alterar preferencias. | La fecha de escaneo cambia y favoritos/etiquetas permanecen intactos. |
 | Ajustar detección | Resolver los juegos marcados como “Requiere revisión”. | Cada caso muestra una explicación correcta o queda excluido por decisión explícita. |
+| Validar escritorio | Abrir la aplicación portable y confirmar que conserva los datos entre ejecuciones. | Se abre sin navegador ni terminal y los cambios personales persisten. |
+| Validar personalización | Cargar una portada, editar la ficha y restaurar un respaldo. | Todos los datos se muestran tras reindexar o reiniciar. |
 
-## Siguiente — versión 0.4: calidad y personalización
+## Siguiente — versión 0.6: configuración y diagnóstico
 
 | Iniciativa | Dependencia | Criterio de aceptación |
 | --- | --- | --- |
-| Portadas reales opcionales | Incorporar carátulas desde archivos locales o una fuente que autorices. | Se puede elegir entre portada real y portada generada. |
-| Metadatos editables | Añadir género, estado de avance, puntuación y notas personales. | Los datos persisten tras reindexar. |
-| Lanzamiento configurable | Permitir corregir manualmente una ruta o URI de lanzamiento. | Un juego no detectado automáticamente puede iniciarse tras configurar su ruta. |
-| Importar/exportar preferencias | Respaldar favoritos y etiquetas. | Un archivo de respaldo restaura una biblioteca personal. |
-
-## Después — versión 0.5: empaquetado de escritorio
-
-| Iniciativa | Valor | Criterio de aceptación |
-| --- | --- | --- |
-| Ejecutable de Windows | Empaquetar el lanzador para no depender de Node ni del navegador. | Se abre desde el Escritorio como aplicación nativa. |
-| Configuración en pantalla | Gestionar hora de indexación, rutas y preferencias desde la interfaz. | No hace falta editar scripts o archivos para los ajustes comunes. |
-| Diagnóstico de instalación | Mostrar un panel de salud para rutas y launchers. | Los problemas se explican y proponen una acción de resolución. |
+| Configuración de indexación | Gestionar desde la interfaz la hora y el estado de la tarea nocturna. | No hace falta editar scripts para los ajustes habituales. |
+| Diagnóstico de launcher | Explicar rutas incompletas y ofrecer acciones de corrección. | Cada problema tiene una causa y una siguiente acción visible. |
 
 ## Más adelante — versión 1.0: bibliotecas compradas
 

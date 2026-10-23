@@ -18,8 +18,20 @@
 - Últimos lanzamientos y filtros combinables.
 - Las integraciones de cuentas quedan programadas para una versión posterior.
 
-## 1.0.0 — Aplicación de escritorio
+## 0.4.0 — Personalización · Completada
 
-- Empaquetado como aplicación de Windows.
-- Acceso directo y actualizaciones controladas.
-- Configuración desde la propia interfaz.
+- Portadas opcionales desde archivos PNG, JPG o WebP locales.
+- Estado, puntuación, notas y etiquetas por juego.
+- Ruta o URI de lanzamiento personalizada.
+- Respaldo e importación de la biblioteca personal.
+
+## 0.5.0 — Aplicación de escritorio · Completada
+
+- Ventana nativa de Windows sin navegador ni terminal.
+- Ejecutable portable para distribución local.
+- Datos de biblioteca aislados en el perfil local de la aplicación.
+
+## 0.6.0 — Configuración y diagnóstico
+
+- Configuración en pantalla de la indexación nocturna.
+- Panel de salud para launchers, rutas y detecciones incompletas.

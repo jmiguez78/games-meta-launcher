@@ -1,5 +1,16 @@
 # Registro de cambios
 
+## 0.5.0 — 23 de octubre de 2026
+
+- Aplicación de escritorio Electron y paquete portable para Windows.
+- La aplicación guarda el inventario y las preferencias en su perfil local, fuera de la instalación.
+
+## 0.4.0 — 23 de octubre de 2026
+
+- Ficha editable con portada local, progreso, puntuación, notas y etiquetas.
+- URI, ejecutable o AppsFolder personalizado para corregir un lanzamiento.
+- Respaldo e importación de preferencias personales.
+
 ## 0.3.0 — 23 de octubre de 2026
 
 - Detectores para Steam, Epic Games, Xbox/Microsoft Store, Ubisoft Connect, EA app y GOG Galaxy.

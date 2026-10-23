@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outputPath = path.join(projectRoot, 'data', 'library.json');
+const outputPath = path.join(process.env.GML_DATA_DIR ? path.resolve(process.env.GML_DATA_DIR) : path.join(projectRoot, 'data'), 'library.json');
 const DRIVE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'H', 'K'];
 
 async function exists(target) { try { await fs.access(target); return true; } catch { return false; } }

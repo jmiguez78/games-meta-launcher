@@ -2,4 +2,9 @@ node_modules/
 .env
 data/library.json
 data/preferences.json
+data/covers/
+dist/
+release/
+release-portable/
+release-v050/
 *.log

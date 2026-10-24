@@ -28,7 +28,8 @@ const coverObserver = new IntersectionObserver(
   { rootMargin: '200px' }
 );
 const library = document.querySelector('#library');
-const quickLibrary = document.querySelector('#quick-library');
+const homeShelvesHost = document.querySelector('#home-shelves');
+const homeHero = document.querySelector('#home-hero');
 const dialog = document.querySelector('#notice');
 const editor = document.querySelector('#editor');
 const toasts = document.querySelector('#toasts');
@@ -37,7 +38,7 @@ let editing = null;
 const pageMeta = {
   home: ['Inicio', 'inicio para jugar ahora'],
   library: ['Biblioteca', 'biblioteca colección juegos'],
-  diagnostics: ['Diagnóstico', 'diagnóstico estado sistema revisión'],
+  diagnostics: ['Estado de la biblioteca', 'diagnóstico estado sistema revisión plataformas'],
   settings: ['Configuración', 'configuración preferencias ajustes']
 };
 const viewInfo = {
@@ -77,7 +78,10 @@ const iconPaths = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
-  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>'
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+  chevronRight: '<path d="m9 18 6-6-6-6"/>',
+  back: '<path d="M19 12H5M12 19l-7-7 7-7"/>'
 };
 function icon(name, filled = false) {
   return (
@@ -1138,7 +1142,8 @@ function detailPanel(game) {
   return panel;
 }
 // Portada en cuadrícula.
-function makePosterCard(game) {
+// options.caption reemplaza la plataforma bajo el título (por ejemplo, «Ayer» en la fila Continuar).
+function makePosterCard(game, options = {}) {
   const cover = coverInfo(game);
   const card = document.createElement('article');
   card.className = 'poster tile ' + cover.palette + (game.key === state.selectedKey ? ' selected' : '');
@@ -1157,6 +1162,7 @@ function makePosterCard(game) {
   applyCover(card.querySelector('.poster-art'), game, cover);
   card.querySelector('.poster-title').textContent = game.name;
   fillMetaLine(card, game);
+  if (options.caption) card.querySelector('.platform-name').textContent = options.caption;
   decorateActions(card, game);
   return card;
 }
@@ -1252,6 +1258,18 @@ function bindTiles(container) {
   container.addEventListener('keydown', (event) => {
     const tile = event.target.closest('.tile');
     if (!tile || event.target !== tile || event.altKey || event.ctrlKey || event.metaKey) return;
+    // En Inicio, arriba y abajo pasan de una fila a otra conservando la posición.
+    if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && 'shelf' in container.dataset) {
+      event.preventDefault();
+      // Se saltean las filas sin juegos (por ejemplo, Favoritos vacío).
+      const tracks = [...document.querySelectorAll('[data-shelf]')].filter((track) => tilesOf(track).length);
+      const target = tracks[tracks.indexOf(container) + (event.key === 'ArrowDown' ? 1 : -1)];
+      const targetTiles = target ? tilesOf(target) : [];
+      if (!targetTiles.length) return;
+      const next = targetTiles[Math.min(tilesOf(container).indexOf(tile), targetTiles.length - 1)];
+      selectTile(next, true);
+      return;
+    }
     if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
       event.preventDefault();
       const next = tileNeighbor(tile, event.key);
@@ -1265,7 +1283,6 @@ function bindTiles(container) {
   });
 }
 bindTiles(library);
-bindTiles(quickLibrary);
 // En la vista Detalle, elegir otro juego actualiza la ficha sin redibujar la lista.
 library.addEventListener('tileselect', (event) => {
   if (state.view !== 'detail') return;
@@ -1352,34 +1369,235 @@ function quickGames(limit) {
     .filter((game, index, all) => all.findIndex((item) => item.key === game.key) === index)
     .slice(0, limit);
 }
-function renderHome() {
-  const favorites = state.games.filter((game) => game.favorite);
-  const quick = quickGames(6);
-  quickLibrary.innerHTML = '';
-  quick.forEach((game) => quickLibrary.append(makePosterCard(game)));
-  const first = quickLibrary.querySelector('.tile');
-  if (first) selectTile(first, false, false);
-  pruneCoverLoads();
-  document.querySelector('#quick-subtitle').textContent = favorites.length
-    ? favorites.length + ' favorito' + (favorites.length === 1 ? '' : 's') + ' para volver a jugar.'
-    : 'Marcá favoritos para encontrarlos siempre acá.';
-  const total = state.games.length;
-  const ready = state.games.filter((game) => game.launch && game.launch.available).length;
-  const inProgress = state.games.filter((game) => game.progress === 'Jugando').length;
-  document.querySelector('#stat-total').textContent = total;
-  document.querySelector('#stat-ready').textContent = ready;
-  document.querySelector('#stat-favorites').textContent = favorites.length;
-  document.querySelector('#stat-progress').textContent = inProgress;
-  document.querySelector('#home-summary').textContent = total + ' juegos reunidos · ' + ready + ' listos para iniciar.';
+// Inicio: una imagen principal que propone qué jugar y filas por intención (shelves.js elige los juegos).
+const heroReasons = {
+  recent: 'Seguí donde lo dejaste',
+  favorite: 'Uno de tus favoritos',
+  rated: 'Muy valorado por la crítica',
+  ready: 'Listo para jugar'
+};
+let heroPicks = [];
+let heroKey = '';
+function heroGame() {
+  return heroPicks.find((pick) => pick.game.key === heroKey) || heroPicks[0];
+}
+function setHeroBackdrop(game) {
+  const backdrop = homeHero.querySelector('.hero-backdrop');
+  const sources = artSources(game, true);
+  const url = (sources.find((source) => source.kind === 'hero') || sources[0])?.url;
+  backdrop.dataset.key = game.key;
+  if (!url) {
+    backdrop.replaceChildren();
+    return;
+  }
+  const image = new Image();
+  image.onload = () => {
+    if (backdrop.dataset.key !== game.key) return;
+    // La imagen nueva aparece sobre la anterior y la reemplaza al terminar el fundido.
+    const layer = document.createElement('div');
+    layer.className = 'hero-layer' + (url.includes('/hero/') ? '' : ' is-cover');
+    layer.style.backgroundImage = 'url("' + url + '")';
+    backdrop.append(layer);
+    requestAnimationFrame(() => layer.classList.add('show'));
+    setTimeout(() => [...backdrop.children].slice(0, -1).forEach((old) => old.remove()), 600);
+    applyArtColor(homeHero, game, image);
+    if (state.page === 'home') setAmbient(game);
+  };
+  image.src = url;
+}
+function renderHero() {
+  const pick = heroGame();
+  homeHero.classList.toggle('hidden', !pick);
+  if (!pick) return;
+  const { game, reason } = pick;
+  heroKey = game.key;
+  homeHero.dataset.key = game.key;
+  homeHero.style.removeProperty('--art');
+  const known = artColors.get(game.key);
+  if (known) homeHero.style.setProperty('--art', known);
+  document.querySelector('#hero-reason').textContent = heroReasons[reason];
+  const title = document.querySelector('#hero-title');
+  title.textContent = game.name;
+  title.classList.remove('visually-hidden');
+  const wordmark = document.querySelector('#hero-wordmark');
+  wordmark.hidden = true;
+  wordmark.onload = null;
+  wordmark.removeAttribute('src');
+  if (game.artwork && game.artwork.wordmark) {
+    // El logo del juego reemplaza al título escrito sólo si carga; el título queda para lectores de pantalla.
+    wordmark.onload = () => {
+      if (homeHero.dataset.key !== game.key) return;
+      wordmark.hidden = false;
+      title.classList.add('visually-hidden');
+    };
+    wordmark.src = '/api/art/wordmark/' + encodeURIComponent(game.key);
+  }
+  const facts = document.querySelector('#hero-facts');
+  facts.replaceChildren();
+  const played = GMLShelves.lastPlayed(game);
   [
-    ['#metric-ready', ready],
-    ['#metric-favorites', favorites.length],
-    ['#metric-progress', inProgress]
-  ].forEach(([selector, value]) =>
-    document
-      .querySelector(selector)
-      .style.setProperty('--metric-progress', total ? Math.max(4, (value / total) * 100) + '%' : '0%')
+    game.platform,
+    game.steam && GMLShelves.hours(game.steam.playtimeHours)
+      ? GMLShelves.hours(game.steam.playtimeHours) + ' jugadas'
+      : '',
+    played ? 'Última sesión: ' + GMLShelves.relativeDay(new Date(played).toISOString()).toLowerCase() : '',
+    game.meta && game.meta.genres && game.meta.genres[0]
+  ]
+    .filter(Boolean)
+    .forEach((text) => {
+      const fact = document.createElement('span');
+      fact.textContent = text;
+      facts.append(fact);
+    });
+  const play = homeHero.querySelector('[data-hero-action=play]');
+  const installable = game.installed === false;
+  play.querySelector('.hero-play-icon').innerHTML = icon(installable ? 'download' : 'play', !installable);
+  play.querySelector('.label').textContent = installable ? 'Instalar en Steam' : 'Jugar';
+  play.setAttribute('aria-label', (installable ? 'Instalar en Steam: ' : 'Jugar a ') + game.name);
+  const favorite = homeHero.querySelector('[data-hero-action=favorite]');
+  favorite.innerHTML = icon('star', game.favorite);
+  favorite.setAttribute('aria-pressed', String(Boolean(game.favorite)));
+  favorite.setAttribute('aria-label', 'Favorito: ' + game.name);
+  favorite.title = game.favorite ? 'Quitar de favoritos' : 'Marcar como favorito';
+  homeHero.querySelector('[data-hero-action=detail]').setAttribute('aria-label', 'Ver la ficha de ' + game.name);
+  const picker = document.querySelector('#hero-picker');
+  picker.replaceChildren();
+  picker.classList.toggle('hidden', heroPicks.length < 2);
+  heroPicks.forEach((item) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'hero-thumb';
+    button.setAttribute('aria-label', item.game.name);
+    button.setAttribute('aria-pressed', String(item.game.key === game.key));
+    button.innerHTML = '<span class="cover-initial"></span>';
+    applyCover(button, item.game, coverInfo(item.game));
+    button.onclick = () => {
+      heroKey = item.game.key;
+      renderHero();
+      // El destacado no se repite en las filas de abajo.
+      renderShelves();
+      pruneCoverLoads();
+      document.querySelector('#hero-picker [aria-pressed=true]')?.focus();
+    };
+    picker.append(button);
+  });
+  setHeroBackdrop(game);
+}
+homeHero.addEventListener('click', (event) => {
+  const action = event.target.closest('[data-hero-action]')?.dataset.heroAction;
+  const game = state.games.find((item) => item.key === homeHero.dataset.key);
+  if (!action || !game) return;
+  if (action === 'detail') showGame(game);
+  else posterAction(game, action);
+});
+const shelfCaptions = {
+  continue: (game) => GMLShelves.relativeDay(new Date(GMLShelves.lastPlayed(game)).toISOString()),
+  short: (game) => 'Unas ' + GMLShelves.hours(game.meta.timeToBeat.normally / 3600),
+  rated: (game) => 'Valoración ' + game.meta.rating,
+  install: (game) => 'Valoración ' + game.meta.rating
+};
+function updateShelfControls(shelf) {
+  const track = shelf.querySelector('.shelf-track');
+  const [previous, next] = shelf.querySelectorAll('.shelf-controls button');
+  if (!previous) return;
+  previous.disabled = track.scrollLeft <= 4;
+  next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+  shelf.querySelector('.shelf-controls').classList.toggle('hidden', track.scrollWidth <= track.clientWidth + 4);
+}
+function renderShelves() {
+  // Se conserva qué juego estaba enfocado para devolverle el foco tras redibujar (por ejemplo, al marcar favorito).
+  const focusedKey = homeShelvesHost.contains(document.activeElement)
+    ? document.activeElement.closest('[data-key]')?.dataset.key
+    : null;
+  const focusedShelf = document.activeElement.closest?.('[data-shelf]')?.dataset.shelf;
+  homeShelvesHost.replaceChildren();
+  const hero = heroGame();
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  GMLShelves.homeShelves(state.games, { exclude: hero ? [hero.game.key] : [] }).forEach((shelf) => {
+    const section = document.createElement('section');
+    section.className = 'shelf';
+    section.setAttribute('aria-labelledby', 'shelf-' + shelf.id);
+    section.innerHTML =
+      '<header class="shelf-heading"><div><h2></h2><p></p></div><div class="shelf-controls">' +
+      '<button type="button" class="icon-btn"></button><button type="button" class="icon-btn"></button></div></header>' +
+      '<div class="shelf-track library posters" aria-describedby="library-help"></div>';
+    const heading = section.querySelector('h2');
+    heading.id = 'shelf-' + shelf.id;
+    heading.textContent = shelf.title;
+    section.querySelector('.shelf-heading p').textContent = shelf.subtitle;
+    const track = section.querySelector('.shelf-track');
+    track.dataset.shelf = shelf.id;
+    track.setAttribute('aria-labelledby', heading.id);
+    const [previous, next] = section.querySelectorAll('.shelf-controls button');
+    previous.innerHTML = icon('chevronLeft');
+    next.innerHTML = icon('chevronRight');
+    previous.setAttribute('aria-label', 'Anteriores en ' + shelf.title);
+    next.setAttribute('aria-label', 'Más en ' + shelf.title);
+    const scroll = (direction) =>
+      track.scrollBy({ left: direction * track.clientWidth * 0.85, behavior: reduceMotion ? 'auto' : 'smooth' });
+    previous.onclick = () => scroll(-1);
+    next.onclick = () => scroll(1);
+    track.addEventListener('scroll', () => updateShelfControls(section), { passive: true });
+    if (!shelf.games.length) {
+      track.classList.add('shelf-empty');
+      track.textContent = shelf.empty;
+      section.querySelector('.shelf-controls').classList.add('hidden');
+    }
+    shelf.games.forEach((game) => track.append(makePosterCard(game, { caption: shelfCaptions[shelf.id]?.(game) })));
+    homeShelvesHost.append(section);
+    if (shelf.games.length) {
+      bindTiles(track);
+      const selected =
+        (focusedShelf === shelf.id && track.querySelector('.tile[data-key="' + CSS.escape(focusedKey || '') + '"]')) ||
+        track.querySelector('.tile');
+      selectTile(selected, false, false);
+      if (focusedShelf === shelf.id && focusedKey) selected.focus({ preventScroll: true });
+    }
+    updateShelfControls(section);
+  });
+}
+function renderHomeEmpty() {
+  const holder = document.querySelector('#home-empty');
+  const empty = !state.loading && !state.loadError && !heroPicks.length;
+  holder.classList.toggle('hidden', !empty);
+  if (!empty) return;
+  holder.innerHTML =
+    '<span class="state-icon">' +
+    icon('gamepad') +
+    '</span><h2>Todavía no hay juegos para jugar</h2><p>Buscamos instalaciones de Steam, Epic, Xbox, Ubisoft, EA y GOG en esta PC. Si ya tenés juegos instalados, buscá de nuevo.</p><button type="button" class="button primary">' +
+    icon('refresh') +
+    ' Buscar juegos</button>';
+  holder.querySelector('button').onclick = () => document.querySelector('#refresh').click();
+}
+// Lo que necesita atención aparece sólo cuando existe: en la barra lateral y en Configuración.
+function renderHealthSignals() {
+  const review = state.games.filter((game) => game.installed !== false && !(game.launch && game.launch.available));
+  const installed = state.games.filter((game) => game.installed !== false);
+  const nav = document.querySelector('#nav-diagnostics');
+  nav.classList.toggle('hidden', review.length === 0 && state.page !== 'diagnostics');
+  document.querySelector('#review-count').textContent = review.length || '';
+  nav.setAttribute(
+    'aria-label',
+    review.length
+      ? 'Para revisar: ' + review.length + (review.length === 1 ? ' juego' : ' juegos')
+      : 'Estado de la biblioteca'
   );
+  document.querySelector('#settings-health').textContent =
+    installed.length +
+    ' juegos instalados en esta PC; ' +
+    (installed.length - review.length) +
+    ' listos para jugar. ' +
+    (review.length
+      ? review.length + (review.length === 1 ? ' necesita' : ' necesitan') + ' revisión.'
+      : 'Ninguno necesita revisión.');
+}
+function renderHome() {
+  heroPicks = GMLShelves.heroCandidates(state.games);
+  renderHero();
+  renderShelves();
+  renderHomeEmpty();
+  renderHealthSignals();
+  pruneCoverLoads();
 }
 function chips(holder, options, selected, allLabel, choose) {
   holder.innerHTML = '';
@@ -1744,7 +1962,7 @@ function showPage(page) {
   Object.keys(pageMeta).forEach((name) =>
     document.querySelector('#' + name + '-page').classList.toggle('hidden', name !== page)
   );
-  document.querySelectorAll('.nav-item').forEach((button) => {
+  document.querySelectorAll('.nav-item[data-page]').forEach((button) => {
     const current = button.dataset.page === page;
     button.classList.toggle('active', current);
     if (current) button.setAttribute('aria-current', 'page');
@@ -1752,6 +1970,8 @@ function showPage(page) {
   });
   document.querySelector('#page-title').textContent = pageMeta[page][0];
   document.body.dataset.page = page;
+  renderHealthSignals();
+  if (page === 'home') setAmbient(heroGame()?.game);
   if (page === 'diagnostics') loadHealth();
   if (page === 'settings') {
     loadSchedule();
@@ -1766,9 +1986,8 @@ async function load() {
   try {
     const catalog = await request('/api/library');
     state.games = catalog.games;
-    document.querySelector('#last-update').textContent = catalog.generatedAt
-      ? 'Actualizado ' + new Date(catalog.generatedAt).toLocaleString('es-AR')
-      : 'Aún no se indexó la biblioteca.';
+    state.generatedAt = catalog.generatedAt;
+    renderSyncStatus();
   } catch (error) {
     state.loadError = error.message || 'Revisá que la aplicación siga abierta y volvé a intentarlo.';
   } finally {
@@ -1805,9 +2024,9 @@ function normalize(text) {
   return String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 function paletteCommands() {
-  const sections = [...document.querySelectorAll('.nav-item')].map((button) => ({
+  const sections = [...document.querySelectorAll('.nav-item[data-page]')].map((button) => ({
     group: 'Secciones',
-    label: 'Ir a ' + button.textContent.trim(),
+    label: 'Ir a ' + pageMeta[button.dataset.page][0],
     icon: button.querySelector('[data-icon]').dataset.icon,
     keywords: pageMeta[button.dataset.page].join(' '),
     run: () => showPage(button.dataset.page)
@@ -1822,7 +2041,7 @@ function paletteCommands() {
   const actions = [
     {
       group: 'Acciones',
-      label: 'Actualizar inventario',
+      label: 'Buscar juegos nuevos',
       icon: 'refresh',
       keywords: 'escanear buscar juegos nuevos instalados indexar',
       run: () => document.querySelector('#refresh').click()
@@ -2036,8 +2255,9 @@ document.querySelectorAll('#views button').forEach(
       renderLibrary();
     })
 );
-document.querySelectorAll('.nav-item').forEach((button) => (button.onclick = () => showPage(button.dataset.page)));
-document.querySelectorAll('[data-go-library]').forEach((button) => (button.onclick = () => showPage('library')));
+document
+  .querySelectorAll('.nav-item[data-page]')
+  .forEach((button) => (button.onclick = () => showPage(button.dataset.page)));
 editor.querySelectorAll('[data-close]').forEach((button) => (button.onclick = () => editor.close()));
 document.querySelector('#launch-type').onchange = syncLaunchTarget;
 // El diálogo sólo se cierra si todo se guardó; si no, el error queda a la vista dentro de la ficha.
@@ -2098,11 +2318,21 @@ editor.querySelector('form').onsubmit = async (event) => {
     save.disabled = false;
   }
 };
+// Estado de la última búsqueda de juegos, en palabras relativas y al pie de la barra lateral.
+function renderSyncStatus() {
+  const status = document.querySelector('#last-update');
+  status.textContent = state.generatedAt
+    ? 'Biblioteca actualizada ' + GMLShelves.relativeTime(state.generatedAt)
+    : 'Todavía no se buscaron juegos.';
+  if (state.generatedAt) status.title = new Date(state.generatedAt).toLocaleString('es-AR');
+}
+setInterval(renderSyncStatus, 60000);
 document.querySelector('#refresh').onclick = async (event) => {
   // currentTarget deja de existir después del primer await; se guarda el botón antes.
   const button = event.currentTarget;
   button.disabled = true;
-  button.textContent = 'Actualizando…';
+  button.classList.add('busy');
+  document.querySelector('#last-update').textContent = 'Buscando juegos…';
   const notice = notify('Buscando juegos instalados…', { type: 'loading' });
   try {
     await request('/api/scan', { method: 'POST' });
@@ -2115,9 +2345,11 @@ document.querySelector('#refresh').onclick = async (event) => {
     });
   } finally {
     button.disabled = false;
-    button.innerHTML = icon('refresh') + ' Actualizar';
+    button.classList.remove('busy');
+    renderSyncStatus();
   }
 };
+document.querySelector('#open-diagnostics').onclick = () => showPage('diagnostics');
 document.querySelector('#export-preferences').onclick = exportPreferences;
 document.querySelector('#import-preferences').onchange = (event) => {
   const file = event.target.files[0];

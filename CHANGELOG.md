@@ -1,5 +1,16 @@
 # Registro de cambios
 
+## 0.17.0 — 24 de octubre de 2026
+
+Fase 2 del plan de experiencia: un Inicio que propone qué jugar.
+
+- Imagen principal a todo el ancho con el último juego que jugaste (en Steam o desde la aplicación), su logo, horas jugadas, última sesión y los botones Jugar, Ver ficha y Favorito. Las miniaturas de la derecha cambian entre cinco juegos destacados.
+- Filas por intención con desplazamiento horizontal: Continuar, Favoritos, Instalados sin estrenar, Para una sesión corta, Lo mejor valorado de tu colección y Para instalar. Las filas vacías no aparecen, salvo Favoritos, que explica cómo marcar juegos.
+- Con el teclado, las flechas izquierda y derecha recorren una fila; arriba y abajo pasan a la fila vecina.
+- Las métricas con contadores salen de Inicio. El estado de la biblioteca pasa a Configuración, y la sección de revisión aparece en la barra lateral sólo cuando hay juegos que necesitan atención, con su cantidad.
+- «Actualizar» y la hora de la última indexación se reemplazan por «Buscar juegos nuevos» y «Biblioteca actualizada hace 3 h» al pie de la barra lateral.
+- La selección de juegos para Inicio vive en `public/shelves.js` y tiene pruebas automáticas.
+
 ## 0.16.0 — 24 de octubre de 2026
 
 Fase 1 del plan de experiencia: identidad visual.

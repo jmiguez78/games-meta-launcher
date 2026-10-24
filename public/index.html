@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/ui.css" />
     <link rel="stylesheet" href="/experience.css" />
   </head>
-  <body>
+  <body data-page="home">
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -26,71 +26,51 @@
           <button class="nav-item" data-page="library">
             <span data-icon="grid"></span><span class="nav-label">Biblioteca</span>
           </button>
-          <button class="nav-item" data-page="diagnostics">
-            <span data-icon="activity"></span><span class="nav-label">Diagnóstico</span>
+          <button class="nav-item hidden" data-page="diagnostics" id="nav-diagnostics">
+            <span data-icon="activity"></span><span class="nav-label">Para revisar</span
+            ><span id="review-count" class="nav-badge"></span>
           </button>
           <button class="nav-item" data-page="settings">
             <span data-icon="settings"></span><span class="nav-label">Configuración</span>
           </button>
         </nav>
         <div class="sidebar-footer">
-          <span class="status-dot" aria-hidden="true"></span><span class="nav-label">Biblioteca local</span>
+          <button id="refresh" type="button" class="nav-item sync-button" aria-describedby="last-update">
+            <span data-icon="refresh"></span><span class="nav-label">Buscar juegos nuevos</span>
+          </button>
+          <p id="last-update" class="sync-status nav-label" role="status">Cargando inventario…</p>
         </div>
       </aside>
       <main class="workspace">
         <header class="topbar">
           <h1 id="page-title">Inicio</h1>
           <div class="top-actions">
-            <span id="last-update" class="last-update">Cargando inventario…</span
-            ><button id="open-palette" class="button palette-trigger" aria-keyshortcuts="Control+K">
+            <button id="open-palette" class="button palette-trigger" aria-keyshortcuts="Control+K">
               <span data-icon="search"></span> Buscar o ir a…
-              <kbd class="search-hint" aria-hidden="true">Ctrl K</kbd></button
-            ><button id="refresh" class="button"><span data-icon="refresh"></span> Actualizar</button>
+              <kbd class="search-hint" aria-hidden="true">Ctrl K</kbd>
+            </button>
           </div>
         </header>
 
         <section id="home-page" class="page">
-          <section class="home-summary">
-            <div>
-              <h2>Elegí qué jugar.</h2>
-              <p id="home-summary">Tus juegos, tu ritmo y lo que querés volver a jugar.</p>
+          <section id="home-hero" class="home-hero" aria-labelledby="hero-title" data-art-host>
+            <div class="hero-backdrop" aria-hidden="true"></div>
+            <div class="hero-content">
+              <p id="hero-reason" class="hero-reason"></p>
+              <h2 id="hero-title" class="hero-title"></h2>
+              <img id="hero-wordmark" class="hero-wordmark" alt="" hidden />
+              <p id="hero-facts" class="hero-facts"></p>
+              <div class="hero-actions">
+                <button type="button" class="button primary hero-play" data-hero-action="play">
+                  <span class="hero-play-icon"></span><span class="label"></span></button
+                ><button type="button" class="button hero-secondary" data-hero-action="detail">Ver ficha</button
+                ><button type="button" class="icon-btn hero-favorite" data-hero-action="favorite"></button>
+              </div>
             </div>
-            <button class="button" data-go-library>Explorar biblioteca <span data-icon="arrow"></span></button>
+            <div id="hero-picker" class="hero-picker" role="group" aria-label="Otros juegos destacados"></div>
           </section>
-          <section class="collection-pulse" aria-label="Resumen de biblioteca">
-            <article class="collection-metric">
-              <span class="metric-icon" data-icon="gamepad" aria-hidden="true"></span>
-              <span>En colección</span><strong id="stat-total">—</strong><small>juegos reunidos</small>
-            </article>
-            <article class="collection-metric" id="metric-ready">
-              <span class="metric-icon" data-icon="play" aria-hidden="true"></span>
-              <span>Para jugar</span><strong id="stat-ready">—</strong><small>listos para iniciar</small
-              ><i class="metric-meter" aria-hidden="true"></i>
-            </article>
-            <article class="collection-metric" id="metric-favorites">
-              <span class="metric-icon" data-icon="star" aria-hidden="true"></span>
-              <span>Favoritos</span><strong id="stat-favorites">—</strong><small>elegidos por vos</small
-              ><i class="metric-meter" aria-hidden="true"></i>
-            </article>
-            <article class="collection-metric" id="metric-progress">
-              <span class="metric-icon" data-icon="activity" aria-hidden="true"></span>
-              <span>En curso</span><strong id="stat-progress">—</strong><small>partidas activas</small
-              ><i class="metric-meter" aria-hidden="true"></i>
-            </article>
-          </section>
-          <section class="section-heading">
-            <div>
-              <h2 id="quick-heading">Para jugar ahora</h2>
-              <p id="quick-subtitle">Tus favoritos, juegos recientes y accesos listos.</p>
-            </div>
-            <button class="text-button" data-go-library>Explorar todo <span data-icon="arrow"></span></button>
-          </section>
-          <section
-            id="quick-library"
-            class="library posters quick-posters"
-            aria-labelledby="quick-heading"
-            aria-describedby="library-help"
-          ></section>
+          <div id="home-empty" class="library-state hidden"></div>
+          <div id="home-shelves" class="home-shelves"></div>
         </section>
 
         <section id="library-page" class="page hidden">
@@ -217,6 +197,16 @@
         <section id="settings-page" class="page hidden">
           <p class="page-intro">Administrá la apariencia, el mantenimiento de tu biblioteca y tus datos personales.</p>
           <div class="settings-grid">
+            <section class="settings-card status-card">
+              <span class="card-icon" data-icon="activity"></span>
+              <div>
+                <h2>Estado de la biblioteca</h2>
+                <p id="settings-health">Revisando la biblioteca…</p>
+              </div>
+              <div class="button-row">
+                <button type="button" class="button" id="open-diagnostics">Ver el estado por plataforma</button>
+              </div>
+            </section>
             <section class="settings-card">
               <span class="card-icon" data-icon="gamepad"></span>
               <div>
@@ -430,6 +420,7 @@
       </footer>
     </dialog>
     <section id="toasts" class="toasts" aria-label="Notificaciones" aria-live="polite"></section>
+    <script src="/shelves.js"></script>
     <script src="/steam-ui.js"></script>
     <script src="/app.js"></script>
   </body>

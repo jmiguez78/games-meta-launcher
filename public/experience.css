@@ -520,3 +520,424 @@ dialog::backdrop {
     transform: none;
   }
 }
+
+/* ── Inicio: imagen principal ───────────────────────────────── */
+.workspace {
+  position: relative;
+}
+body[data-page='home'] .topbar {
+  position: absolute;
+  top: 28px;
+  right: clamp(24px, 3.6vw, 56px);
+  z-index: 3;
+  margin: 0;
+}
+body[data-page='home'] .topbar h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+body[data-page='home'] .palette-trigger {
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(8 7 12 / 45%);
+  backdrop-filter: blur(12px);
+  color: #f2eff8;
+}
+.home-hero {
+  --art: var(--ambient);
+  position: relative;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  min-height: clamp(440px, 64vh, 660px);
+  margin: -34px calc(-1 * clamp(24px, 3.6vw, 56px)) 0;
+  padding: 120px clamp(24px, 3.6vw, 56px) 44px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: color-mix(in srgb, var(--art) 30%, var(--bg));
+}
+.hero-layer {
+  position: absolute;
+  inset: 0;
+  background-position: center 28%;
+  background-size: cover;
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity 600ms var(--ease-out),
+    transform 1200ms var(--ease-out);
+}
+.hero-layer.show {
+  opacity: 1;
+  transform: none;
+}
+/* Sin imagen panorámica se usa la portada, desenfocada para que funcione como fondo. */
+.hero-layer.is-cover {
+  filter: blur(28px) saturate(1.2);
+  transform: scale(1.2);
+}
+.hero-layer.is-cover.show {
+  transform: scale(1.15);
+}
+.home-hero::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  background:
+    linear-gradient(90deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 78%, transparent) 30%, transparent 68%),
+    linear-gradient(0deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 40%, transparent) 30%, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 55%, transparent) 0%, transparent 22%);
+}
+.hero-content {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  max-width: min(600px, 100%);
+  min-width: 0;
+}
+.hero-reason {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.hero-reason::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--art);
+  box-shadow: 0 0 12px var(--art);
+  content: '';
+}
+.hero-title {
+  margin: 0;
+  font-size: clamp(44px, 5.6vw, 76px);
+  font-stretch: 78%;
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.hero-wordmark {
+  display: block;
+  max-width: min(460px, 100%);
+  max-height: 160px;
+  object-fit: contain;
+  object-position: left bottom;
+  filter: drop-shadow(0 6px 24px rgb(0 0 0 / 55%));
+}
+.hero-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.hero-facts span + span {
+  position: relative;
+}
+.hero-facts span + span::before {
+  position: absolute;
+  top: 50%;
+  left: -10px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+  opacity: 0.6;
+}
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+}
+.hero-actions .button {
+  height: 50px;
+  padding: 0 22px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+.hero-play {
+  padding-left: 18px !important;
+}
+.hero-play .hero-play-icon .icon {
+  width: 18px;
+  height: 18px;
+}
+.home-hero .button.primary {
+  border-color: var(--play);
+  background: var(--play);
+  color: var(--play-ink);
+  font-weight: 700;
+}
+.home-hero .button.primary:hover {
+  border-color: var(--play-strong);
+  background: var(--play-strong);
+}
+.hero-secondary,
+.hero-favorite {
+  border: 1px solid rgb(255 255 255 / 22%);
+  background: rgb(8 7 12 / 40%);
+  color: #f2eff8;
+  backdrop-filter: blur(12px);
+}
+.hero-secondary:hover,
+.hero-favorite:hover {
+  border-color: rgb(255 255 255 / 45%);
+  background: rgb(8 7 12 / 60%);
+  color: #fff;
+}
+.hero-favorite {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+}
+.hero-favorite[aria-pressed='true'] {
+  color: #ffe27a;
+}
+.hero-picker {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: end;
+}
+.hero-thumb {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  aspect-ratio: 2 / 3;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 9px;
+  background: var(--surface-soft) center / cover no-repeat;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.55;
+  box-shadow: 0 10px 22px -10px rgb(0 0 0 / 80%);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+.hero-thumb .cover-initial {
+  font-size: 13px;
+}
+.hero-thumb:hover {
+  opacity: 0.9;
+}
+.hero-thumb[aria-pressed='true'] {
+  opacity: 1;
+  outline: 2px solid #f2eff8;
+  outline-offset: 3px;
+  transform: translateY(-6px);
+}
+
+/* ── Inicio: filas por intención ────────────────────────────── */
+.home-shelves {
+  display: grid;
+  gap: 36px;
+  margin-top: 8px;
+}
+.shelf {
+  min-width: 0;
+}
+.shelf-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.shelf-heading h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.shelf-heading p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.shelf-heading p:empty {
+  display: none;
+}
+.shelf-controls {
+  display: flex;
+  gap: 6px;
+}
+.shelf-controls .icon-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--ink-soft);
+}
+.shelf-controls .icon-btn:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+.library.posters.shelf-track {
+  display: grid;
+  grid-auto-columns: clamp(136px, 12.5vw, 184px);
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  gap: 18px;
+  margin: 0 -8px;
+  padding: 10px 8px 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 8px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.shelf-track::-webkit-scrollbar {
+  display: none;
+}
+.shelf-track .poster {
+  scroll-snap-align: start;
+}
+.library.posters.shelf-track.shelf-empty {
+  display: block;
+  margin: 0;
+  padding: 18px 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+#home-empty {
+  margin-top: 24px;
+}
+
+/* ── Barra lateral: estado de la biblioteca y revisión ──────── */
+.sidebar-footer {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+}
+.sync-button {
+  width: 100%;
+}
+.sync-button.busy .icon {
+  animation: spin 1s linear infinite;
+}
+.sync-status {
+  margin: 0;
+  padding: 0 13px;
+  overflow: hidden;
+  color: #8e87a3;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+.nav-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--warning);
+  color: #1d1305;
+  font-size: 11px;
+  font-weight: 700;
+}
+.nav-badge:empty {
+  display: none;
+}
+/* Con la barra cerrada, el contador queda sobre el ícono. */
+.sidebar:not(:hover):not(:has(:focus-visible)) .nav-badge {
+  position: absolute;
+  top: 4px;
+  left: 28px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+}
+.status-card .button-row {
+  margin-top: 4px;
+}
+
+@media (max-width: 980px) {
+  .home-hero {
+    margin-top: -28px;
+  }
+  .sidebar-footer {
+    display: flex;
+    margin-top: 0;
+    margin-left: auto;
+  }
+  .sync-status {
+    display: none;
+  }
+  body[data-page='home'] .topbar {
+    top: 24px;
+  }
+}
+@media (max-width: 740px) {
+  .home-hero {
+    flex-direction: column;
+    align-items: start;
+    min-height: 0;
+    padding-top: 96px;
+  }
+  .hero-actions .button {
+    height: 46px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-layer,
+  .hero-thumb {
+    transition: none;
+  }
+  .sync-button.busy .icon {
+    animation: none;
+  }
+}
+
+/* La imagen principal es oscura por diseño en ambos temas: los logos de los juegos suelen ser claros. */
+:root[data-theme='light'] .home-hero {
+  --bg: #0e0d15;
+  --surface-soft: #1e1b29;
+  --ink: #f2eff8;
+  --ink-soft: #cbc5d8;
+  margin-bottom: 8px;
+  border-radius: 0 0 28px 28px;
+  color: var(--ink);
+}
+:root[data-theme='light'] :is(.hero-secondary, .hero-favorite) {
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(8 7 12 / 40%);
+  color: #f2eff8;
+}
+:root[data-theme='light'] .hero-thumb[aria-pressed='true'] {
+  outline-color: #f2eff8;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .home-hero {
+    --bg: #0e0d15;
+    --surface-soft: #1e1b29;
+    --ink: #f2eff8;
+    --ink-soft: #cbc5d8;
+    margin-bottom: 8px;
+    border-radius: 0 0 28px 28px;
+    color: var(--ink);
+  }
+}

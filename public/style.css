@@ -276,59 +276,6 @@ body {
 .hidden {
   display: none !important;
 }
-.welcome-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 30px;
-  min-height: 205px;
-  padding: 32px 38px;
-  border-radius: 18px;
-  overflow: hidden;
-  position: relative;
-  background: linear-gradient(120deg, #1b2146, #303c7d);
-  color: #eff5ff;
-  box-shadow: var(--shadow-lg);
-}
-.welcome-banner:after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(#ffffff08 1px, transparent 1px);
-  background-size: 100% 5px;
-  pointer-events: none;
-}
-.welcome-banner > *,
-.welcome-banner button {
-  position: relative;
-  z-index: 1;
-}
-.welcome-banner h2 {
-  margin: 9px 0 8px;
-  font-size: 30px;
-  letter-spacing: -0.045em;
-}
-.welcome-banner p:not(.eyebrow) {
-  max-width: 480px;
-  margin: 0 0 20px;
-  color: #cbd6ef;
-}
-.welcome-banner .eyebrow {
-  color: var(--retro-aqua);
-  font-family: ui-monospace, monospace;
-}
-.banner-token {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 105px;
-  height: 105px;
-  border: 8px solid #c6973a;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 7px #6e5224;
-  color: var(--retro-yellow);
-  font-size: 50px;
-}
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -801,16 +748,6 @@ legend {
   .last-update {
     max-width: 190px;
     text-align: right;
-  }
-  .banner-token {
-    display: none;
-  }
-  .welcome-banner {
-    min-height: 0;
-    padding: 27px 23px;
-  }
-  .welcome-banner h2 {
-    font-size: 26px;
   }
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);

@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { CATALOG_SCHEMA, scanLibrary, steamArtwork } from './indexer.mjs';
 import { createIgdb, imageUrl } from './igdb.mjs';
 import { createSteam, mergeSteamLibrary } from './steam.mjs';
+import { createSteamAssets } from './steam-assets.mjs';
 import { displayName } from './names.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -67,7 +68,8 @@ function safeOverride(value) {
     ? { type: value.type, target: value.target.trim(), available: true }
     : null;
 }
-// Imágenes: primero las que guardan los launchers en esta PC; si faltan, la CDN de Steam y después IGDB.
+// Imágenes: primero las que guardan los launchers en esta PC; si faltan, la tienda de Steam y después IGDB.
+// Lo descargado queda en art-cache y no se vuelve a pedir.
 const artCacheDir = path.join(dataDir, 'art-cache');
 const ART_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
 // wordmark: el logo con fondo transparente que Steam muestra sobre la imagen panorámica.
@@ -80,9 +82,12 @@ const igdbImageSizes = { cover: 't_cover_big', hero: 't_1080p' };
 const pendingDownloads = new Map();
 const igdb = createIgdb(dataDir);
 const steam = createSteam(dataDir);
+const steamAssets = createSteamAssets(dataDir);
+const isSteamApp = (game) => game.platform === 'Steam' && /^\d+$/.test(game.id);
+// Rutas clásicas de la CDN: alcanzan para saber si hay arte en línea sin consultar a Steam.
 function onlineSources(game, meta, kind) {
   const sources = [];
-  if (game.platform === 'Steam' && /^\d+$/.test(game.id))
+  if (isSteamApp(game))
     sources.push(
       ...steamCdnAssets[kind].map((asset) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.id}/${asset}`)
     );
@@ -146,8 +151,18 @@ async function downloadArt(sources, file, missFile) {
   }
   return null;
 }
+// Orden de descarga: la ruta vigente que informa la tienda de Steam, la ruta clásica, IGDB y, para la portada,
+// la cabecera horizontal como último recurso.
+async function downloadSources(game, meta, kind) {
+  const classic = onlineSources(game, meta, kind);
+  if (!isSteamApp(game)) return classic;
+  const current = (await steamAssets.urls(game.id)) ?? {};
+  const header = kind === 'cover' ? classic.filter((url) => url.endsWith('/header.jpg')) : [];
+  const rest = classic.filter((url) => !header.includes(url));
+  return [...new Set([current[kind], ...rest, kind === 'cover' ? current.header : null, ...header].filter(Boolean))];
+}
 async function onlineArt(game, meta, kind) {
-  const sources = onlineSources(game, meta, kind);
+  const sources = await downloadSources(game, meta, kind);
   if (!sources.length) return null;
   // El nombre depende de las fuentes: si IGDB aporta una imagen nueva, no la bloquea una ausencia anterior.
   const name = crypto
@@ -179,11 +194,10 @@ async function gameArt(key, kind) {
   const [catalog, metadata, account] = await Promise.all([rawLibrary(), igdb.metadata(), steam.account()]);
   const game = mergeSteamLibrary(catalog.games, account).find((item) => item.key === key);
   if (!game) return null;
-  // Los inventarios anteriores no registraban el logo de Steam: se busca en la caché local al pedirlo.
-  const art =
-    kind === 'wordmark' && !game.art?.wordmark && game.platform === 'Steam' && /^\d+$/.test(game.id)
-      ? { ...game.art, ...(await steamArtwork(game.id)) }
-      : game.art;
+  // Los juegos de la cuenta que no están instalados (y los inventarios anteriores, que no registraban el logo)
+  // pueden tener el arte en la caché local del cliente de Steam: se busca ahí antes de descargar.
+  const missing = kind === 'cover' ? !(game.art?.portrait || game.art?.landscape || game.art?.logo) : !game.art?.[kind];
+  const art = missing && isSteamApp(game) ? { ...(await steamArtwork(game.id)), ...game.art } : game.art;
   return (await localArt(art, kind)) ?? (await onlineArt(game, metadata[key], kind));
 }
 function publicMeta(meta) {

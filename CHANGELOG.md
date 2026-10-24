@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.22.1 — 24 de octubre de 2026
+
+Correcciones.
+
+- Portadas faltantes: Steam publica el arte renovado de muchos juegos en una dirección nueva, y la anterior responde «no existe». Ahora se consulta a la tienda de Steam la dirección vigente de cada imagen (en lotes de 50 y guardada en `steam-assets.json`). La dirección clásica, IGDB y la cabecera horizontal quedan como respaldo.
+- Los juegos de la cuenta que no están instalados también usan el arte que el cliente de Steam ya guardó en esta PC, antes de descargar nada.
+- Las imágenes descargadas siguen guardándose en `art-cache` y no se vuelven a pedir.
+
 ## 0.22.0 — 24 de octubre de 2026
 
 Segunda ronda, etapa D: mando y pantalla grande.

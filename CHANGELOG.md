@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.29.1
+
+- Las direcciones con barras invertidas o «..» codificados se rechazan igual en Windows y en Linux (403). En Windows la prueba esperaba 404 y fallaba, aunque el archivo tampoco se servía.
+
 ## 0.29.0
 
 Tanda 2 del plan, «base para crecer»: una red de pruebas para cambiar sin miedo y una API más prolija. F2 (módulos) y F3 (estilos en capas) ya estaban hechas.

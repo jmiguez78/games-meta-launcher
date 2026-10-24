@@ -174,8 +174,12 @@ test('rechaza solicitudes de otros orígenes o con Host ajeno', async () => {
 
 test('no sirve archivos fuera de las carpetas públicas', async () => {
   assert.equal(await rawStatus('/covers/..%5Cpreferences.json'), 403);
+  // «/../» y «/%2e%2e/» los normaliza la URL (queda /package.json, que no está en public); con barras invertidas
+  // se rechazan en cualquier sistema.
   assert.equal(await rawStatus('/../package.json'), 404);
-  assert.equal(await rawStatus('/..%5Cpackage.json'), 404);
+  assert.equal(await rawStatus('/%2e%2e/package.json'), 404);
+  assert.equal(await rawStatus('/..%5Cpackage.json'), 403);
+  assert.equal(await rawStatus('/js%5C..%5C..%5Cpackage.json'), 403);
 });
 
 test('responde 404 al lanzar un juego inexistente', async () => {

@@ -638,12 +638,16 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
 }
 async function serveStatic(res, url) {
   const relative = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, '');
-  let target;
+  let decoded;
   try {
-    target = path.resolve(publicDir, decodeURIComponent(relative));
+    decoded = decodeURIComponent(relative);
   } catch {
     return send(res, 400, 'Dirección mal formada.', 'text/plain');
   }
+  // Barras invertidas o «..» codificados nunca son una ruta válida de la interfaz (igual en Windows y en Linux).
+  if (decoded.includes('\\') || decoded.split('/').includes('..'))
+    return send(res, 403, 'Acceso denegado.', 'text/plain');
+  const target = path.resolve(publicDir, decoded);
   if (!target.startsWith(publicDir + path.sep)) return send(res, 403, 'Acceso denegado.', 'text/plain');
   try {
     const bytes = await fs.readFile(target);

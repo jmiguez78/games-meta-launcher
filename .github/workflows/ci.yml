@@ -1,0 +1,72 @@
+# Integración continua: cada push y cada pull request pasan por las mismas pruebas que `npm run verify`.
+name: Pruebas
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Código y pruebas en Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Revisión de sintaxis, módulos y estilos
+        run: npm run check
+      - name: Formato
+        run: npx prettier --check src public test tools
+      - name: Pruebas
+        run: npm test
+
+  interfaz:
+    name: Interfaz (Playwright)
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Pantallas, flujos, accesibilidad y capturas
+        run: npm run test:ui
+      - name: Informe y diferencias de las capturas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-interfaz
+          path: |
+            test/ui/.informe
+            test/ui/.resultados
+          retention-days: 14
+
+  ejecutable:
+    name: Ejecutable portable
+    needs: [windows, interfaz]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: games-meta-launcher
+          path: releases/*.exe
+          retention-days: 14

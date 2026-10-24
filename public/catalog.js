@@ -7,8 +7,13 @@
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const lastPlayed = (game) => Math.max(time(game.lastLaunchedAt), time(game.steam && game.steam.lastPlayedAt));
-  const hoursPlayed = (game) =>
-    game.steam && Number.isFinite(game.steam.playtimeHours) ? game.steam.playtimeHours : null;
+  const isArcade = (game) => game.platform === 'Arcade';
+  // Horas según Steam o, para lo que abre el propio launcher (Arcade), según las sesiones que midió.
+  const hoursPlayed = (game) => {
+    if (game.steam && Number.isFinite(game.steam.playtimeHours)) return game.steam.playtimeHours;
+    if (Number.isFinite(game.playSeconds) && game.playSeconds > 0) return game.playSeconds / HOUR;
+    return isArcade(game) ? 0 : null;
+  };
   const rating = (game) => (game.meta && Number.isFinite(game.meta.rating) ? game.meta.rating : null);
   const length = (game) => {
     const seconds = game.meta && game.meta.timeToBeat && game.meta.timeToBeat.normally;
@@ -73,6 +78,35 @@
         return value == null ? [] : ['90', '80', '70'].filter((threshold) => value >= Number(threshold));
       }
     },
+    decade: {
+      label: 'Década',
+      options: [
+        ['1970', 'Años 70'],
+        ['1980', 'Años 80'],
+        ['1990', 'Años 90'],
+        ['2000', 'Años 2000'],
+        ['2010', 'Años 2010'],
+        ['2020', 'Años 2020']
+      ],
+      values: (game) => {
+        const year = game.meta && Number(game.meta.year);
+        return Number.isFinite(year) && year > 1900 ? [String(Math.floor(year / 10) * 10)] : [];
+      }
+    },
+    // Jugadores al mismo tiempo: un dato que MAME conoce de cada máquina de arcade.
+    players: {
+      label: 'Jugadores',
+      options: [
+        ['1', 'Un jugador'],
+        ['2', 'Dos jugadores'],
+        ['3', 'Tres o más']
+      ],
+      values: (game) => {
+        const players = game.arcade && game.arcade.players;
+        if (!players) return [];
+        return players >= 3 ? ['3'] : players === 2 ? ['2'] : ['1'];
+      }
+    },
     tag: { label: 'Etiqueta', values: (game) => (Array.isArray(game.tags) ? game.tags : []) }
   };
 
@@ -86,7 +120,9 @@
         game.platform,
         ...(Array.isArray(game.tags) ? game.tags : []),
         ...((game.meta && game.meta.genres) || []),
-        ...((game.meta && game.meta.developers) || [])
+        ...((game.meta && game.meta.developers) || []),
+        game.arcade && game.arcade.description,
+        game.arcade && game.arcade.series
       ].join(' ')
     );
     return words.every((word) => haystack.includes(word));
@@ -103,9 +139,16 @@
   function matchesScope(game, scope) {
     return scope !== 'installed' || game.installed !== false;
   }
-  function filterGames(games, { query = '', scope = '', filters = {}, favorite = false } = {}) {
+  // Colección: los juegos de PC (todas las tiendas), los de Arcade o todos juntos.
+  function matchesCollection(game, collection) {
+    if (collection === 'pc') return !isArcade(game);
+    if (collection === 'arcade') return isArcade(game);
+    return true;
+  }
+  function filterGames(games, { query = '', scope = '', collection = 'all', filters = {}, favorite = false } = {}) {
     return games.filter(
       (game) =>
+        matchesCollection(game, collection) &&
         matchesScope(game, scope) &&
         (!favorite || game.favorite) &&
         matchesQuery(game, query) &&
@@ -113,9 +156,13 @@
     );
   }
   // Conteo de cada opción con el resto de los filtros aplicados: muestra cuántos juegos quedarían al elegirla.
-  function facetCounts(games, { query = '', scope = '', filters = {}, favorite = false } = {}) {
+  function facetCounts(games, { query = '', scope = '', collection = 'all', filters = {}, favorite = false } = {}) {
     const base = games.filter(
-      (game) => matchesScope(game, scope) && (!favorite || game.favorite) && matchesQuery(game, query)
+      (game) =>
+        matchesCollection(game, collection) &&
+        matchesScope(game, scope) &&
+        (!favorite || game.favorite) &&
+        matchesQuery(game, query)
     );
     const result = {};
     for (const [id, facet] of Object.entries(facets)) {
@@ -163,7 +210,8 @@
   function collapseDuplicates(games) {
     const groups = new Map();
     for (const game of games) {
-      const key = titleKey(game.name);
+      // Un arcade y un juego de PC con el mismo nombre son juegos distintos: no se agrupan.
+      const key = isArcade(game) ? 'arcade:' + game.key : titleKey(game.name);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(game);
     }
@@ -184,6 +232,8 @@
     hoursPlayed,
     rating,
     length,
+    isArcade,
+    matchesCollection,
     filterGames,
     facetCounts,
     sortGames,

@@ -255,6 +255,9 @@
 .poster.gog .poster-art {
   background-image: linear-gradient(145deg, #8d5b92, #55325f);
 }
+.poster.arcade .poster-art {
+  background-image: linear-gradient(145deg, #a2542f, #5a2512);
+}
 .poster-art .cover-initial {
   font-size: 34px;
 }

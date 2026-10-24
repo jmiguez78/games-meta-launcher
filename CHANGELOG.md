@@ -1,5 +1,20 @@
 # Registro de cambios
 
+## 0.23.0 — 24 de octubre de 2026
+
+Arcade: los juegos de MAME como una tienda más.
+
+- Configuración → Arcade (MAME): con la ruta de `mame.exe`, el launcher verifica cada set de tu carpeta por CRC (sin descomprimir ni correr MAME para eso) y muestra sólo los que arrancan con tu versión. Con el set actual: 1.414 juegos listos de 6.910 archivos, y un resumen de por qué no arrancan los demás.
+- Un juego por grupo de versiones, con la versión mundial o de EE. UU. adelante y nombre limpio («Pac-Man», no «pacman.zip»). Las versiones regionales se juegan desde la página del juego. Títulos repetidos se distinguen por fabricante y año.
+- Fuera por defecto: BIOS, dispositivos, máquinas mecánicas, utilidades, emulación preliminar y contenido para adultos, casino y mahjong (este último se puede activar).
+- Biblioteca: selector PC · Arcade · Todo (por defecto PC) y filtros nuevos de década y jugadores. Bajo cada portada de arcade, fabricante y año.
+- Inicio: fila «Clásicos del arcade» con los mejor rankeados de `bestgames.ini`, en un orden que cambia cada día. Lo jugado en arcade entra en «Continuar».
+- Página del juego: datos de la máquina (fabricante, año, saga, categoría, jugadores, controles, pantalla, estado de emulación), versiones con su botón Jugar e imágenes de pantalla de título y juego.
+- Arte: flyers como portada, capturas en pixel art nítido como imagen principal y logos, desde libretro-thumbnails o desde las carpetas de arte de tu MAME.
+- Jugar abre MAME con tu configuración; al cerrarlo, la ventana vuelve al frente y se suma el tiempo jugado.
+- La búsqueda nocturna también vuelve a verificar Arcade (rápido: sólo relee los `.zip` que cambiaron).
+- Corrección: la búsqueda nocturna programada desde el ejecutable portable apuntaba a una copia temporal que se borra al cerrar; ahora usa la ruta real del `.exe`.
+
 ## 0.22.2 — 24 de octubre de 2026
 
 - Página del juego → Multimedia: la tira de capturas ya no desborda la pantalla hacia la derecha. Queda dentro de la columna principal, se desplaza por dentro y tiene flechas (como las filas de Inicio) que aparecen sólo si hay más capturas de las que entran.
@@ -112,7 +127,6 @@ Fase 0 del plan de experiencia: correcciones visibles.
 - Retirada la sección Steam del menú y su panel independiente de actividad, deseados, seguidos, recomendaciones y amigos. La navegación vuelve a Inicio, Biblioteca, Diagnóstico y Configuración.
 - Sincronización de la biblioteca de Steam trasladada a Configuración, junto a la conexión de cuenta.
 - Se conservan la biblioteca fusionada, los filtros de instalación, las cuatro vistas y los datos de actividad, logros, compatibilidad y tienda en las fichas.
-
 
 ## 0.14.0 — 23 de octubre de 2026
 

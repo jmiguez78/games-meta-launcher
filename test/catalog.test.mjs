@@ -94,3 +94,53 @@ test('un juego en dos tiendas se muestra una vez, con la copia jugable adelante'
     ]
   );
 });
+
+test('Arcade: colecciones, década, jugadores y horas medidas por el launcher', () => {
+  const arcadeGame = (key, extra = {}) => ({
+    key: 'arcade:' + key,
+    id: key,
+    name: extra.name ?? key,
+    platform: 'Arcade',
+    installed: true,
+    launch: { type: 'mame', target: key, available: true },
+    arcade: { players: extra.players ?? 1, description: key },
+    meta: { year: extra.year ?? 1985, genres: ['Shooter'] },
+    ...extra
+  });
+  const library = [
+    ...games,
+    arcadeGame('outrun', { name: 'Out Run', year: 1986, players: 1, playSeconds: 7200 }),
+    arcadeGame('tmnt', { name: 'Teenage Mutant Ninja Turtles', year: 1989, players: 4 }),
+    { key: 'pc-outrun', name: 'Out Run', platform: 'Steam', launch: ready, meta: { year: 2019 } }
+  ];
+  const keys = (list) => list.map((game) => game.key).sort();
+  assert.deepEqual(keys(filterGames(library, { collection: 'arcade' })), ['arcade:outrun', 'arcade:tmnt']);
+  assert.equal(filterGames(library, { collection: 'pc' }).length, library.length - 2);
+  assert.equal(filterGames(library, { collection: 'all' }).length, library.length);
+  // Un arcade y un juego de PC con el mismo título son juegos distintos.
+  assert.equal(collapseDuplicates(library.filter((game) => /outrun/.test(game.key))).length, 2);
+  const counts = facetCounts(library, { collection: 'arcade' });
+  assert.deepEqual(
+    counts.decade.options.filter((option) => option.count).map((option) => [option.value, option.count]),
+    [['1980', 2]]
+  );
+  assert.deepEqual(
+    counts.players.options.map((option) => [option.value, option.count]),
+    [
+      ['1', 1],
+      ['2', 0],
+      ['3', 1]
+    ]
+  );
+  assert.deepEqual(
+    counts.played.options.map((option) => [option.value, option.count]),
+    [
+      ['never', 1],
+      ['some', 1],
+      ['lots', 0]
+    ]
+  );
+  assert.deepEqual(keys(filterGames(library, { collection: 'arcade', filters: { players: ['3'] } })), ['arcade:tmnt']);
+  assert.deepEqual(keys(filterGames(library, { query: 'tortugas ninja' })), []);
+  assert.deepEqual(keys(filterGames(library, { query: 'tmnt' })), ['arcade:tmnt']);
+});

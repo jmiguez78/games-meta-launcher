@@ -255,6 +255,16 @@ test('guarda el tema y lo conserva al restaurar un respaldo', async () => {
   assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'light', minimizeOnLaunch: false });
 });
 
+test('Arcade sin MAME configurado no indexa ni rompe la biblioteca', async () => {
+  const info = await (await fetch(`${base}/api/integrations/mame`)).json();
+  assert.equal(info.configured, false);
+  assert.equal((await fetch(`${base}/api/mame/scan`, { method: 'POST' })).status, 400);
+  const invalid = await fetch(`${base}/api/integrations/mame`, { method: 'PUT', ...json({ exe: 'C:\\juego.exe' }) });
+  assert.equal(invalid.status, 500);
+  assert.match((await invalid.json()).error, /mame.exe/);
+  assert.equal((await fetch(`${base}/api/launch/arcade%3Apacman`, { method: 'POST' })).status, 404);
+});
+
 test('Steam sin cuenta no expone secretos ni permite instalar un juego ajeno', async () => {
   const settings = await (await fetch(`${base}/api/integrations/steam`)).json();
   assert.equal(settings.configured, false);

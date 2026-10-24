@@ -78,6 +78,7 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 | Interruptor | `input[type=checkbox][role=switch]` dentro de `.switch`. Minimizar al jugar y pantalla grande. |
 | Pestañas | Resumen, Información, Multimedia y, en Steam, Steam y Logros. Roles tablist/tab/tabpanel, flechas, Inicio y Fin. |
 | Descripción | En español desde la tienda de Steam cuando existe; si no, la de IGDB con una nota de que está en inglés. Mientras carga se muestra un esqueleto. |
+| Arcade | Portada = flyer de la máquina; imagen principal = captura en pixel art (`.hero-layer.pixel-art`, `image-rendering: pixelated`); bajo la portada, fabricante y año. En la página del juego, «Acerca de la máquina», «Versiones» (cada una con Jugar) e imágenes de título y juego. |
 | Paleta de comandos | Control+K. Los juegos muestran su portada. Enter juega; Mayús+Enter abre la página del juego. |
 | Aviso | `notify(mensaje, { type, action })`, apilados abajo a la derecha, con Deshacer o Reintentar. |
 | Campo con error | `showFormErrors(form, [[campo, mensaje]])`, el error junto al campo. |

@@ -66,3 +66,32 @@ test('las fechas relativas usan palabras simples', () => {
   assert.equal(hours(37.4), '37 h');
   assert.equal(hours(0), '');
 });
+
+test('Clásicos del arcade: sólo los mejor rankeados, en un orden que cambia cada día', () => {
+  const arcade = (key, score) => game('arcade:' + key, { platform: 'Arcade', arcade: { score } });
+  const games = [
+    ...Array.from({ length: 30 }, (_, index) => arcade('top' + index, 90)),
+    arcade('bueno', 80),
+    arcade('flojo', 40),
+    game('pc')
+  ];
+  const day = (n) => Date.UTC(2026, 9, 24 + n);
+  const shelf = (now) => homeShelves(games, { now }).find((item) => item.id === 'arcade');
+  const today = shelf(day(0));
+  assert.equal(today.games.length, 15);
+  assert.ok(today.games.every((item) => item.arcade.score === 90));
+  assert.deepEqual(shelf(day(0)).games, today.games);
+  assert.notDeepEqual(
+    shelf(day(1)).games.map((item) => item.key),
+    today.games.map((item) => item.key)
+  );
+  // La imagen principal no rellena con juegos de arcade al azar.
+  assert.deepEqual(
+    heroCandidates(games).map((pick) => pick.game.key),
+    ['pc']
+  );
+  assert.equal(
+    homeShelves([game('pc')]).some((item) => item.id === 'arcade'),
+    false
+  );
+});

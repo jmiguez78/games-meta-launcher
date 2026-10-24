@@ -43,14 +43,31 @@
       .sort((a, b) => rating(b) - rating(a) || byName(a, b))
       .forEach((game) => add(game, 'rated'));
     games
-      .filter(playable)
+      .filter((game) => playable(game) && game.platform !== 'Arcade')
       .sort(byName)
       .forEach((game) => add(game, 'ready'));
     return picks;
   }
 
   // Filas de Inicio en orden; las vacías no se devuelven, salvo Favoritos, que invita a marcar juegos.
-  function homeShelves(games, { exclude = [] } = {}) {
+  // Clásicos del arcade: los mejor rankeados de la colección, en un orden que cambia cada día para
+  // que la fila invite a descubrir y no muestre siempre los mismos quince.
+  function arcadeClassics(games, now = Date.now()) {
+    const day = Math.floor(now / DAY);
+    const mix = (key) => {
+      let hash = 2166136261;
+      for (let index = 0; index < key.length; index += 1) hash = Math.imul(hash ^ key.charCodeAt(index), 16777619);
+      // Mezcla con el día (finalizador de MurmurHash3): cada día da otro orden, estable durante ese día.
+      hash ^= Math.imul(day, 2654435761);
+      hash = Math.imul(hash ^ (hash >>> 16), 2246822507);
+      hash = Math.imul(hash ^ (hash >>> 13), 3266489909);
+      return (hash ^ (hash >>> 16)) >>> 0;
+    };
+    return games
+      .filter((game) => game.platform === 'Arcade' && playable(game) && game.arcade && game.arcade.score >= 80)
+      .sort((a, b) => b.arcade.score - a.arcade.score || mix(a.key) - mix(b.key));
+  }
+  function homeShelves(games, { exclude = [], now = Date.now() } = {}) {
     const skip = new Set(exclude);
     const limit = (list) => list.filter((game) => !skip.has(game.key)).slice(0, SHELF_LIMIT);
     const shelves = [
@@ -96,6 +113,12 @@
             .filter((game) => playable(game) && rating(game) >= 80)
             .sort((a, b) => rating(b) - rating(a) || byName(a, b))
         )
+      },
+      {
+        id: 'arcade',
+        title: 'Clásicos del arcade',
+        subtitle: 'Los mejor rankeados por la comunidad de MAME. Cambian cada día.',
+        games: limit(arcadeClassics(games, now))
       },
       {
         id: 'install',

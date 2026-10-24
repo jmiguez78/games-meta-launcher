@@ -10,6 +10,7 @@ import { CATALOG_SCHEMA, scanLibrary, steamArtwork } from './indexer.mjs';
 import { createIgdb, imageUrl } from './igdb.mjs';
 import { createSteam, mergeSteamLibrary } from './steam.mjs';
 import { createSteamAssets } from './steam-assets.mjs';
+import { createArcade } from './mame.mjs';
 import { displayName } from './names.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -83,9 +84,14 @@ const pendingDownloads = new Map();
 const igdb = createIgdb(dataDir);
 const steam = createSteam(dataDir);
 const steamAssets = createSteamAssets(dataDir);
+const arcade = createArcade(dataDir);
+const isArcade = (game) => game.platform === 'Arcade';
+// IGDB no conoce los sets de MAME por nombre: los juegos de Arcade traen sus datos del propio MAME.
+const forIgdb = (games) => games.filter((game) => !isArcade(game));
 const isSteamApp = (game) => game.platform === 'Steam' && /^\d+$/.test(game.id);
 // Rutas clásicas de la CDN: alcanzan para saber si hay arte en línea sin consultar a Steam.
 function onlineSources(game, meta, kind) {
+  if (isArcade(game)) return arcade.onlineSources(game, kind);
   const sources = [];
   if (isSteamApp(game))
     sources.push(
@@ -191,6 +197,18 @@ async function onlineArt(game, meta, kind) {
   return pendingDownloads.get(file);
 }
 async function gameArt(key, kind) {
+  if (key.startsWith('arcade:')) {
+    const game = (await arcade.games()).find((item) => item.key === key);
+    if (!game) return null;
+    for (const file of await arcade.localArt(game, kind)) {
+      const local = await localArt(
+        { [kind === 'hero' ? 'hero' : kind === 'wordmark' ? 'wordmark' : 'portrait']: file },
+        kind
+      );
+      if (local) return local;
+    }
+    return onlineArt(game, null, kind);
+  }
   const [catalog, metadata, account] = await Promise.all([rawLibrary(), igdb.metadata(), steam.account()]);
   const game = mergeSteamLibrary(catalog.games, account).find((item) => item.key === key);
   if (!game) return null;
@@ -206,24 +224,27 @@ function publicMeta(meta) {
   return { ...rest, ...(fetchedAt ? { fetchedAt } : {}) };
 }
 async function library() {
-  const [catalog, prefs, metadata, account] = await Promise.all([
+  const [catalog, prefs, metadata, account, arcadeGames] = await Promise.all([
     rawLibrary(),
     preferences(),
     igdb.metadata(),
-    steam.account()
+    steam.account(),
+    arcade.games()
   ]);
   return {
     ...catalog,
     steamUpdatedAt: account.updatedAt,
-    games: mergeSteamLibrary(catalog.games, account).map(({ art, ...game }) => {
+    games: [...mergeSteamLibrary(catalog.games, account), ...arcadeGames].map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
       const name = displayName(game.name);
       return {
         ...game,
         name,
         ...(name !== game.name ? { originalName: game.name } : {}),
-        artwork: artwork(game, art, metadata[game.key]),
-        meta: publicMeta(metadata[game.key]),
+        artwork: isArcade(game)
+          ? { cover: 'portrait', hero: true, wordmark: true, background: null }
+          : artwork(game, art, metadata[game.key]),
+        meta: publicMeta(metadata[game.key]) ?? game.meta ?? null,
         favorite: false,
         tags: [],
         progress: 'Pendiente',
@@ -250,7 +271,7 @@ async function configureSchedule(time) {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Indicá una hora válida en formato HH:MM.');
   if (process.platform !== 'win32') throw new Error('La indexación programada sólo está disponible en Windows.');
   const command = process.versions.electron
-    ? `"${process.execPath}" --scan`
+    ? `"${process.env.PORTABLE_EXECUTABLE_FILE || process.execPath}" --scan`
     : `"${process.execPath}" "${path.join(root, 'src', 'indexer.mjs')}"`;
   await execFileAsync('schtasks.exe', [
     '/Create',
@@ -335,6 +356,7 @@ function importedGame(saved) {
   if (typeof saved.lastLaunchedAt === 'string' && !Number.isNaN(Date.parse(saved.lastLaunchedAt)))
     next.lastLaunchedAt = new Date(saved.lastLaunchedAt).toISOString();
   if (typeof saved.coverFile === 'string' && coverName.test(saved.coverFile)) next.coverFile = saved.coverFile;
+  if (Number.isFinite(saved.playSeconds) && saved.playSeconds > 0) next.playSeconds = Math.round(saved.playSeconds);
   return next;
 }
 async function saveCover(update) {
@@ -365,7 +387,15 @@ export async function appSettings() {
     minimizeOnLaunch: settings.minimizeOnLaunch !== false
   };
 }
-export function createServer({ onSettingsChange, onLaunch } = {}) {
+// Suma el tiempo de una sesión que el launcher pudo medir (hoy, Arcade: abre y ve cerrarse a MAME).
+async function recordSession(key, seconds) {
+  if (!Number.isFinite(seconds) || seconds < 5) return;
+  const prefs = await preferences();
+  const saved = prefs.games[key] ?? {};
+  prefs.games[key] = { ...saved, playSeconds: (saved.playSeconds ?? 0) + Math.min(seconds, 86400) };
+  await writePreferences(prefs);
+}
+export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
   const server = http.createServer(async (req, res) => {
     try {
       if (!trustedRequest(req)) return reply(res, 403, JSON.stringify({ error: 'Solicitud no permitida.' }));
@@ -459,14 +489,29 @@ export function createServer({ onSettingsChange, onLaunch } = {}) {
       if (req.method === 'POST' && url.pathname === '/api/scan') {
         const scanned = await scanLibrary();
         if ((await steam.settings()).configured) steam.sync().catch(() => {});
+        if ((await arcade.settings()).exe) arcade.start();
         return reply(res, 200, JSON.stringify(scanned));
+      }
+      if (url.pathname === '/api/integrations/mame') {
+        if (req.method === 'PUT') {
+          const update = await body(req);
+          await arcade.configure(update);
+          if ('exe' in update && (await arcade.settings()).exe) arcade.start();
+        }
+        if (req.method === 'GET' || req.method === 'PUT') return reply(res, 200, JSON.stringify(await arcade.info()));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/mame/scan') {
+        if (!(await arcade.settings()).exe)
+          return reply(res, 400, JSON.stringify({ error: 'Indicá dónde está mame.exe primero.' }));
+        arcade.start();
+        return reply(res, 202, JSON.stringify(await arcade.info()));
       }
       if (url.pathname === '/api/integrations/igdb') {
         if (req.method === 'GET') return reply(res, 200, JSON.stringify(await igdb.settings()));
         if (req.method === 'PUT') {
           const update = await body(req);
           await igdb.connect(String(update.clientId ?? '').trim(), String(update.clientSecret ?? '').trim());
-          igdb.start((await library()).games);
+          igdb.start(forIgdb((await library()).games));
           return reply(res, 200, JSON.stringify({ ...(await igdb.settings()), status: igdb.status() }));
         }
         if (req.method === 'DELETE') {
@@ -479,7 +524,7 @@ export function createServer({ onSettingsChange, onLaunch } = {}) {
       if (req.method === 'POST' && url.pathname === '/api/metadata/refresh') {
         if (!(await igdb.settings()).configured)
           return reply(res, 400, JSON.stringify({ error: 'Conectá IGDB en Configuración primero.' }));
-        igdb.start((await library()).games);
+        igdb.start(forIgdb((await library()).games));
         return reply(res, 202, JSON.stringify(igdb.status()));
       }
       if (req.method === 'GET' && url.pathname === '/api/preferences/export')
@@ -514,11 +559,21 @@ export function createServer({ onSettingsChange, onLaunch } = {}) {
         return reply(res, 200, JSON.stringify(prefs.games[update.key]));
       }
       if (req.method === 'POST' && url.pathname.startsWith('/api/launch/')) {
-        const game = (await library()).games.find(
-          (item) => item.key === decodeURIComponent(url.pathname.slice('/api/launch/'.length))
-        );
+        const key = decodeURIComponent(url.pathname.slice('/api/launch/'.length));
+        const games = (await library()).games;
+        // Una versión regional de Arcade se juega con su set, pero el tiempo se suma al juego.
+        const game =
+          games.find((item) => item.key === key) ??
+          (key.startsWith('arcade:')
+            ? games.find((item) => item.arcade?.versions.some((version) => `arcade:${version.id}` === key))
+            : null);
         if (!game) return reply(res, 404, JSON.stringify({ error: 'Juego no encontrado.' }));
-        await launch(game);
+        if (game.launch?.type === 'mame')
+          await arcade.launch(key.slice('arcade:'.length), async (seconds) => {
+            await recordSession(game.key, seconds).catch(() => {});
+            onGameExit?.(game);
+          });
+        else await launch(game);
         const prefs = await preferences();
         prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
         await writePreferences(prefs);

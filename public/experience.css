@@ -1552,14 +1552,16 @@ a.meta-source {
 .settings-status {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: baseline;
   margin: 0 0 6px;
   color: var(--ink-soft);
   font-weight: 600;
 }
 .settings-status::before {
+  flex: none;
   width: 8px;
   height: 8px;
+  transform: translateY(-1px);
   border-radius: 50%;
   background: var(--muted);
   content: '';
@@ -1750,4 +1752,55 @@ body.gamepad-active .tile:focus {
 }
 body.gamepad-active .poster:focus .poster-art {
   transform: translateY(-6px) scale(1.05);
+}
+
+/* Arcade: capturas en pixel art nítido, versiones regionales e imágenes de la máquina. */
+.hero-layer.pixel-art {
+  image-rendering: pixelated;
+  background-position: center;
+}
+.arcade-versions {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.arcade-versions li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.arcade-versions .version-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arcade-versions .button {
+  flex: none;
+}
+.arcade-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.arcade-shots figure {
+  margin: 0;
+}
+.arcade-shots img {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+  image-rendering: pixelated;
+}
+.arcade-shots figcaption {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
 }

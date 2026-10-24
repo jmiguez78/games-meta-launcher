@@ -15,6 +15,11 @@ async function runScan() {
     if ((await steam.settings()).configured) await steam.sync();
   } catch {}
   steam.close();
+  try {
+    const { createArcade } = await import('./mame.mjs');
+    const arcade = createArcade(app.getPath('userData'));
+    if ((await arcade.settings()).exe) await arcade.refresh();
+  } catch {}
   app.quit();
 }
 async function openWindow() {
@@ -27,7 +32,15 @@ async function openWindow() {
   applyTheme(await appSettings());
   let window;
   // Al iniciar un juego, la ventana se minimiza para que el juego quede adelante (se puede desactivar).
-  server = startServer(0, { onSettingsChange: applyTheme, onLaunch: () => window?.minimize() });
+  // Al cerrar un juego que el launcher abrió (Arcade), la ventana vuelve al frente.
+  const comeBack = () => {
+    if (!window || window.isDestroyed()) return;
+    if (window.isMinimized()) window.restore();
+    window.show();
+    window.focus();
+    window.webContents.executeJavaScript("window.dispatchEvent(new Event('gml-game-exit'))").catch(() => {});
+  };
+  server = startServer(0, { onSettingsChange: applyTheme, onLaunch: () => window?.minimize(), onGameExit: comeBack });
   await new Promise((resolve) => server.once('listening', resolve));
   const port = server.address().port;
   window = new BrowserWindow({

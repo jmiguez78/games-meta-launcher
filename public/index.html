@@ -85,6 +85,14 @@
                 aria-keyshortcuts="/"
               /><kbd class="search-hint" aria-hidden="true">/</kbd></label
             >
+            <div id="collection" class="segmented scope hidden" role="group" aria-label="Colección">
+              <button type="button" data-collection="pc" aria-pressed="true">PC <span class="count"></span></button
+              ><button type="button" data-collection="arcade" aria-pressed="false">
+                Arcade <span class="count"></span></button
+              ><button type="button" data-collection="all" aria-pressed="false">
+                Todo <span class="count"></span>
+              </button>
+            </div>
             <div id="scope" class="segmented scope hidden" role="group" aria-label="Juegos que se muestran">
               <button type="button" data-scope="installed" aria-pressed="true">
                 Instalados <span class="count"></span></button
@@ -259,6 +267,36 @@
                       ><button class="text-button" id="steam-disconnect" type="button">Desconectar</button>
                     </div>
                     <p id="steam-form-error" class="form-error" role="alert"></p>
+                  </form>
+                </div>
+              </section>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Arcade (MAME)</h3>
+                  <p>
+                    Suma los juegos de tu carpeta de MAME que arrancan con tu versión, uno por juego, con sus versiones
+                    regionales agrupadas. MAME sigue usando tu <code>mame.ini</code>.
+                  </p>
+                </div>
+                <div class="settings-control">
+                  <form id="mame-form" class="schedule-form" autocomplete="off" novalidate>
+                    <p id="mame-status" class="settings-status" role="status">Consultando…</p>
+                    <div class="settings-fields">
+                      <label for="mame-exe">Ruta de mame.exe</label>
+                      <input id="mame-exe" spellcheck="false" placeholder="K:\Juegos\MAME64\mame.exe" />
+                    </div>
+                    <label class="switch"
+                      ><input id="mame-adult" type="checkbox" role="switch" /><span
+                        class="switch-track"
+                        aria-hidden="true"
+                      ></span
+                      ><span>Mostrar juegos para adultos, de casino y mahjong</span></label
+                    >
+                    <div class="button-row">
+                      <button class="button primary" id="mame-save" type="submit">Guardar y buscar juegos</button
+                      ><button class="button" id="mame-scan" type="button">Verificar de nuevo</button>
+                    </div>
+                    <p id="mame-error" class="form-error" role="alert"></p>
                   </form>
                 </div>
               </section>

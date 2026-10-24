@@ -3,13 +3,15 @@ const state = {
   query: '',
   favorite: false,
   // Facetas de la Biblioteca (ver catalog.js): dentro de cada una las opciones se suman.
-  filters: { store: [], genre: [], length: [], played: [], rating: [], tag: [] },
+  filters: { store: [], genre: [], length: [], played: [], rating: [], decade: [], players: [], tag: [] },
   sort: 'name',
   direction: 'asc',
   view: remembered('gml-library-view', 'icons', ['icons', 'explorer']),
   detailTab: 'summary',
   // Alcance de la Biblioteca: 'installed' (por defecto) o '' para toda la cuenta.
   installation: 'installed',
+  // Colección: 'pc' (por defecto), 'arcade' o 'all'. Sin juegos de Arcade el selector no se muestra.
+  collection: remembered('gml-collection', 'pc', ['pc', 'arcade', 'all']),
   selectedKey: '',
   page: 'home'
 };
@@ -271,6 +273,7 @@ function visibleEntries() {
   const filtered = GMLCatalog.filterGames(state.games, {
     query: state.query,
     scope: state.installation,
+    collection: activeCollection(),
     filters: state.filters,
     favorite: state.favorite
   });
@@ -294,7 +297,8 @@ function coverInfo(game) {
     'Xbox / Microsoft Store': 'xbox',
     'Ubisoft Connect': 'ubisoft',
     'EA app': 'ea',
-    'GOG Galaxy': 'gog'
+    'GOG Galaxy': 'gog',
+    Arcade: 'arcade'
   };
   return {
     initials: game.name
@@ -500,7 +504,10 @@ function metaLineHtml() {
 }
 function fillMetaLine(root, game) {
   const available = game.launch && game.launch.available;
-  root.querySelector('.platform-name').textContent = game.platform;
+  // En Arcade, la plataforma es siempre la misma: dice más el fabricante y el año.
+  root.querySelector('.platform-name').textContent = game.arcade
+    ? [game.meta?.developers?.[0], game.arcade.year].filter(Boolean).join(' · ') || game.platform
+    : game.platform;
   const status = root.querySelector('.status-pill');
   status.textContent = game.installed === false ? 'No instalado' : available ? 'Listo' : 'Requiere revisión';
   setStatusTone(status, game);
@@ -1080,7 +1087,8 @@ function descriptionSection(game) {
 const launchKinds = {
   uri: 'Mediante el launcher de la tienda',
   file: 'Archivo ejecutable',
-  appsFolder: 'Aplicación de Microsoft Store'
+  appsFolder: 'Aplicación de Microsoft Store',
+  mame: 'Con MAME, desde tu carpeta de MAME'
 };
 // Datos técnicos de la instalación, aparte del resumen: sólo hacen falta para resolver problemas.
 function installationSection(game) {
@@ -1094,6 +1102,7 @@ function installationSection(game) {
     ['Ubicación', game.location],
     ['Cómo se inicia', game.launch ? launchKinds[game.launch.type] || game.launch.type : ''],
     ['Nombre en la tienda', game.originalName],
+    ['Set de MAME', game.arcade ? game.id : ''],
     ['Detección', game.evidence]
   ].forEach(([label, value]) => {
     if (!value) return;
@@ -1189,7 +1198,8 @@ function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
   overview.append(descriptionSection(game));
   if (game.meta) overview.append(metaSection({ ...game.meta, summary: '' }));
   overview.append(...summaryExtras, personalSection(game), installationSection(game));
-  if (game.meta) appendExtendedMetadata(information, game.meta, media);
+  if (game.arcade) appendArcadeDetails(game, information, media);
+  else if (game.meta) appendExtendedMetadata(information, game.meta, media);
   [
     [
       information,
@@ -1205,6 +1215,102 @@ function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
   });
   selectDetailTab(content.has(state.detailTab) ? state.detailTab : 'summary');
   return tabs;
+}
+// Arcade: datos de la máquina según MAME, sus versiones regionales y las imágenes del juego.
+const arcadeControls = {
+  joy: 'Palanca',
+  stick: 'Palanca analógica',
+  trackball: 'Trackball',
+  dial: 'Perilla',
+  paddle: 'Paleta',
+  lightgun: 'Pistola',
+  pedal: 'Pedal',
+  doublejoy: 'Doble palanca',
+  positional: 'Volante',
+  mouse: 'Mouse',
+  keypad: 'Teclado numérico',
+  keyboard: 'Teclado',
+  mahjong: 'Panel de mahjong',
+  hanafuda: 'Panel de hanafuda',
+  gambling: 'Panel de apuestas'
+};
+const emulationText = {
+  good: 'Completa',
+  imperfect: 'Jugable, con fallos menores de imagen o sonido'
+};
+function appendArcadeDetails(game, information, media) {
+  const arcade = game.arcade;
+  const section = (title, open = true) => {
+    const details = document.createElement('details');
+    details.className = 'detail-section metadata-section';
+    details.open = open;
+    details.innerHTML = '<summary></summary><div class="metadata-content"></div>';
+    details.querySelector('summary').textContent = title;
+    return details;
+  };
+  const about = section('Acerca de la máquina');
+  const list = document.createElement('dl');
+  list.className = 'detail-tech';
+  [
+    ['Nombre en MAME', arcade.description],
+    ['Fabricante', arcade.manufacturer],
+    ['Año', arcade.year],
+    ['Saga', arcade.series],
+    ['Categoría', arcade.category],
+    ['Jugadores', arcade.players ? String(arcade.players) : ''],
+    ['Controles', (arcade.controls || []).map((item) => arcadeControls[item] || item).join(', ')],
+    ['Pantalla', arcade.vertical ? 'Vertical' : 'Horizontal'],
+    ['Emulación', emulationText[arcade.emulation] || '']
+  ].forEach(([label, value]) => {
+    if (!value) return;
+    const term = document.createElement('dt');
+    const description = document.createElement('dd');
+    term.textContent = label;
+    description.textContent = value;
+    list.append(term, description);
+  });
+  about.querySelector('.metadata-content').append(list);
+  information.append(about);
+  if (arcade.versions && arcade.versions.length) {
+    const versions = section('Versiones (' + arcade.versions.length + ')');
+    const items = document.createElement('ul');
+    items.className = 'arcade-versions';
+    arcade.versions.forEach((version) => {
+      const item = document.createElement('li');
+      item.innerHTML = '<span class="version-name"></span><button type="button" class="button small"></button>';
+      item.querySelector('.version-name').textContent = version.label;
+      item.querySelector('.version-name').title = version.description;
+      const button = item.querySelector('button');
+      button.innerHTML = icon('play') + '<span>Jugar</span>';
+      button.setAttribute('aria-label', 'Jugar ' + version.description);
+      button.onclick = () => playGame(game, version.id);
+      item.append(button);
+      items.append(item);
+    });
+    versions.querySelector('.metadata-content').append(items);
+    information.append(versions);
+  }
+  // Imágenes de libretro-thumbnails: pantalla de título y juego, en pixel art nítido.
+  const gallery = document.createElement('div');
+  gallery.className = 'arcade-shots';
+  const base = 'https://raw.githubusercontent.com/libretro-thumbnails/MAME/master/';
+  const file = encodeURIComponent(arcade.description.replace(/[&*/:`<>?\\|"]/g, '_')) + '.png';
+  [
+    ['Named_Titles', 'Pantalla de título'],
+    ['Named_Snaps', 'En juego']
+  ].forEach(([folder, label]) => {
+    const figure = document.createElement('figure');
+    figure.innerHTML = '<img loading="lazy" referrerpolicy="no-referrer" /><figcaption></figcaption>';
+    const img = figure.querySelector('img');
+    img.src = base + folder + '/' + file;
+    img.alt = label + ' de ' + game.name;
+    img.onerror = () => figure.remove();
+    figure.querySelector('figcaption').textContent = label;
+    gallery.append(figure);
+  });
+  const shots = section('Imágenes');
+  shots.querySelector('.metadata-content').append(gallery);
+  media.append(shots);
 }
 // Portada en cuadrícula.
 // options.caption reemplaza la plataforma bajo el título (por ejemplo, «Ayer» en la fila Continuar).
@@ -1423,7 +1529,7 @@ function renderLibrary() {
   const tile = focused?.key && library.querySelector('.tile[data-key="' + CSS.escape(focused.key) + '"]');
   if (tile) (focused.action ? tile.querySelector('[data-action="' + focused.action + '"]') : tile)?.focus();
   const total = GMLCatalog.collapseDuplicates(
-    GMLCatalog.filterGames(state.games, { scope: state.installation })
+    GMLCatalog.filterGames(state.games, { scope: state.installation, collection: activeCollection() })
   ).length;
   document.querySelector('#counter').textContent =
     entries.length === total
@@ -1474,7 +1580,11 @@ function paintBackdrop(host, game) {
     if (backdrop.dataset.key !== game.key) return;
     // La imagen nueva aparece sobre la anterior y la reemplaza al terminar el fundido.
     const layer = document.createElement('div');
-    layer.className = 'hero-layer' + (url.includes('/hero/') ? '' : ' is-cover');
+    layer.className =
+      'hero-layer' +
+      (url.includes('/hero/') ? '' : ' is-cover') +
+      // Las capturas de arcade son pixel art de baja resolución: se amplían nítidas, sin suavizar.
+      (game.platform === 'Arcade' && url.includes('/hero/') ? ' pixel-art' : '');
     layer.style.backgroundImage = 'url("' + url + '")';
     backdrop.append(layer);
     requestAnimationFrame(() => layer.classList.add('show'));
@@ -1834,16 +1944,34 @@ document.querySelector('#game-aside').addEventListener('click', (event) => {
   const game = state.games.find((item) => item.key === gamePage.dataset.key);
   if (action && game) posterAction(game, action);
 });
+const hasArcade = () => state.games.some((game) => game.platform === 'Arcade');
+// Sin juegos de Arcade no hay colecciones que elegir: se muestran todos.
+function activeCollection() {
+  return hasArcade() ? state.collection : 'all';
+}
+function renderCollection() {
+  const control = document.querySelector('#collection');
+  control.classList.toggle('hidden', !hasArcade());
+  control.querySelectorAll('[data-collection]').forEach((button) => {
+    const value = button.dataset.collection;
+    button.setAttribute('aria-pressed', String(value === state.collection));
+    button.querySelector('.count').textContent = GMLCatalog.collapseDuplicates(
+      GMLCatalog.filterGames(state.games, { collection: value })
+    ).length;
+  });
+}
 function renderScope() {
+  renderCollection();
   const unique = (games) => GMLCatalog.collapseDuplicates(games).length;
-  const installed = state.games.filter((game) => game.installed !== false);
+  const inCollection = GMLCatalog.filterGames(state.games, { collection: activeCollection() });
+  const installed = inCollection.filter((game) => game.installed !== false);
   const scope = document.querySelector('#scope');
-  // Sin juegos de la cuenta fuera de esta PC el selector no aporta nada y se oculta.
-  scope.classList.toggle('hidden', installed.length === state.games.length);
+  // Sin juegos de la cuenta fuera de esta PC el selector no aporta nada y se oculta (Arcade: todo está instalado).
+  scope.classList.toggle('hidden', installed.length === inCollection.length);
   scope.querySelectorAll('[data-scope]').forEach((button) => {
     const active = button.dataset.scope === state.installation;
     button.setAttribute('aria-pressed', String(active));
-    button.querySelector('.count').textContent = button.dataset.scope ? unique(installed) : unique(state.games);
+    button.querySelector('.count').textContent = button.dataset.scope ? unique(installed) : unique(inCollection);
   });
 }
 function renderFilters() {
@@ -1857,6 +1985,7 @@ function renderFacets() {
   const counts = GMLCatalog.facetCounts(state.games, {
     query: state.query,
     scope: state.installation,
+    collection: activeCollection(),
     filters: state.filters,
     favorite: state.favorite
   });
@@ -1915,7 +2044,9 @@ function renderActiveFilters() {
   const facetLabels = {
     length: Object.fromEntries(GMLCatalog.facets.length.options),
     played: Object.fromEntries(GMLCatalog.facets.played.options),
-    rating: Object.fromEntries(GMLCatalog.facets.rating.options)
+    rating: Object.fromEntries(GMLCatalog.facets.rating.options),
+    decade: Object.fromEntries(GMLCatalog.facets.decade.options),
+    players: Object.fromEntries(GMLCatalog.facets.players.options)
   };
   Object.entries(state.filters).forEach(([id, values]) =>
     values.forEach((value) =>
@@ -1953,7 +2084,7 @@ function renderActiveFilters() {
 function clearFilters() {
   state.query = '';
   state.favorite = false;
-  state.filters = { store: [], genre: [], length: [], played: [], rating: [], tag: [] };
+  state.filters = { store: [], genre: [], length: [], played: [], rating: [], decade: [], players: [], tag: [] };
   document.querySelector('#search').value = '';
   document.querySelector('#favorites-only').setAttribute('aria-pressed', 'false');
   renderLibrary();
@@ -2046,6 +2177,7 @@ async function uploadCover(game, file) {
 // Pantalla «Iniciando…»: responde al instante con el arte del juego mientras la tienda lo abre.
 const launchOverlay = document.querySelector('#launch-overlay');
 const launcherNames = {
+  Arcade: 'MAME',
   Steam: 'Steam',
   'Epic Games': 'Epic Games',
   'Xbox / Microsoft Store': 'Xbox',
@@ -2083,11 +2215,18 @@ launchOverlay.addEventListener('click', hideLaunchOverlay);
 window.addEventListener('focus', () => {
   if (launchOverlay.classList.contains('done')) hideLaunchOverlay();
 });
-async function playGame(game) {
+// Al cerrar MAME, la aplicación de escritorio vuelve al frente y avisa: se actualiza el tiempo jugado.
+window.addEventListener('gml-game-exit', () => {
+  hideLaunchOverlay();
+  load();
+});
+// version: en Arcade, el set de una versión regional; el tiempo jugado se suma al juego.
+async function playGame(game, version) {
   if (game.installed === false) return installSteamGame(game);
   showLaunchOverlay(game);
   try {
-    const result = await request('/api/launch/' + encodeURIComponent(game.key), { method: 'POST' });
+    const key = version ? 'arcade:' + version : game.key;
+    const result = await request('/api/launch/' + encodeURIComponent(key), { method: 'POST' });
     game.lastLaunchedAt = new Date().toISOString();
     launchOverlay.classList.add('done');
     document.querySelector('#launch-message').textContent = result.minimize
@@ -2286,6 +2425,122 @@ async function loadIgdb() {
     document.querySelector('#igdb-status').textContent = error.message;
   }
 }
+// Arcade (MAME): ruta del ejecutable, estado de la indexación y resultado de la verificación.
+let mamePoll;
+const plural = (count, one, many) => count.toLocaleString('es-AR') + ' ' + (count === 1 ? one : many);
+function describeMame(info) {
+  const status = info.status || {};
+  if (status.running) {
+    const phases = {
+      start: 'Preparando…',
+      version: 'Consultando la versión de MAME…',
+      zips: 'Leyendo tus archivos… ' + status.done + ' de ' + status.total,
+      listxml: 'Leyendo la descripción de las máquinas de MAME (la primera vez tarda un poco)…',
+      verify: 'Verificando cada juego…',
+      details: 'Sumando géneros, sagas y ranking…'
+    };
+    return phases[status.phase] || 'Buscando juegos…';
+  }
+  if (status.error) return status.error;
+  if (!info.configured) return 'Sin configurar. Indicá dónde está mame.exe.';
+  if (!info.stats) return 'Configurado. Todavía no se buscaron juegos.';
+  const stats = info.stats;
+  const broken = (stats.missing || 0) + (stats.device || 0) + (stats.disk || 0);
+  const parts = [
+    'MAME ' + info.version + ': ' + plural(info.visible, 'juego listo', 'juegos listos') + '.',
+    info.adult && !info.showAdult
+      ? plural(
+          info.adult,
+          'juego para adultos o de casino queda oculto.',
+          'juegos para adultos o de casino quedan ocultos.'
+        )
+      : '',
+    broken
+      ? plural(broken, 'set no arranca', 'sets no arrancan') +
+        ' con esta versión: ' +
+        [
+          stats.missing && stats.missing.toLocaleString('es-AR') + ' incompletos',
+          stats.device && stats.device.toLocaleString('es-AR') + ' sin archivos de dispositivo',
+          stats.disk && stats.disk.toLocaleString('es-AR') + ' necesitan disco CHD'
+        ]
+          .filter(Boolean)
+          .join(', ') +
+        '.'
+      : '',
+    stats.unknown ? plural(stats.unknown, 'archivo no es', 'archivos no son') + ' de esta versión de MAME.' : ''
+  ];
+  return parts.filter(Boolean).join(' ');
+}
+async function loadMame() {
+  try {
+    const info = await request('/api/integrations/mame');
+    const input = document.querySelector('#mame-exe');
+    if (document.activeElement !== input) input.value = info.exe || '';
+    document.querySelector('#mame-adult').checked = info.showAdult;
+    document.querySelector('#mame-scan').hidden = !info.configured;
+    document.querySelector('#mame-scan').disabled = Boolean(info.status?.running);
+    document.querySelector('#mame-save').disabled = Boolean(info.status?.running);
+    const status = document.querySelector('#mame-status');
+    status.textContent = describeMame(info);
+    status.classList.toggle('connected', Boolean(info.stats?.games));
+    clearTimeout(mamePoll);
+    if (info.status?.running) mamePoll = setTimeout(loadMame, 800);
+    else if (info.status?.finishedAt && info.status.finishedAt !== state.mameLoadedAt) {
+      state.mameLoadedAt = info.status.finishedAt;
+      await load();
+    }
+  } catch (error) {
+    document.querySelector('#mame-status').textContent = error.message;
+  }
+}
+document.querySelector('#mame-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const input = document.querySelector('#mame-exe');
+  const value = input.value.trim().replace(/^"|"$/g, '');
+  if (
+    !showFormErrors(
+      form,
+      /mame[^\\/]*\.exe$/i.test(value)
+        ? []
+        : [[input, 'Pegá la ruta completa de mame.exe, por ejemplo K:\\Juegos\\MAME64\\mame.exe.']]
+    )
+  )
+    return;
+  try {
+    await request('/api/integrations/mame', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ exe: value })
+    });
+    notify('Buscando tus juegos de Arcade. La primera vez puede tardar unos minutos.', { type: 'success' });
+    await loadMame();
+  } catch (error) {
+    setFormError(form, error.message);
+  }
+};
+document.querySelector('#mame-scan').onclick = async () => {
+  try {
+    await request('/api/mame/scan', { method: 'POST' });
+    await loadMame();
+  } catch (error) {
+    notifyError(error);
+  }
+};
+document.querySelector('#mame-adult').onchange = async (event) => {
+  const input = event.currentTarget;
+  try {
+    await request('/api/integrations/mame', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ showAdult: input.checked })
+    });
+    await load();
+  } catch (error) {
+    input.checked = !input.checked;
+    notifyError(error);
+  }
+};
 function showPage(page, { focus = true } = {}) {
   state.page = page;
   Object.keys(pageMeta).forEach((name) =>
@@ -2306,6 +2561,7 @@ function showPage(page, { focus = true } = {}) {
     document.querySelector('#big-screen').checked = document.body.classList.contains('big-screen');
     loadSchedule();
     loadIgdb();
+    loadMame();
     loadSteamSettings();
   }
   if (page === 'library' && focus) document.querySelector('#search').focus();
@@ -2577,6 +2833,14 @@ document.querySelector('#sort').onchange = (event) => {
   renderLibrary();
 };
 document.querySelector('#clear-filters').onclick = clearFilters;
+document.querySelectorAll('#collection [data-collection]').forEach((button) => {
+  button.onclick = () => {
+    state.collection = button.dataset.collection;
+    remember('gml-collection', state.collection);
+    renderScope();
+    renderLibrary();
+  };
+});
 document.querySelectorAll('#scope [data-scope]').forEach((button) => {
   button.onclick = () => {
     state.installation = button.dataset.scope;

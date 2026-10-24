@@ -1831,3 +1831,53 @@ body.gamepad-active .poster:focus .poster-art {
 html:has(body[data-page='library']) {
   scroll-padding-top: calc(var(--library-toolbar-h, 64px) + 12px);
 }
+
+/* Movimientos de los juegos de pelea: comandos con flechas, alineados para leerlos de un vistazo. */
+.moves .move-group {
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.moves .move-group > summary {
+  padding: 8px 0;
+  font-weight: 650;
+  cursor: pointer;
+}
+.move-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 24px;
+  margin: 0 0 12px;
+}
+.move-list dt {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--ink-soft);
+}
+.move-list dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-align: right;
+  white-space: nowrap;
+}
+.move-kind {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.move-kind.especial {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent-text);
+}
+.move-note {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}

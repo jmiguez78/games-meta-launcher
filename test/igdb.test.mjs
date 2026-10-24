@@ -192,3 +192,56 @@ test('una falla de IGDB mantiene intacta la información previamente descargada'
   assert.match(client.status().error, /503/);
   assert.equal(await fs.readFile(path.join(dir, 'metadata.json'), 'utf8'), previous);
 });
+
+test('Arcade: usa el identificador de Wikidata y, si no hay, sólo acepta el mismo título en Arcade', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gml-igdb-arcade-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  await fs.writeFile(
+    path.join(dir, 'integrations.json'),
+    JSON.stringify({ igdb: { clientId: 'client', secret: 'encrypted' } })
+  );
+  const bodies = [];
+  const client = createIgdb(dir, {
+    decrypt: async () => 'secret',
+    requestGapMs: 0,
+    fetchImpl: async (url, options) => {
+      const body = String(options.body ?? '');
+      bodies.push(body);
+      let response = [];
+      if (url.includes('oauth2/token')) response = { access_token: 'token', expires_in: 3600 };
+      else if (body.includes('where slug = "bubble-bobble"')) response = [{ id: 7 }];
+      else if (body.startsWith('search "contra"'))
+        response = [
+          { id: 90, name: 'Contra', first_release_date: Date.UTC(1988, 1, 9) / 1000 },
+          { id: 91, name: 'Contra', first_release_date: Date.UTC(1987, 1, 20) / 1000 }
+        ];
+      else if (body.startsWith('search "racing beat"')) response = [{ id: 5, name: 'Racing Lagoon' }];
+      else if (url.endsWith('/games'))
+        response = [
+          { id: 7, name: 'Bubble Bobble' },
+          { id: 90, name: 'Contra' }
+        ];
+      return new Response(JSON.stringify(response), { status: 200 });
+    }
+  });
+  const arcade = (key, name, year, extra = {}) => ({
+    key: 'arcade:' + key,
+    id: key,
+    name,
+    platform: 'Arcade',
+    arcade: { year },
+    ...extra
+  });
+  client.start([
+    arcade('bublbobl', 'Bubble Bobble', '1986', { igdbSlug: 'bubble-bobble' }),
+    arcade('contra', 'Contra', '1987'),
+    arcade('racingb', 'Racing Beat', '1991')
+  ]);
+  while (client.status().running) await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(client.status().error, null);
+  const saved = JSON.parse(await fs.readFile(path.join(dir, 'metadata.json'), 'utf8'));
+  assert.equal(saved.games['arcade:bublbobl'].igdbId, 7);
+  assert.equal(saved.games['arcade:contra'].igdbId, 90);
+  assert.equal(saved.games['arcade:racingb'].igdbId, null);
+  assert.ok(bodies.some((body) => /where platforms = \(52\)/.test(body)));
+});

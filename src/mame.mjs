@@ -9,13 +9,15 @@ import { spawn } from 'node:child_process';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { readZipEntries } from './zip-index.mjs';
+import { parseCommandDat, formatCommands } from './mame-commands.mjs';
 
 const CACHE_SCHEMA = 1;
 const SUPPORT_BASE = 'https://raw.githubusercontent.com/AntoPISA/MAME_SupportFiles/main/';
 const SUPPORT_FILES = {
   catver: 'catver.ini/catver.ini',
   bestgames: 'bestgames.ini/bestgames.ini',
-  series: 'series.ini/series.ini'
+  series: 'series.ini/series.ini',
+  command: 'command.dat/command.dat'
 };
 const SUPPORT_MAX_AGE = 30 * 86400000;
 const THUMBNAILS = 'https://raw.githubusercontent.com/libretro-thumbnails/MAME/master/';
@@ -306,6 +308,7 @@ export function buildArcade({ machines, verified, catver = new Map(), bestgames 
       adult: isAdultOrCasino(category),
       arcade: {
         description: machine.description,
+        parent: group,
         year: machine.year,
         manufacturer: machine.manufacturer,
         players: machine.players,
@@ -381,6 +384,9 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
   const settingsPath = path.join(dataDir, 'arcade.json');
   const catalogPath = path.join(dataDir, 'arcade-catalog.json');
   const zipCachePath = path.join(dataDir, 'arcade-zips.json');
+  const commandsPath = path.join(dataDir, 'arcade-commands.json');
+  const infoPath = path.join(dataDir, 'arcade-info.json');
+  let commandsCache = null;
   const supportDir = path.join(dataDir, 'mame-support');
   const status = { running: false, phase: null, done: 0, total: 0, error: null, finishedAt: null };
   let catalog = null;
@@ -405,6 +411,10 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
   async function saveSettings(patch) {
     await writeJson(settingsPath, { ...(await readJson(settingsPath, {})), ...patch });
   }
+  async function loadCommands() {
+    if (!commandsCache) commandsCache = await readJson(commandsPath, {});
+    return commandsCache;
+  }
   async function loadCatalog() {
     if (!catalog) catalog = await readJson(catalogPath, null);
     return catalog?.schema === CACHE_SCHEMA ? catalog : null;
@@ -421,7 +431,12 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
   }
   // Archivos de apoyo: la copia descargada (se renueva cada 30 días); si la descarga falla, la anterior;
   // si no hay ninguna, la que viene con la aplicación. Se informa de dónde salió cada uno.
-  const looksValid = { catver: /^\[Category\]/m, bestgames: /^\[\d+ to \d+/m, series: /^\[[^\]]+\]/m };
+  const looksValid = {
+    catver: /^\[Category\]/m,
+    bestgames: /^\[\d+ to \d+/m,
+    series: /^\[[^\]]+\]/m,
+    command: /^\$info=/m
+  };
   async function bundled(name) {
     const file = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mame-support', `${name}.ini.gz`);
     return zlib.gunzipSync(await fs.readFile(file)).toString('utf8');
@@ -520,8 +535,15 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
       bestgames: parseBestGames(bestgames.text),
       series: parseSeries(series.text)
     });
+    // Movimientos: sólo los bloques de los sets de la biblioteca (y sus padres), en un archivo aparte.
+    const command = await support('command');
+    const ids = new Set(
+      built.games.flatMap((game) => [game.id, game.arcade.parent, ...game.arcade.versions.map((item) => item.id)])
+    );
+    await writeJson(commandsPath, Object.fromEntries(parseCommandDat(command.text, ids)));
+    commandsCache = null;
     const supportStatus = Object.fromEntries(
-      Object.entries({ catver, bestgames, series }).map(([name, item]) => [
+      Object.entries({ catver, bestgames, series, command }).map(([name, item]) => [
         name,
         { source: item.source, ...(item.error ? { error: item.error } : {}) }
       ])
@@ -578,16 +600,74 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
       }
     },
     // Juegos listos para la biblioteca; el contenido adulto y de casino sólo si se activó.
+    // Suma lo que se encontró en Wikipedia (descripción en español) y el identificador de IGDB.
     async games() {
       const current = await loadCatalog();
       if (!current) return [];
       const { showAdult } = await settings();
-      return current.games.filter((game) => showAdult || !game.adult);
+      const info = (await readJson(infoPath, {})).games ?? {};
+      const commands = await loadCommands();
+      return current.games
+        .filter((game) => showAdult || !game.adult)
+        .map((game) => {
+          const found = info[game.id]?.result;
+          const hasCommands = [game.id, game.arcade.parent, ...game.arcade.versions.map((item) => item.id)].some(
+            (id) => commands[id]
+          );
+          return {
+            ...game,
+            ...(found?.igdbSlug ? { igdbSlug: found.igdbSlug } : {}),
+            arcade: { ...game.arcade, ...(found?.es ? { wiki: found.es } : {}), commands: hasCommands }
+          };
+        });
     },
-    start() {
+    // Movimientos del juego (o de su versión original), en secciones legibles.
+    async commands(id) {
+      const current = await loadCatalog();
+      const game = current?.games.find((item) => item.id === id || item.arcade.versions.some((v) => v.id === id));
+      if (!game) return null;
+      const commands = await loadCommands();
+      const body = [id, game.id, game.arcade.parent, ...game.arcade.versions.map((item) => item.id)]
+        .map((name) => commands[name])
+        .find(Boolean);
+      return body ? formatCommands(body) : null;
+    },
+    // Información de Wikipedia/Wikidata, de a un juego por vez. Se recuerda 30 días (también la falta de
+    // coincidencia); un error de red no se recuerda y se reintenta la próxima vez.
+    async enrich(games, wiki) {
+      const saved = await readJson(infoPath, { games: {} });
+      const pending = games.filter((game) => {
+        const entry = saved.games?.[game.id];
+        return !entry || Date.now() - Date.parse(entry.fetchedAt) > SUPPORT_MAX_AGE;
+      });
+      Object.assign(status, { running: true, phase: 'info', done: 0, total: pending.length, error: null });
+      try {
+        for (const game of pending) {
+          try {
+            const result = await wiki.lookup({
+              title: game.name.replace(/\s*\([^)]*\d{4}\)$/, ''),
+              year: Number(game.arcade.year) || null,
+              manufacturer: game.meta?.developers?.[0] ?? ''
+            });
+            saved.games[game.id] = { fetchedAt: new Date().toISOString(), result };
+          } catch {
+            /* sin conexión o Wikipedia no respondió: se reintenta en la próxima búsqueda */
+          }
+          status.done += 1;
+          await writeJson(infoPath, saved);
+        }
+      } finally {
+        Object.assign(status, { running: false, phase: null, finishedAt: new Date().toISOString() });
+      }
+    },
+    // after: lo que sigue a una indexación exitosa (buscar información en Wikipedia e IGDB).
+    start(after) {
       if (status.running) return;
       Object.assign(status, { running: true, phase: 'start', done: 0, total: 0, error: null });
       index()
+        .then(async () => {
+          if (after) await after();
+        })
         .catch((error) => {
           status.error = error.message;
         })

@@ -303,6 +303,28 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
     return (exact ?? rows[0])?.id ?? null;
   }
 
+  // Arcade: primero el identificador de IGDB que da Wikidata; si no hay, una búsqueda limitada a la plataforma
+  // Arcade (52) que sólo acepta el mismo título y, si se conoce, un año a menos de dos de distancia.
+  async function arcadeId(game) {
+    if (/^[a-z0-9-]+$/.test(game.igdbSlug ?? '')) {
+      const rows = await query('games', `fields id; where slug = "${game.igdbSlug}"; limit 1;`);
+      if (rows[0]?.id) return rows[0].id;
+    }
+    const title = normalizeTitle(game.name.replace(/\s*\([^)]*\)$/, ''));
+    if (!title) return null;
+    const rows = await query(
+      'games',
+      `search "${title.replace(/"/g, '')}"; fields id,name,first_release_date,alternative_names.name; where platforms = (52); limit 10;`
+    );
+    const year = Number(game.arcade?.year) || null;
+    const match = rows.find((row) => {
+      const names = [row.name, ...(row.alternative_names ?? []).map((item) => item.name)].map(normalizeTitle);
+      const released = row.first_release_date ? new Date(row.first_release_date * 1000).getUTCFullYear() : null;
+      return names.includes(title) && (!year || !released || Math.abs(released - year) <= 2);
+    });
+    return match?.id ?? null;
+  }
+
   async function refresh(games) {
     const saved = await readJson(metadataPath, { games: {} });
     const steam = await steamMatches(games.filter((game) => game.platform === 'Steam'));
@@ -312,7 +334,11 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
       const previousId = saved.games[game.key]?.igdbId;
       const id =
         (game.platform === 'Steam' ? steam.get(game.id) : null) ??
-        (Number.isSafeInteger(previousId) && previousId > 0 ? previousId : await searchByName(game.name));
+        (Number.isSafeInteger(previousId) && previousId > 0
+          ? previousId
+          : game.platform === 'Arcade'
+            ? await arcadeId(game)
+            : await searchByName(game.name));
       if (id) ids.set(game.key, id);
       status.done += 1;
     }

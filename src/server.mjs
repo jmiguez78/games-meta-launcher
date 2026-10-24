@@ -11,6 +11,7 @@ import { createIgdb, imageUrl } from './igdb.mjs';
 import { createSteam, mergeSteamLibrary } from './steam.mjs';
 import { createSteamAssets } from './steam-assets.mjs';
 import { createArcade } from './mame.mjs';
+import { createWiki } from './wiki.mjs';
 import { displayName } from './names.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -85,9 +86,31 @@ const igdb = createIgdb(dataDir);
 const steam = createSteam(dataDir);
 const steamAssets = createSteamAssets(dataDir);
 const arcade = createArcade(dataDir);
+const wiki = createWiki();
 const isArcade = (game) => game.platform === 'Arcade';
-// IGDB no conoce los sets de MAME por nombre: los juegos de Arcade traen sus datos del propio MAME.
-const forIgdb = (games) => games.filter((game) => !isArcade(game));
+// IGDB: los juegos de Arcade entran con el identificador que da Wikidata o con una búsqueda acotada a Arcade.
+// Con colecciones muy grandes sólo se buscan los favoritos y los jugados, para no saturar los servicios.
+const ARCADE_INFO_LIMIT = 300;
+async function arcadeForInfo(games) {
+  const arcadeGames = games.filter(isArcade);
+  if (arcadeGames.length <= ARCADE_INFO_LIMIT) return arcadeGames;
+  const prefs = await preferences();
+  return arcadeGames.filter((game) => prefs.games[game.key]?.favorite || prefs.games[game.key]?.lastLaunchedAt);
+}
+async function forIgdb(games) {
+  const chosen = new Set((await arcadeForInfo(games)).map((game) => game.key));
+  return games.filter((game) => !isArcade(game) || chosen.has(game.key));
+}
+// Después de indexar Arcade: Wikipedia (descripción en español e identificador de IGDB) y, si IGDB está
+// conectado y libre, sus fichas.
+async function afterArcadeIndex() {
+  const games = (await library()).games;
+  await arcade.enrich(await arcadeForInfo(games), wiki);
+  if ((await igdb.settings()).configured && !igdb.status().running) {
+    const refreshed = (await library()).games;
+    igdb.start(await forIgdb(refreshed.filter(isArcade)));
+  }
+}
 const isSteamApp = (game) => game.platform === 'Steam' && /^\d+$/.test(game.id);
 // Rutas clásicas de la CDN: alcanzan para saber si hay arte en línea sin consultar a Steam.
 function onlineSources(game, meta, kind) {
@@ -489,29 +512,36 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
       if (req.method === 'POST' && url.pathname === '/api/scan') {
         const scanned = await scanLibrary();
         if ((await steam.settings()).configured) steam.sync().catch(() => {});
-        if ((await arcade.settings()).exe) arcade.start();
+        if ((await arcade.settings()).exe) arcade.start(afterArcadeIndex);
         return reply(res, 200, JSON.stringify(scanned));
       }
       if (url.pathname === '/api/integrations/mame') {
         if (req.method === 'PUT') {
           const update = await body(req);
           await arcade.configure(update);
-          if ('exe' in update && (await arcade.settings()).exe) arcade.start();
+          if ('exe' in update && (await arcade.settings()).exe) arcade.start(afterArcadeIndex);
         }
         if (req.method === 'GET' || req.method === 'PUT') return reply(res, 200, JSON.stringify(await arcade.info()));
       }
       if (req.method === 'POST' && url.pathname === '/api/mame/scan') {
         if (!(await arcade.settings()).exe)
           return reply(res, 400, JSON.stringify({ error: 'Indicá dónde está mame.exe primero.' }));
-        arcade.start();
+        arcade.start(afterArcadeIndex);
         return reply(res, 202, JSON.stringify(await arcade.info()));
+      }
+      const commandsRoute = req.method === 'GET' && url.pathname.match(/^\/api\/arcade\/([a-z0-9_]+)\/commands$/);
+      if (commandsRoute) {
+        const sections = await arcade.commands(commandsRoute[1]);
+        return sections
+          ? reply(res, 200, JSON.stringify({ sections }))
+          : reply(res, 404, JSON.stringify({ error: 'Sin movimientos para este juego.' }));
       }
       if (url.pathname === '/api/integrations/igdb') {
         if (req.method === 'GET') return reply(res, 200, JSON.stringify(await igdb.settings()));
         if (req.method === 'PUT') {
           const update = await body(req);
           await igdb.connect(String(update.clientId ?? '').trim(), String(update.clientSecret ?? '').trim());
-          igdb.start(forIgdb((await library()).games));
+          igdb.start(await forIgdb((await library()).games));
           return reply(res, 200, JSON.stringify({ ...(await igdb.settings()), status: igdb.status() }));
         }
         if (req.method === 'DELETE') {
@@ -524,7 +554,7 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
       if (req.method === 'POST' && url.pathname === '/api/metadata/refresh') {
         if (!(await igdb.settings()).configured)
           return reply(res, 400, JSON.stringify({ error: 'Conectá IGDB en Configuración primero.' }));
-        igdb.start(forIgdb((await library()).games));
+        igdb.start(await forIgdb((await library()).games));
         return reply(res, 202, JSON.stringify(igdb.status()));
       }
       if (req.method === 'GET' && url.pathname === '/api/preferences/export')

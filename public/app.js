@@ -1075,6 +1075,20 @@ function descriptionSection(game) {
     }
     section.append(note);
   };
+  const wiki = game.arcade && game.arcade.wiki;
+  if (wiki && wiki.extract) {
+    show(wiki.extract, 'Introducción del artículo «' + wiki.title + '» de Wikipedia en español.');
+    const source = section.querySelector('.meta-source');
+    if (source && /^https:\/\/es\.wikipedia\.org\//.test(wiki.url)) {
+      const link = document.createElement('a');
+      link.href = wiki.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'Leer en Wikipedia';
+      source.append(' ', link);
+    }
+    return section;
+  }
   const fallback = () => show(english, 'Descripción de IGDB, disponible sólo en inglés.');
   const timer = setTimeout(() => !settled && fallback(), 1500);
   steamDescription(game).then((spanish) => {
@@ -1199,7 +1213,7 @@ function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
   if (game.meta) overview.append(metaSection({ ...game.meta, summary: '' }));
   overview.append(...summaryExtras, personalSection(game), installationSection(game));
   if (game.arcade) appendArcadeDetails(game, information, media);
-  else if (game.meta) appendExtendedMetadata(information, game.meta, media);
+  if (game.meta && (!game.arcade || game.meta.igdbId)) appendExtendedMetadata(information, game.meta, media);
   [
     [
       information,
@@ -1290,6 +1304,7 @@ function appendArcadeDetails(game, information, media) {
     versions.querySelector('.metadata-content').append(items);
     information.append(versions);
   }
+  if (arcade.commands) information.append(movesSection(game));
   // Imágenes de libretro-thumbnails: pantalla de título y juego, en pixel art nítido.
   const gallery = document.createElement('div');
   gallery.className = 'arcade-shots';
@@ -1311,6 +1326,61 @@ function appendArcadeDetails(game, information, media) {
   const shots = section('Imágenes');
   shots.querySelector('.metadata-content').append(gallery);
   media.append(shots);
+}
+// Movimientos (command.dat): se piden al abrir la sección. Cada personaje o sección es un grupo plegable.
+const moveKinds = { agarre: 'Agarre', mando: 'Golpe de mando', especial: 'Especial' };
+function movesSection(game) {
+  const details = document.createElement('details');
+  details.className = 'detail-section metadata-section moves';
+  details.innerHTML = '<summary>Movimientos</summary><div class="metadata-content"></div>';
+  const body = details.querySelector('.metadata-content');
+  let loaded = false;
+  details.addEventListener('toggle', async () => {
+    if (!details.open || loaded) return;
+    loaded = true;
+    body.innerHTML = '<span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line short"></span>';
+    try {
+      const { sections } = await request('/api/arcade/' + encodeURIComponent(game.id) + '/commands');
+      body.replaceChildren(
+        ...sections.map((item, index) => {
+          const group = document.createElement('details');
+          group.className = 'move-group';
+          group.open = index < 2;
+          group.innerHTML = '<summary></summary><dl class="move-list"></dl>';
+          group.querySelector('summary').textContent = item.title;
+          const list = group.querySelector('dl');
+          item.rows.forEach((row) => {
+            const term = document.createElement('dt');
+            term.textContent = row.label;
+            if (row.kind) {
+              const badge = document.createElement('span');
+              badge.className = 'move-kind ' + row.kind;
+              badge.textContent = moveKinds[row.kind];
+              term.prepend(badge);
+            }
+            const value = document.createElement('dd');
+            value.textContent = row.command;
+            list.append(term, value);
+          });
+          item.notes.forEach((note) => {
+            const paragraph = document.createElement('p');
+            paragraph.className = 'move-note';
+            paragraph.textContent = note;
+            group.append(paragraph);
+          });
+          return group;
+        })
+      );
+      const credit = document.createElement('p');
+      credit.className = 'meta-source';
+      credit.textContent = 'Comandos de command.dat, de Fabricio Coroquer y AntoPISA (progetto-SNAPS).';
+      body.append(credit);
+    } catch (error) {
+      body.textContent = error.message;
+      loaded = false;
+    }
+  });
+  return details;
 }
 // Portada en cuadrícula.
 // options.caption reemplaza la plataforma bajo el título (por ejemplo, «Ayer» en la fila Continuar).
@@ -2437,7 +2507,8 @@ function describeMame(info) {
       zips: 'Leyendo tus archivos… ' + status.done + ' de ' + status.total,
       listxml: 'Leyendo la descripción de las máquinas de MAME (la primera vez tarda un poco)…',
       verify: 'Verificando cada juego…',
-      details: 'Sumando géneros, sagas y ranking…'
+      details: 'Sumando géneros, sagas y ranking…',
+      info: 'Buscando descripciones en Wikipedia… ' + status.done + ' de ' + status.total
     };
     return phases[status.phase] || 'Buscando juegos…';
   }

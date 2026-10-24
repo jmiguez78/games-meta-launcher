@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.24.0 — 24 de octubre de 2026
+
+Arcade con información como la de los juegos de PC.
+
+- Descripción en español desde Wikipedia: se busca el artículo del juego, se confirma en Wikidata que sea un videojuego del año correcto y se muestra la introducción del artículo en español, con enlace. Si no hay artículo confiable, no se adivina.
+- IGDB también para Arcade: con el identificador que da Wikidata, o con una búsqueda limitada a la plataforma Arcade que sólo acepta el mismo título y un año cercano. Así los arcades suman valoración de la crítica, capturas, videos y juegos relacionados, y entran en «Lo mejor valorado».
+- Movimientos: los juegos de pelea muestran los comandos de cada personaje (flechas, botones, agarres y especiales) desde `command.dat`, con los nombres de los botones en español.
+- La búsqueda de información corre después de cada verificación de Arcade, de a un juego por vez, y se recuerda 30 días. Configuración muestra el avance.
+
 ## 0.23.1 — 24 de octubre de 2026
 
 - Biblioteca: la barra de búsqueda, colección, orden, filtros y vista queda fija arriba al bajar, con fondo translúcido. El panel de filtros y el foco de teclado o mando se ubican debajo de ella.

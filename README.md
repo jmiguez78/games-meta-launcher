@@ -4,11 +4,11 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.23.1`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo de pantalla grande (F11). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
+Versión `0.24.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo de pantalla grande (F11). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 
-1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.23.1.exe`, o ejecutá `npm run desktop` durante el desarrollo.
+1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.24.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
 2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en una portada abre la página del juego; Jugar lo inicia.
 3. En **Biblioteca**, buscá, ordená y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
 4. En **Configuración**, elegí el tema, si la ventana se minimiza al jugar y la pantalla grande; conectá Steam e IGDB; programá la búsqueda nocturna y respaldá tus preferencias.
@@ -40,6 +40,8 @@ En **Configuración → Arcade (MAME)**, pegá la ruta de `mame.exe` y elegí **
 4. Agrupa las versiones regionales bajo un juego, con la versión mundial o de EE. UU. adelante, y suma género, saga y ranking desde `catver.ini`, `series.ini` y `bestgames.ini` de [AntoPISA/MAME_SupportFiles](https://github.com/AntoPISA/MAME_SupportFiles) (se descargan cada 30 días a `mame-support/`; si la descarga falla se usa la copia anterior o la incluida en `src/mame-support/`, y Configuración lo informa).
 
 Las portadas son los flyers de la máquina, la imagen principal una captura en pixel art y el logo el de la máquina, desde [libretro-thumbnails/MAME](https://github.com/libretro-thumbnails/MAME), o desde las carpetas `flyers`, `snap` y `logo` de tu MAME si existen. Se guardan en `art-cache`.
+
+Después de indexar, cada juego de Arcade se busca en Wikipedia: el artículo en inglés lleva a Wikidata, que confirma que sea un videojuego del año correcto y aporta el identificador de IGDB y el artículo en español. La introducción en español se muestra como descripción (con enlace al artículo) y, si IGDB está conectado, el juego recibe su ficha (valoración, capturas, videos) como los de PC; sin identificador de Wikidata, IGDB sólo acepta el mismo título en la plataforma Arcade. Se guarda en `arcade-info.json` y se renueva cada 30 días. Con más de 300 juegos, sólo se buscan los favoritos y los jugados. Los juegos de pelea suman **Movimientos** desde `command.dat`.
 
 Jugar abre `mame.exe <set>` desde la carpeta de MAME, así que usa tu configuración. Al cerrar MAME, la ventana vuelve al frente y se suma el tiempo jugado (`playSeconds` en las preferencias). En la Biblioteca, el selector **PC · Arcade · Todo** separa las colecciones; Inicio suma la fila **Clásicos del arcade**.
 

@@ -13,9 +13,14 @@ Identidad 3.0, «sala de proyección» (desde 0.16.0). La interfaz es tinta oscu
 
 ## Archivos
 
-- `public/style.css`: tokens de color de ambos temas, estructura base y componentes heredados.
-- `public/ui.css`: escala de espaciado, controles, foco, estados y componentes de cada pantalla.
-- `public/experience.css`: identidad 3.0. Tipografías, barra lateral, color ambiental, portadas, imagen principal de Inicio, filas, página de juego y pestañas. Se carga al final.
+- `public/styles.css`: punto de entrada. Declara el orden de las capas (`@layer tokens, base, components, screens, couch, utilities`) e importa una hoja por capa desde `public/styles/`. Una capa posterior gana sobre una anterior sin importar la especificidad ni el orden de carga, así que no hace falta `!important`.
+  - `tokens.css`: fuentes, `@property`, los temas oscuro y claro (y «Sistema») y la **paleta fija**: colores que no cambian con el tema (barra lateral, portadas sin imagen por tienda, avisos, superficies oscuras por diseño, botones del mando) y canales para transparencias (`rgb(var(--veil-rgb) / 45%)`).
+  - `base.css`: documento, tipografía general, controles nativos y el anillo de foco común.
+  - `components.css`: piezas que se repiten (botones, campos, interruptor, controles segmentados, insignias, portadas, estados, tablas, diálogos, paleta, avisos), cada una en su sección.
+  - `screens.css`: estructura de la ventana, barra lateral y cada pantalla (Inicio, Biblioteca, página del juego, Para revisar, Configuración, «Iniciando…»). Puede ajustar componentes dentro de su pantalla.
+  - `couch.css`: el modo sala.
+  - `utilities.css`: ocultar (`.hidden`, `[hidden]`), el estado inválido de los campos y el movimiento reducido.
+- Reglas: cada selector se define una sola vez, en la sección de su componente; los colores se escriben como tokens, nunca sueltos fuera de `tokens.css`.
 - `public/shelves.js`: reglas que eligen los juegos de Inicio. Son funciones puras y tienen pruebas (`test/shelves.test.mjs`).
 - `public/fonts/`: Bricolage Grotesque e Inter, con sus licencias OFL.
 - `public/brand/`: marca en SVG y PNG. `build/icon.ico` es el ícono del ejecutable.
@@ -100,7 +105,7 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 ## Mando y modo sala
 
 - `public/gamepad.js` traduce el mando a teclas. En el escritorio: cruceta o palanca = flechas, A = elegir (sobre un juego abre su página), B = Escape, X = favorito, Y = paleta, LB/RB = sección, Menú = modo sala. Donde las flechas no tienen uso, el foco va al elemento más cercano en esa dirección (`pickNeighbor`, con pruebas).
-- **Modo sala** (`public/js/couch.js`, `public/couch.css`): una pantalla propia para la TV, no la interfaz agrandada. Se entra con F11, el botón Menú, la paleta o Configuración, y se recuerda entre sesiones.
+- **Modo sala** (`public/js/couch.js`, `public/styles/couch.css`): una pantalla propia para la TV, no la interfaz agrandada. Se entra con F11, el botón Menú, la paleta o Configuración, y se recuerda entre sesiones.
   - Fondo: el arte del juego enfocado, con sombra a la izquierda y abajo; datos arriba a la izquierda (motivo, logo o título, fabricante o tienda, última sesión, horas, crítica).
   - Inicio: «Destacados» y las filas de Inicio sin repetir juegos. Biblioteca: todos los juegos en filas de siete por letra inicial (`libraryRows`, con pruebas).
   - Alcance: arranca en «Listos para jugar» (instalados y con lanzador, `GMLShelves.playable`), porque el modo sala es para elegir y jugar ya. El botón Vista (⧉), la tecla V, el chip de arriba o el menú pasan a «Toda la colección»: la Biblioteca suma después un bloque «Sin instalar · letra» con las portadas atenuadas y una etiqueta, e Inicio suma «Para instalar». Se recuerda en `gml-couch-scope`.

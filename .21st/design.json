@@ -13,11 +13,11 @@
   },
   "sources": {
     "tokens": [
-      "public/style.css",
-      "public/ui.css"
+      "public/styles/tokens.css",
+      "public/styles/components.css"
     ],
     "components": [
-      "public/app.js",
+      "public/js/",
       "public/index.html"
     ],
     "assets": [],

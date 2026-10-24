@@ -1,7 +1,7 @@
-/* ── Modo sala ─────────────────────────────────────────────────────────────────────────────────
-   Pensado para verse a tres metros: medidas relativas a la pantalla (vh/vw), textos grandes, un foco
-   inconfundible y el arte del juego como protagonista. Siempre oscuro, como una sala de cine. */
+/* Modo sala: La experiencia para TV y mando. Reemplaza toda la interfaz cuando body tiene la clase couch.
+   Capa «couch» (ver styles.css). */
 
+/* ── Modo sala ── */
 body.couch {
   overflow: hidden;
 }
@@ -21,7 +21,7 @@ body.couch .toasts {
   inset: 0;
   z-index: 40;
   overflow: hidden;
-  background: #07060c;
+  background: var(--night);
   color: var(--couch-ink);
   font-family: var(--font-ui);
 }
@@ -32,7 +32,6 @@ body.couch .toasts {
 .couch.couch-idle * {
   cursor: none;
 }
-
 /* Fondo: el arte del juego enfocado, con sombra a la izquierda y abajo para leer encima. */
 .couch-backdrop {
   position: absolute;
@@ -45,12 +44,20 @@ body.couch .toasts {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgb(7 6 12 / 0.92) 0%, rgb(7 6 12 / 0.55) 42%, rgb(7 6 12 / 0.05) 75%),
-    linear-gradient(0deg, #07060c 0%, rgb(7 6 12 / 0.9) 42%, rgb(7 6 12 / 0) 70%),
-    radial-gradient(80% 60% at 20% 100%, color-mix(in srgb, var(--art, #8e7dff) 26%, transparent), transparent);
+    linear-gradient(
+      90deg,
+      rgb(var(--night-rgb) / 0.92) 0%,
+      rgb(var(--night-rgb) / 0.55) 42%,
+      rgb(var(--night-rgb) / 0.05) 75%
+    ),
+    linear-gradient(0deg, var(--night) 0%, rgb(var(--night-rgb) / 0.9) 42%, rgb(var(--night-rgb) / 0) 70%),
+    radial-gradient(
+      80% 60% at 20% 100%,
+      color-mix(in srgb, var(--art, var(--accent-on-dark)) 26%, transparent),
+      transparent
+    );
   transition: background var(--dur-slow) var(--ease-out);
 }
-
 /* Barra superior: marca, secciones y hora. */
 .couch-top {
   position: absolute;
@@ -80,8 +87,8 @@ body.couch .toasts {
   cursor: pointer;
 }
 .couch-tab.active {
-  background: rgb(255 255 255 / 0.14);
-  color: #fff;
+  background: rgb(var(--white-rgb) / 0.14);
+  color: var(--white);
 }
 .couch-scope {
   display: inline-flex;
@@ -89,16 +96,16 @@ body.couch .toasts {
   gap: 0.6vw;
   margin-left: auto;
   padding: 0.6vh 1.1vw 0.6vh 0.6vw;
-  border: 1px solid rgb(120 220 150 / 0.45);
+  border: 1px solid rgb(var(--ready-line-rgb) / 0.45);
   border-radius: 999px;
-  background: rgb(60 170 95 / 0.18);
-  color: #fff;
+  background: rgb(var(--ready-rgb) / 0.18);
+  color: var(--white);
   font: 650 clamp(14px, 1.1vw, 26px) / 1.2 var(--font-ui);
   cursor: pointer;
 }
 .couch-scope.all {
-  border-color: rgb(255 255 255 / 0.25);
-  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(var(--white-rgb) / 0.25);
+  background: rgb(var(--white-rgb) / 0.08);
   color: var(--couch-soft);
 }
 .couch-clock {
@@ -107,7 +114,6 @@ body.couch .toasts {
   font: 600 clamp(15px, 1.25vw, 30px) / 1 var(--font-ui);
   font-variant-numeric: tabular-nums;
 }
-
 /* Datos del juego enfocado. */
 .couch-info {
   position: absolute;
@@ -129,7 +135,7 @@ body.couch .toasts {
   max-height: 17vh;
   object-fit: contain;
   object-position: left bottom;
-  filter: drop-shadow(0 6px 24px rgb(0 0 0 / 0.6));
+  filter: drop-shadow(0 6px 24px rgb(var(--black-rgb) / 0.6));
 }
 .couch-title {
   margin: 0;
@@ -137,7 +143,7 @@ body.couch .toasts {
   font-stretch: 78%;
   text-wrap: balance;
   overflow-wrap: break-word;
-  text-shadow: 0 4px 30px rgb(0 0 0 / 0.5);
+  text-shadow: 0 4px 30px rgb(var(--black-rgb) / 0.5);
 }
 /* Nombres largos: un tamaño menor para que entren en dos o tres líneas sin cortarse. */
 .couch-title.long {
@@ -152,7 +158,6 @@ body.couch .toasts {
   font: 500 clamp(15px, 1.25vw, 30px) / 1.4 var(--font-ui);
   white-space: pre-wrap;
 }
-
 /* Filas: la fila enfocada sube a un lugar fijo y su riel se corre para que el juego quede a la vista. */
 .couch-viewport {
   position: absolute;
@@ -162,7 +167,7 @@ body.couch .toasts {
   left: 0;
   z-index: 2;
   overflow: hidden;
-  mask-image: linear-gradient(180deg, #000 0%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, var(--black) 0%, var(--black) 82%, transparent 100%);
 }
 .couch-rows {
   position: relative;
@@ -205,8 +210,8 @@ body.couch .toasts {
   overflow: hidden;
   aspect-ratio: 2 / 3;
   border-radius: clamp(8px, 0.6vw, 16px);
-  background: linear-gradient(145deg, #40557e, #283a61) center / cover;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  background: linear-gradient(145deg, var(--cover-from), var(--cover-to)) center / cover;
+  box-shadow: 0 10px 30px rgb(var(--black-rgb) / 0.45);
   transition:
     transform 200ms var(--ease-out),
     box-shadow 200ms var(--ease-out);
@@ -224,9 +229,9 @@ body.couch .toasts {
   position: absolute;
   top: 6%;
   right: 7%;
-  color: var(--favorite, #ffe27a);
+  color: var(--favorite, var(--favorite-on-dark));
   font-size: clamp(14px, 1.2vw, 28px);
-  text-shadow: 0 1px 6px rgb(0 0 0 / 0.7);
+  text-shadow: 0 1px 6px rgb(var(--black-rgb) / 0.7);
 }
 .couch-tile-name {
   display: block;
@@ -258,16 +263,16 @@ body.couch .toasts {
   left: 6%;
   padding: 0.4vh 0;
   border-radius: 6px;
-  background: rgb(10 12 20 / 0.82);
-  color: #fff;
+  background: rgb(var(--console-rgb) / 0.82);
+  color: var(--white);
   font: 650 clamp(11px, 0.8vw, 20px) / 1.2 var(--font-ui);
   text-align: center;
 }
 .couch-tile:focus .couch-art {
   box-shadow:
-    0 0 0 clamp(3px, 0.22vw, 6px) #fff,
-    0 0 clamp(24px, 2.4vw, 60px) color-mix(in srgb, var(--art, #8e7dff) 70%, transparent),
-    0 18px 40px rgb(0 0 0 / 0.6);
+    0 0 0 clamp(3px, 0.22vw, 6px) var(--white),
+    0 0 clamp(24px, 2.4vw, 60px) color-mix(in srgb, var(--art, var(--accent-on-dark)) 70%, transparent),
+    0 18px 40px rgb(var(--black-rgb) / 0.6);
   transform: scale(1.1);
 }
 .couch-tile:focus .couch-tile-name {
@@ -278,7 +283,6 @@ body.couch .toasts {
   color: var(--couch-soft);
   font-size: clamp(16px, 1.3vw, 32px);
 }
-
 /* Ayuda de botones, con los colores de un mando Xbox. */
 .couch-hints {
   position: absolute;
@@ -305,32 +309,31 @@ body.couch .toasts {
   height: clamp(22px, 1.6vw, 38px);
   padding: 0 0.4vw;
   border-radius: 999px;
-  background: #3a3646;
-  color: #fff;
+  background: var(--pad-neutral);
+  color: var(--white);
   font-weight: 800;
   font-size: 0.85em;
 }
 .pad-glyph.a {
-  background: #4f9e1d;
+  background: var(--pad-a);
 }
 .pad-glyph.b {
-  background: #d23a35;
+  background: var(--pad-b);
 }
 .pad-glyph.x {
-  background: #2f74c8;
+  background: var(--pad-x);
 }
 .pad-glyph.y {
-  background: #d8a800;
-  color: #1d1600;
+  background: var(--pad-y);
+  color: var(--pad-y-ink);
 }
 .pad-glyph.view {
   border-radius: 8px;
-  background: #3a3f4b;
+  background: var(--pad-view);
 }
 .pad-glyph.bumper {
   border-radius: 8px;
 }
-
 /* Ficha y menú: una capa encima, con el resto atenuado. */
 .couch.layer-open .couch-viewport,
 .couch.layer-open .couch-info,
@@ -357,8 +360,8 @@ body.couch .toasts {
   height: 66vh;
   aspect-ratio: 2 / 3;
   border-radius: clamp(10px, 0.8vw, 20px);
-  background: linear-gradient(145deg, #40557e, #283a61) center / cover;
-  box-shadow: 0 30px 80px rgb(0 0 0 / 0.6);
+  background: linear-gradient(145deg, var(--cover-from), var(--cover-to)) center / cover;
+  box-shadow: 0 30px 80px rgb(var(--black-rgb) / 0.6);
 }
 .couch-sheet-art .cover-initial {
   position: absolute;
@@ -388,10 +391,10 @@ body.couch .toasts {
 .couch-action {
   min-height: clamp(48px, 6.4vh, 92px);
   padding: 0 2.2vw;
-  border: 2px solid rgb(255 255 255 / 0.22);
+  border: 2px solid rgb(var(--white-rgb) / 0.22);
   border-radius: 999px;
-  background: rgb(255 255 255 / 0.08);
-  color: #fff;
+  background: rgb(var(--white-rgb) / 0.08);
+  color: var(--white);
   font: 700 clamp(16px, 1.3vw, 32px) / 1 var(--font-ui);
   cursor: pointer;
   transition:
@@ -400,11 +403,11 @@ body.couch .toasts {
 }
 .couch-action.primary {
   border-color: transparent;
-  background: var(--play, #ff6b7e);
-  color: var(--play-ink, #26070d);
+  background: var(--play, var(--play));
+  color: var(--play-ink, var(--play-ink));
 }
 .couch-action:focus {
-  outline: clamp(3px, 0.22vw, 6px) solid #fff;
+  outline: clamp(3px, 0.22vw, 6px) solid var(--white);
   outline-offset: 4px;
   transform: scale(1.06);
 }
@@ -418,8 +421,8 @@ body.couch .toasts {
   min-width: 30vw;
   padding: 4vh 2.6vw;
   border-radius: clamp(14px, 1vw, 24px);
-  background: rgb(22 20 32 / 0.96);
-  box-shadow: 0 30px 90px rgb(0 0 0 / 0.7);
+  background: rgb(var(--menu-rgb) / 0.96);
+  box-shadow: 0 30px 90px rgb(var(--black-rgb) / 0.7);
   transform: translate(-50%, -50%);
 }
 .couch-menu h2 {
@@ -430,7 +433,6 @@ body.couch .toasts {
 .couch-menu .couch-action {
   text-align: left;
 }
-
 @media (prefers-reduced-motion: reduce) {
   .couch-rows,
   .couch-track,
@@ -443,7 +445,6 @@ body.couch .toasts {
     transform: none;
   }
 }
-
 /* El foco del escritorio (anillo y halo del mando) no aplica acá: el modo sala tiene el suyo. */
 body.gamepad-active .couch .couch-tile:focus-visible,
 .couch .couch-tile:focus-visible {
@@ -459,6 +460,11 @@ body.gamepad-active .couch .couch-action:focus-visible {
 }
 .couch.layer-open .couch-shade {
   background:
-    linear-gradient(90deg, rgb(7 6 12 / 0.95) 0%, rgb(7 6 12 / 0.75) 55%, rgb(7 6 12 / 0.45) 100%),
-    linear-gradient(0deg, #07060c 0%, rgb(7 6 12 / 0) 60%);
+    linear-gradient(
+      90deg,
+      rgb(var(--night-rgb) / 0.95) 0%,
+      rgb(var(--night-rgb) / 0.75) 55%,
+      rgb(var(--night-rgb) / 0.45) 100%
+    ),
+    linear-gradient(0deg, var(--night) 0%, rgb(var(--night-rgb) / 0) 60%);
 }

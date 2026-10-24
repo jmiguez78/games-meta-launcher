@@ -21,7 +21,7 @@ flowchart LR
 - `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla.
 - `src/igdb.mjs`: integración opcional con Twitch/IGDB. Descarga fichas ampliadas y tiempos estimados, conserva las coincidencias conocidas y guarda una caché local en `metadata.json` (esquema 2). Cada ficha incluye la respuesta original en `source`; la API local omite ese campo para evitar duplicar el contenido enviado a la interfaz.
 - `src/secrets.mjs`: cifra el secreto de Twitch con DPAPI de Windows para el usuario actual. `integrations.json` no se versiona.
-- `public/`: interfaz HTML, CSS y JavaScript sin dependencias ni compilación. `index.html` carga tres scripts clásicos con lógica pura y pruebas (`catalog.js`: búsqueda, filtros, orden y duplicados; `shelves.js`: filas de Inicio; `gamepad.js`: mando y pantalla grande) y el punto de entrada `js/main.js` como módulo ES. `style.css` define tokens y temas; `ui.css`, los componentes; `experience.css`, la identidad 3.0. Tipografías y marca en `fonts/` y `brand/` (ver [Sistema de diseño](sistema-de-diseno.md)).
+- `public/`: interfaz HTML, CSS y JavaScript sin dependencias ni compilación. `index.html` carga tres scripts clásicos con lógica pura y pruebas (`catalog.js`: búsqueda, filtros, orden y duplicados; `shelves.js`: filas de Inicio; `gamepad.js`: mando y pantalla grande) y el punto de entrada `js/main.js` como módulo ES. `styles.css` ordena los estilos en capas (`@layer`) e importa una hoja por capa desde `styles/`: tokens, base, componentes, pantallas, modo sala y utilidades. Tipografías y marca en `fonts/` y `brand/` (ver [Sistema de diseño](sistema-de-diseno.md)).
 - `public/js/`: la interfaz en módulos ES, uno por responsabilidad. Cada módulo exporta sus funciones y, si tiene enlaces de eventos, una función `setup()` que `main.js` llama una sola vez, después de que todos los módulos se cargaron (así ningún módulo usa a otro antes de tiempo).
 
 | Módulo                                                | Responsabilidad                                                                |
@@ -32,7 +32,7 @@ flowchart LR
 | `art.js`, `cards.js`                                  | Portadas, imagen principal, color ambiental; tarjetas y navegación por teclado |
 | `home.js`, `library.js`, `game-page.js`, `details.js` | Inicio, Biblioteca, página del juego y contenido de la ficha                   |
 | `launch.js`, `editor.js`, `palette.js`                | Jugar, editar un juego y paleta de comandos                                    |
-| `couch.js`                                            | Modo sala para TV y mando (con `couch.css`)                                    |
+| `couch.js`                                            | Modo sala para TV y mando (con `styles/couch.css`)                             |
 | `settings.js`, `diagnostics.js`, `steam.js`           | Configuración, Para revisar y todo lo de Steam                                 |
 
 `npm run check` comprueba la sintaxis de cada módulo y que cada `import` exista en su módulo de origen (`tools/check-modules.mjs`). `window.GML` expone el estado y la navegación para depurar desde la consola.

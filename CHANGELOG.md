@@ -1,5 +1,16 @@
 # Registro de cambios
 
+## 0.27.0
+
+Estilos en capas (F3). Sin cambios visibles: se verificó con los estilos calculados de cada elemento y capturas de 55 estados (temas oscuro, claro y del sistema, tres anchos de ventana, movimiento reducido y modo sala) antes y después.
+
+- Las cuatro hojas que se pisaban entre sí (`style.css`, `ui.css`, `experience.css` y `couch.css`, 4.437 líneas) pasan a seis hojas ordenadas con `@layer` en `public/styles/`: tokens, base, componentes, pantallas, modo sala y utilidades. `public/styles.css` declara el orden y las importa.
+- Cada selector se define una sola vez, en la sección de su componente o pantalla. Se quitaron las declaraciones que nunca tenían efecto porque otra regla las pisaba siempre.
+- Sin `!important`: lo que tiene que ganar siempre (ocultar, estado inválido, movimiento reducido) vive en la última capa.
+- Los colores sueltos pasan a tokens con nombre: una paleta fija para lo que es oscuro por diseño (barra lateral, portadas sin imagen por tienda, avisos, botones del mando) y canales para las transparencias.
+- `npm run check` revisa que no vuelvan los colores sueltos, los `!important` ni los selectores repetidos (`tools/check-styles.mjs`).
+- Con «reducir movimiento» activado, los botones de las portadas ya no se animan (antes una regla más específica lo impedía).
+
 ## 0.26.1
 
 - Modo sala: arranca mostrando solo los juegos **listos para jugar** (instalados y con lanzador). El botón Vista del mando (⧉), la tecla V o el chip de arriba a la derecha cambian a **toda la colección**; la elección se recuerda.

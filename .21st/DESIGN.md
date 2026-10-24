@@ -2,7 +2,7 @@
 
 Launcher local de Windows con Electron, HTML, CSS y JavaScript sin framework.
 
-Los colores y temas se definen en `public/style.css`; los controles y el espaciado, en `public/ui.css`. Se preservan la identidad actual, la densidad de escritorio, los controles nativos, el foco visible y el funcionamiento sin metadatos.
+Los colores y temas se definen en `public/styles/tokens.css`; los controles, en `public/styles/components.css`; cada pantalla, en `public/styles/screens.css` (ver `public/styles.css` para el orden de las capas). Se preservan la identidad actual, la densidad de escritorio, los controles nativos, el foco visible y el funcionamiento sin metadatos.
 
 La ficha se divide en Resumen, Información y Multimedia. La galería usa un diálogo nativo con navegación por flechas, Escape y devolución del foco. Las pestañas conservan su selección al cambiar de juego.
 

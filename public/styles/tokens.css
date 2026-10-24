@@ -1,0 +1,217 @@
+/* Tokens: Fuentes, colores, tipografías, espacios, radios y tiempos con nombre, para los temas oscuro y claro. Todo lo demás los usa en lugar de valores sueltos.
+   Capa «tokens» (ver styles.css). */
+
+/* ── Fuentes y propiedades ── */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/inter.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  src: url('/fonts/bricolage-grotesque.woff2') format('woff2-variations');
+}
+/* El color ambiental se interpola cuando cambia el juego en foco. */
+@property --ambient {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #8e7dff;
+}
+
+/* ── Temas ── */
+:root,
+:root[data-theme='dark'] {
+  --bg: #0e0d15;
+  --surface: #17151f;
+  --surface-soft: #1e1b29;
+  --surface-raised: #24212f;
+  --rail: #0a0910;
+  --ink: #f2eff8;
+  --ink-soft: #cbc5d8;
+  --muted: #9890ab;
+  --line: #2b2738;
+  --line-soft: #221f2d;
+  --line-strong: #3a3549;
+  --line-accent: #5b4fa8;
+  --accent: #8e7dff;
+  --accent-strong: #a396ff;
+  --accent-soft: #262046;
+  --accent-text: #b9aeff;
+  --accent-muted: #a79ddb;
+  --row-selected: #231f38;
+  --chip-bg: #221f2d;
+  --success: #57d9a3;
+  --warning: #f2b661;
+  --danger: #ff8c96;
+  --play: #ff6b7e;
+  --play-strong: #ff8796;
+  --play-ink: #26070d;
+  --favorite: #ffe27a;
+  --retro-aqua: #78e7d0;
+  --retro-yellow: #ffe27a;
+  --radius: 14px;
+  --shadow: 0 12px 32px rgb(0 0 0 / 40%);
+  --shadow-lg: 0 28px 60px rgb(0 0 0 / 55%);
+  color-scheme: dark;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 48px;
+  --control-height: 40px;
+  --control-radius: 10px;
+  --control-border: #6b6480;
+  --focus-ring: #c9bfff;
+  --overlay: rgb(8 7 12 / 72%);
+  --skeleton: #1c1a26;
+  --skeleton-shine: #262331;
+}
+:root[data-theme='light'] {
+  --bg: #f4f2f8;
+  --surface: #fff;
+  --surface-soft: #f7f5fb;
+  --surface-raised: #fff;
+  --rail: #15131c;
+  --ink: #18151f;
+  --ink-soft: #4a4558;
+  --muted: #6a6479;
+  --line: #e4e0ec;
+  --line-soft: #eeebf3;
+  --line-strong: #cfc9da;
+  --line-accent: #b7acf0;
+  --accent: #5b47e0;
+  --accent-strong: #4a37cc;
+  --accent-soft: #eeebff;
+  --accent-text: #4b38c9;
+  --accent-muted: #6b5fb0;
+  --row-selected: #f0edff;
+  --chip-bg: #f0eef5;
+  --success: #127a55;
+  --warning: #93560a;
+  --danger: #be3047;
+  --favorite: #a86f00;
+  --shadow: 0 10px 28px rgb(24 21 31 / 8%);
+  --shadow-lg: 0 24px 54px rgb(24 21 31 / 16%);
+  color-scheme: light;
+  --control-border: #8a8399;
+  --focus-ring: #4b38c9;
+  --overlay: rgb(24 21 31 / 60%);
+  --skeleton: #ece9f2;
+  --skeleton-shine: #f6f4fa;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f4f2f8;
+    --surface: #fff;
+    --surface-soft: #f7f5fb;
+    --surface-raised: #fff;
+    --rail: #15131c;
+    --ink: #18151f;
+    --ink-soft: #4a4558;
+    --muted: #6a6479;
+    --line: #e4e0ec;
+    --line-soft: #eeebf3;
+    --line-strong: #cfc9da;
+    --line-accent: #b7acf0;
+    --accent: #5b47e0;
+    --accent-strong: #4a37cc;
+    --accent-soft: #eeebff;
+    --accent-text: #4b38c9;
+    --accent-muted: #6b5fb0;
+    --row-selected: #f0edff;
+    --chip-bg: #f0eef5;
+    --success: #127a55;
+    --warning: #93560a;
+    --danger: #be3047;
+    --shadow: 0 10px 28px rgb(24 21 31 / 8%);
+    --shadow-lg: 0 24px 54px rgb(24 21 31 / 16%);
+    color-scheme: light;
+    --control-border: #8a8399;
+    --focus-ring: #4b38c9;
+    --overlay: rgb(24 21 31 / 60%);
+    --skeleton: #ece9f2;
+    --skeleton-shine: #f6f4fa;
+  }
+}
+:root {
+  --font-ui: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Inter Variable', 'Segoe UI', sans-serif;
+  --rail-width: 76px;
+  --rail-open: 256px;
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --radius-art: 12px;
+  --ambient: #8e7dff;
+  /* ── Paleta fija: colores que no cambian con el tema (superficies oscuras por diseño y colores de marca) ── */
+  /* Neutros */
+  --white: #fff;
+  --black: #000;
+  /* Sobre superficies oscuras por diseño (imagen principal, portadas, modo sala) */
+  --ink-on-dark: #f2eff8;
+  --accent-on-dark: #8e7dff;
+  --favorite-on-dark: #ffe27a;
+  --night: #07060c;
+  /* Barra lateral (oscura en ambos temas) */
+  --rail-text: #d9d4e6;
+  --rail-brand: #b9b2c9;
+  --rail-nav: #a9a2bb;
+  --rail-nav-icon: #8d9ac5;
+  --rail-hover: #242a43;
+  --rail-focus: #c9bfff;
+  --rail-footer: #9a93ad;
+  --rail-status: #8e87a3;
+  --rail-badge-ink: #1d1305;
+  /* Portadas sin imagen: degradado por tienda */
+  --cover-from: #40557e;
+  --cover-to: #283a61;
+  --cover-steam-from: #30608c;
+  --cover-steam-to: #173754;
+  --cover-epic-from: #72608b;
+  --cover-epic-to: #423653;
+  --cover-xbox-from: #488a70;
+  --cover-xbox-to: #245843;
+  --cover-ubisoft-from: #5b76a9;
+  --cover-ubisoft-to: #304a7b;
+  --cover-ea-from: #ad5c67;
+  --cover-ea-to: #6b303b;
+  --cover-gog-from: #8d5b92;
+  --cover-gog-to: #55325f;
+  --cover-arcade-from: #a2542f;
+  --cover-arcade-to: #5a2512;
+  /* Avisos (oscuros en ambos temas) */
+  --toast-bg: #24212f;
+  --toast-info: #a3b2ff;
+  --toast-error: #ff9aa5;
+  --toast-success: #7ee2b8;
+  --toast-close: #c9d1e4;
+  /* Botones del mando (colores de un mando Xbox) */
+  --pad-a: #4f9e1d;
+  --pad-b: #d23a35;
+  --pad-x: #2f74c8;
+  --pad-y: #d8a800;
+  --pad-y-ink: #1d1600;
+  --pad-neutral: #3a3646;
+  --pad-view: #3a3f4b;
+  /* Canales para transparencias: rgb(var(--veil-rgb) / 45%) */
+  --white-rgb: 255 255 255;
+  --black-rgb: 0 0 0;
+  --veil-rgb: 8 7 12;
+  --night-rgb: 7 6 12;
+  --stage-rgb: 14 13 21;
+  --slate-rgb: 16 24 39;
+  --console-rgb: 10 12 20;
+  --menu-rgb: 22 20 32;
+  --ready-rgb: 60 170 95;
+  --ready-line-rgb: 120 220 150;
+}

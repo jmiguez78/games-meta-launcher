@@ -1,0 +1,71 @@
+/* Utilidades: Reglas que tienen que ganar siempre: ocultar, el estado inválido y el movimiento reducido. Por estar en la última capa no necesitan !important.
+   Capa «utilities» (ver styles.css). */
+
+/* ── Movimiento reducido ── */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+  .toast {
+    transition: none;
+  }
+  .toast[data-type='loading'] .toast-icon .icon {
+    animation: none;
+  }
+  body,
+  .sidebar,
+  .nav-label,
+  .brand-name,
+  .poster-art,
+  .poster-overlay,
+  .poster-actions,
+  .poster-play,
+  .button {
+    transition: none;
+  }
+  .page:not(.hidden) {
+    animation: none;
+  }
+  .poster:hover :is(.poster-art, .poster-overlay),
+  .poster:focus-within :is(.poster-art, .poster-overlay) {
+    transform: none;
+  }
+  .hero-layer,
+  .hero-thumb {
+    transition: none;
+  }
+  .sync-button.busy .icon {
+    animation: none;
+  }
+  .ring-value {
+    transition: none;
+  }
+  .launch-overlay,
+  .launch-overlay .hero-layer,
+  .switch-track,
+  .switch-track::after {
+    transition: none;
+  }
+  .launch-progress span {
+    animation: none;
+  }
+}
+
+/* ── Utilidades ── */
+.hidden {
+  display: none;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+[hidden] {
+  display: none;
+}

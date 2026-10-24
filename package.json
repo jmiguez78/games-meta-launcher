@@ -1,6 +1,6 @@
 {
   "name": "games-meta-launcher",
-  "version": "0.26.1",
+  "version": "0.27.0",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "scan": "node src/indexer.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "format": "prettier --write src public test",
-    "check": "node --check src/server.mjs && node --check src/indexer.mjs && node --check src/steam.mjs && node --check src/steam-assets.mjs && node --check src/mame.mjs && node --check src/zip-index.mjs && node --check src/wiki.mjs && node --check src/mame-commands.mjs && node --check public/shelves.js && node --check public/catalog.js && node --check public/gamepad.js && node tools/check-modules.mjs",
+    "check": "node --check src/server.mjs && node --check src/indexer.mjs && node --check src/steam.mjs && node --check src/steam-assets.mjs && node --check src/mame.mjs && node --check src/zip-index.mjs && node --check src/wiki.mjs && node --check src/mame-commands.mjs && node --check public/shelves.js && node --check public/catalog.js && node --check public/gamepad.js && node tools/check-modules.mjs && node tools/check-styles.mjs",
     "desktop": "electron .",
     "package": "node tools/package.mjs"
   },

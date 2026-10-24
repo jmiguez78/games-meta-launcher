@@ -1,0 +1,113 @@
+/* Base: El documento, la tipografía general y los controles nativos (botones, campos, foco). Sin clases de componentes.
+   Capa «base» (ver styles.css). */
+
+/* ── Documento ── */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--ink);
+  font: 14px/1.45 var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: 'cv11', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+  transition: --ambient var(--dur-slow) var(--ease-out);
+}
+.icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+[data-icon] {
+  display: inline-flex;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+}
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 640px at 18% -12%, color-mix(in srgb, var(--ambient) 26%, transparent), transparent 70%),
+    radial-gradient(700px 520px at 100% 0%, color-mix(in srgb, var(--ambient) 10%, transparent), transparent 70%);
+}
+:root[data-theme='light'] body::before {
+  opacity: 0.55;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) body::before {
+    opacity: 0.55;
+  }
+}
+::view-transition-group(game-art) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-old(game-art),
+::view-transition-new(game-art) {
+  height: 100%;
+  object-fit: cover;
+}
+/* Con el mando, el foco se ve desde lejos. */
+body.gamepad-active :focus-visible,
+body.gamepad-active .tile:focus {
+  outline: 3px solid var(--white);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+html:has(body[data-page='library']) {
+  scroll-padding-top: calc(var(--library-toolbar-h, 64px) + 12px);
+}
+
+/* ── Tipografía ── */
+.kicker,
+.eyebrow {
+  margin: 0;
+  color: var(--accent-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+h1,
+h2,
+.display {
+  font-family: var(--font-display);
+  font-stretch: 84%;
+  font-optical-sizing: auto;
+}
+
+/* ── Formularios ── */
+fieldset {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+legend {
+  padding: 0 5px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+:is(button, select, input, textarea, summary, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

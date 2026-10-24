@@ -1,19 +1,34 @@
 const state = {
   games: [],
-  platform: '',
-  drive: '',
-  tag: '',
   query: '',
   favorite: false,
+  // Facetas de la Biblioteca (ver catalog.js): dentro de cada una las opciones se suman.
+  filters: { store: [], genre: [], length: [], played: [], rating: [], tag: [] },
   sort: 'name',
   direction: 'asc',
-  view: 'icons',
+  view: remembered('gml-library-view', 'icons', ['icons', 'explorer']),
   detailTab: 'summary',
   // Alcance de la Biblioteca: 'installed' (por defecto) o '' para toda la cuenta.
   installation: 'installed',
   selectedKey: '',
   page: 'home'
 };
+// Preferencias de interfaz de este equipo (vista y filtros abiertos); sin almacenamiento se usan los valores por defecto.
+function remembered(key, fallback, allowed) {
+  try {
+    const value = localStorage.getItem(key);
+    return allowed.includes(value) ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function remember(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* sin almacenamiento local no se recuerda */
+  }
+}
 const pendingCoverLoads = new Map();
 const coverObserver = new IntersectionObserver(
   (entries) => {
@@ -41,12 +56,6 @@ const pageMeta = {
   diagnostics: ['Estado de la biblioteca', 'diagnóstico estado sistema revisión plataformas'],
   settings: ['Configuración', 'configuración preferencias ajustes'],
   game: ['Juego', '']
-};
-const viewInfo = {
-  icons: { name: 'Portadas', description: 'Explorá visualmente tu colección.' },
-  list: { name: 'Lista', description: 'Escaneá rápido; hacé clic en un juego para abrir su ficha.' },
-  detail: { name: 'Ficha', description: 'Compará juegos y revisá una ficha completa sin salir de la biblioteca.' },
-  explorer: { name: 'Tabla', description: 'Ordená y compará los datos esenciales de toda la colección.' }
 };
 // Iconos de trazo (estilo Lucide, licencia ISC) dibujados inline para no sumar dependencias.
 const iconPaths = {
@@ -257,48 +266,26 @@ function escapeHtml(value) {
 function tagsOf(game) {
   return Array.isArray(game.tags) ? game.tags : [];
 }
-function sortValue(game, field) {
-  if (field === 'recent') return game.lastLaunchedAt || '';
-  if (field === 'status') return statusText(game);
-  return game[field] || '';
+// Juegos visibles en la Biblioteca: filtrados, ordenados y con los duplicados entre tiendas agrupados.
+function visibleEntries() {
+  const filtered = GMLCatalog.filterGames(state.games, {
+    query: state.query,
+    scope: state.installation,
+    filters: state.filters,
+    favorite: state.favorite
+  });
+  return GMLCatalog.collapseDuplicates(GMLCatalog.sortGames(filtered, state.sort, state.direction));
 }
 function visibleGames() {
-  const factor = state.direction === 'asc' ? 1 : -1;
-  return state.games
-    .filter(
-      (game) =>
-        (!state.platform || game.platform === state.platform) &&
-        (!state.drive || game.drive === state.drive) &&
-        (!state.tag || tagsOf(game).includes(state.tag)) &&
-        (!state.favorite || game.favorite) &&
-        (!state.installation ||
-          (state.installation === 'installed' ? game.installed !== false : game.installed === false)) &&
-        (
-          game.name +
-          ' ' +
-          (game.originalName || '') +
-          ' ' +
-          game.platform +
-          ' ' +
-          game.location +
-          ' ' +
-          tagsOf(game).join(' ') +
-          (game.meta ? ' ' + (game.meta.genres || []).join(' ') + ' ' + (game.meta.developers || []).join(' ') : '')
-        )
-          .toLowerCase()
-          .includes(state.query.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (['hours', 'recent-hours', 'unplayed'].includes(state.sort)) {
-        const key = state.sort === 'recent-hours' ? 'recentHours' : 'playtimeHours';
-        const first = a.steam?.[key],
-          second = b.steam?.[key];
-        if (first == null || second == null)
-          return first == null ? (second == null ? a.name.localeCompare(b.name, 'es') : 1) : -1;
-        return (state.sort === 'unplayed' ? first - second : second - first) || a.name.localeCompare(b.name, 'es');
-      }
-      return String(sortValue(a, state.sort)).localeCompare(String(sortValue(b, state.sort)), 'es') * factor;
-    });
+  return visibleEntries().map((entry) => entry.game);
+}
+// Colección sin duplicados entre tiendas, para Inicio.
+function uniqueGames() {
+  return GMLCatalog.collapseDuplicates(state.games).map((entry) => entry.game);
+}
+function otherCopies(game) {
+  const key = GMLCatalog.titleKey(game.name);
+  return state.games.filter((item) => item !== game && GMLCatalog.titleKey(item.name) === key);
 }
 function coverInfo(game) {
   const palette = {
@@ -485,8 +472,18 @@ function decorateActions(root, game) {
       'aria-label',
       (installable ? 'Instalar en Steam: ' : available ? 'Jugar a ' : 'Revisar ') + game.name
     );
-    button.querySelector('.label').textContent = installable ? 'Instalar en Steam' : available ? 'Jugar' : 'Revisar';
+    // En la tabla el espacio es escaso: «Instalar» alcanza, la tienda está en su propia columna.
+    const compact = Boolean(button.closest('.games-table'));
+    button.querySelector('.label').textContent = installable
+      ? compact
+        ? 'Instalar'
+        : 'Instalar en Steam'
+      : available
+        ? 'Jugar'
+        : 'Revisar';
     button.classList.toggle('review', !available && !installable);
+    button.classList.toggle('install', installable);
+    if (compact) button.title = button.getAttribute('aria-label');
   });
   root.querySelectorAll('[data-action=favorite]').forEach((button) => {
     button.setAttribute('aria-pressed', String(Boolean(game.favorite)));
@@ -524,59 +521,43 @@ function playOrReview(game) {
   if (game.launch && game.launch.available) playGame(game);
   else say(game.evidence);
 }
-// Fila para las vistas Lista y Detalle.
-function makeRow(game) {
-  const cover = coverInfo(game);
-  const row = document.createElement('article');
-  row.className = 'game-row tile ' + cover.palette + (game.key === state.selectedKey ? ' selected' : '');
-  row.dataset.key = game.key;
-  row.tabIndex = -1;
-  row.setAttribute('aria-label', game.name + ', ' + game.platform + ', ' + statusText(game));
-  row.innerHTML =
-    '<div class="row-thumb"><span class="cover-initial"></span></div>' +
-    '<div class="row-main"><h3 class="row-title"></h3>' +
-    metaLineHtml() +
-    '</div><p class="row-played"></p><div class="row-actions">' +
-    playButtonHtml(game, 'button small') +
-    iconActionsHtml(game) +
-    '</div>';
-  applyCover(row.querySelector('.row-thumb'), game, cover);
-  row.querySelector('.row-title').textContent = game.name;
-  fillMetaLine(row, game);
-  row.querySelector('.row-played').textContent = game.lastLaunchedAt ? 'Jugado el ' + lastPlayedText(game) : '';
-  decorateActions(row, game);
-  return row;
+// Tabla para comparar: encabezados ordenables con aria-sort. Comparte el orden con el selector de la barra.
+const tableColumns = [
+  ['name', 'Nombre', 'ascending'],
+  ['platform', 'Tienda', 'ascending'],
+  ['status', 'Estado', 'ascending'],
+  ['hours', 'Horas jugadas', 'descending'],
+  ['recent', 'Última sesión', 'descending'],
+  ['rating', 'Valoración', 'descending'],
+  ['length', 'Duración', 'ascending']
+];
+function setSort(sort, direction = 'asc') {
+  state.sort = sort;
+  state.direction = direction;
+  document.querySelector('#sort').value = sort;
 }
-// Tabla semántica para la vista Tabla: encabezados ordenables con aria-sort.
-function makeTable(games) {
+function makeTable(entries) {
   const table = document.createElement('table');
-  table.className = 'data-table';
+  table.className = 'data-table games-table';
   table.innerHTML =
     '<caption class="visually-hidden">Juegos de la biblioteca</caption><thead><tr></tr></thead><tbody></tbody>';
-  const headers = [
-    ['name', 'Nombre'],
-    ['platform', 'Plataforma'],
-    ['drive', 'Unidad'],
-    ['status', 'Estado'],
-    ['recent', 'Última vez jugado']
-  ];
   const headRow = table.querySelector('thead tr');
-  headers.forEach(([field, label]) => {
+  tableColumns.forEach(([field, label, natural], index) => {
     const active = state.sort === field;
+    const inverse = { ascending: 'descending', descending: 'ascending' };
     const th = document.createElement('th');
     th.scope = 'col';
-    th.setAttribute('aria-sort', active ? (state.direction === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.setAttribute('aria-sort', active ? (state.direction === 'asc' ? natural : inverse[natural]) : 'none');
     th.innerHTML =
       '<button type="button" class="sort-button"><span></span><span class="sort-indicator" aria-hidden="true"></span></button>';
     th.querySelector('span').textContent = label;
-    th.querySelector('.sort-indicator').textContent = active ? (state.direction === 'asc' ? '↑' : '↓') : '↕';
+    const shown = active ? (state.direction === 'asc' ? natural : inverse[natural]) : '';
+    th.querySelector('.sort-indicator').textContent = shown === 'ascending' ? '↑' : shown === 'descending' ? '↓' : '↕';
     th.querySelector('button').classList.toggle('active', active);
     th.querySelector('button').onclick = () => {
-      state.direction =
-        state.sort === field ? (state.direction === 'asc' ? 'desc' : 'asc') : field === 'recent' ? 'desc' : 'asc';
-      state.sort = field;
+      setSort(field, active && state.direction === 'asc' ? 'desc' : 'asc');
       renderLibrary();
-      library.querySelectorAll('.sort-button')[headers.findIndex(([name]) => name === field)].focus();
+      library.querySelectorAll('.sort-button')[index].focus();
     };
     headRow.append(th);
   });
@@ -585,28 +566,39 @@ function makeTable(games) {
   actionsHeader.innerHTML = '<span class="visually-hidden">Acciones</span>';
   headRow.append(actionsHeader);
   const body = table.querySelector('tbody');
-  games.forEach((game) => {
+  entries.forEach(({ game, alsoOn }) => {
     const row = document.createElement('tr');
     row.className = 'tile' + (game.key === state.selectedKey ? ' selected' : '');
     row.dataset.key = game.key;
     row.tabIndex = -1;
     row.innerHTML =
-      '<th scope="row" class="cell-name"></th><td></td><td></td><td></td><td></td><td class="cell-actions">' +
+      '<th scope="row" class="cell-name"><span class="cell-game"><span class="cell-thumb"><span class="cover-initial"></span></span>' +
+      '<span class="cell-title"><span class="cell-label"></span><small></small></span></span></th>' +
+      '<td></td><td><span class="status-pill"></span></td><td class="cell-number"></td><td></td><td class="cell-number"></td>' +
+      '<td class="cell-number"></td><td class="cell-actions">' +
       playButtonHtml(game, 'button small') +
       '</td>';
-    const name = row.querySelector('.cell-name');
-    name.textContent = game.name;
+    applyCover(row.querySelector('.cell-thumb'), game, coverInfo(game));
+    row.querySelector('.cell-label').textContent = game.name;
     if (game.favorite)
-      name.insertAdjacentHTML('afterbegin', '<span class="favorite-mark">' + icon('star', true) + '</span>');
+      row
+        .querySelector('.cell-label')
+        .insertAdjacentHTML('afterbegin', '<span class="favorite-mark">' + icon('star', true) + '</span>');
+    row.querySelector('small').textContent = alsoOn.length
+      ? 'También en ' + alsoOn.map((item) => item.platform).join(', ')
+      : '';
     const cells = row.querySelectorAll('td');
+    const played = GMLCatalog.lastPlayed(game);
     cells[0].textContent = game.platform;
-    cells[1].textContent = game.drive || '—';
-    cells[2].innerHTML = '<span class="status-pill"></span>';
-    cells[2].firstChild.textContent = statusText(game);
-    setStatusTone(cells[2].firstChild, game);
-    cells[3].textContent = lastPlayedText(game);
-    decorateActions(row, game);
+    cells[1].firstChild.textContent =
+      game.installed === false ? 'No instalado' : game.launch && game.launch.available ? 'Listo' : 'Revisar';
+    setStatusTone(cells[1].firstChild, game);
+    cells[2].textContent = GMLShelves.hours(GMLCatalog.hoursPlayed(game)) || '—';
+    cells[3].textContent = played ? GMLShelves.relativeDay(new Date(played).toISOString()) : '—';
+    cells[4].textContent = GMLCatalog.rating(game) ?? '—';
+    cells[5].textContent = GMLCatalog.length(game) ? GMLShelves.hours(GMLCatalog.length(game)) : '—';
     body.append(row);
+    decorateActions(row, game);
   });
   return table;
 }
@@ -1189,49 +1181,6 @@ function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
   selectDetailTab(content.has(state.detailTab) ? state.detailTab : 'summary');
   return tabs;
 }
-// Ficha compacta para la vista Ficha de la Biblioteca: lista a la izquierda, ficha a la derecha.
-function detailPanel(game) {
-  const panel = document.createElement('aside');
-  panel.className = 'detail-panel';
-  if (!game) {
-    panel.innerHTML = '<p class="detail-empty">Elegí un juego para ver su ficha.</p>';
-    return panel;
-  }
-  const cover = coverInfo(game);
-  panel.dataset.key = game.key;
-  panel.setAttribute('aria-label', 'Ficha de ' + game.name);
-  panel.innerHTML =
-    '<div class="detail-hero ' +
-    cover.palette +
-    '"><span class="cover-initial"></span></div><div class="detail-body">' +
-    metaLineHtml() +
-    '<h2></h2><div class="detail-actions">' +
-    playButtonHtml(game, 'button primary') +
-    '<button type="button" class="button" data-action="favorite">' +
-    icon('star', game.favorite) +
-    '<span>' +
-    (game.favorite ? 'En favoritos' : 'Favorito') +
-    '</span></button><button type="button" class="button" data-action="edit">' +
-    icon('pencil') +
-    '<span>Editar</span></button><button type="button" class="button" data-action="page">Abrir ficha completa</button></div>' +
-    '<dl class="detail-facts"><div><dt>Progreso</dt><dd></dd></div><div><dt>Tu puntuación</dt><dd></dd></div>' +
-    '<div><dt>Última vez jugado</dt><dd></dd></div></dl></div>';
-  applyCover(panel.querySelector('.detail-hero'), game, cover, true);
-  fillMetaLine(panel, game);
-  panel.querySelector('h2').textContent = game.name;
-  const facts = panel.querySelectorAll('.detail-facts dd');
-  facts[0].textContent = game.progress || 'Pendiente';
-  facts[1].textContent = game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar';
-  const played = GMLShelves.lastPlayed(game);
-  facts[2].textContent = played ? GMLShelves.relativeDay(new Date(played).toISOString()) : 'Aún no registrado';
-  panel
-    .querySelector('.detail-body')
-    .append(gameTabs(game, { summaryExtras: game.steam ? [steamActivityFacts(game)] : [] }));
-  decorateActions(panel, game);
-  panel.querySelectorAll('[data-action]').forEach((button) => (button.tabIndex = 0));
-  setAmbient(game);
-  return panel;
-}
 // Portada en cuadrícula.
 // options.caption reemplaza la plataforma bajo el título (por ejemplo, «Ayer» en la fila Continuar).
 function makePosterCard(game, options = {}) {
@@ -1242,7 +1191,7 @@ function makePosterCard(game, options = {}) {
   card.tabIndex = -1;
   card.setAttribute('aria-label', game.name + ', ' + game.platform + ', ' + statusText(game));
   card.innerHTML =
-    '<div class="poster-art"><span class="cover-initial"></span></div>' +
+    '<div class="poster-art"><span class="cover-initial"></span><span class="poster-badge"></span></div>' +
     '<div class="poster-overlay">' +
     playButtonHtml(game, 'poster-play') +
     '</div><div class="poster-actions">' +
@@ -1317,9 +1266,6 @@ function tileNeighbor(tile, key) {
 function gameFor(element) {
   return state.games.find((item) => item.key === element.dataset.key);
 }
-function tileSelected(container, tile) {
-  container.dispatchEvent(new CustomEvent('tileselect', { detail: tile }));
-}
 function bindTiles(container) {
   container.dataset.tiles = '';
   container.addEventListener('pointerover', (event) => {
@@ -1331,22 +1277,15 @@ function bindTiles(container) {
     if (!host || !container.contains(host)) return;
     const action = event.target.closest('[data-action]');
     if (host.classList.contains('tile')) {
-      // Fuera de la vista Ficha, un clic en el juego (no en sus botones) abre su página.
-      if (!action && !(container === library && state.view === 'detail')) {
+      // Un clic en el juego (no en sus botones) abre su página.
+      if (!action) {
         selectTile(host, false);
         openGamePage(gameFor(host), host);
         return;
       }
-      selectTile(host, !action);
-      tileSelected(container, host);
+      selectTile(host, false);
     }
     if (action) posterAction(gameFor(host), action.dataset.action);
-  });
-  container.addEventListener('dblclick', (event) => {
-    const tile = event.target.closest('.tile');
-    // En la vista Ficha, el doble clic juega; en las demás, el primer clic ya abrió la página.
-    if (tile && !event.target.closest('button') && container === library && state.view === 'detail')
-      playOrReview(gameFor(tile));
   });
   container.addEventListener('keydown', (event) => {
     const tile = event.target.closest('.tile');
@@ -1367,11 +1306,10 @@ function bindTiles(container) {
       event.preventDefault();
       const next = tileNeighbor(tile, event.key);
       selectTile(next, true);
-      tileSelected(container, next);
     } else if (event.key === 'Enter') {
-      if (container === library && ['list', 'explorer'].includes(state.view)) openGamePage(gameFor(tile), tile);
+      if (container === library && state.view === 'explorer') openGamePage(gameFor(tile), tile);
       else posterAction(gameFor(tile), 'play');
-    } else if (event.key === ' ' && !(container === library && state.view === 'detail')) {
+    } else if (event.key === ' ') {
       event.preventDefault();
       openGamePage(gameFor(tile), tile);
     } else if (event.key.toLowerCase() === 'f') posterAction(gameFor(tile), 'favorite');
@@ -1379,12 +1317,7 @@ function bindTiles(container) {
   });
 }
 bindTiles(library);
-// En la vista Detalle, elegir otro juego actualiza la ficha sin redibujar la lista.
-library.addEventListener('tileselect', (event) => {
-  if (state.view !== 'detail') return;
-  library.querySelector('.detail-panel').replaceWith(detailPanel(gameFor(event.detail)));
-  pruneCoverLoads();
-});
+
 function renderLibraryState() {
   const holder = document.querySelector('#library-state');
   const view = state.loading ? 'loading' : state.loadError ? 'error' : state.games.length ? '' : 'empty';
@@ -1418,8 +1351,20 @@ function renderLibraryState() {
   }
   return Boolean(view);
 }
+// Las portadas se arman una vez por juego y se reutilizan entre búsquedas y filtros: redibujar sólo
+// cambia su orden, sin volver a crear elementos ni a pedir imágenes.
+const posterCache = new Map();
+function cachedPoster(game) {
+  let card = posterCache.get(game.key);
+  if (!card || card.gameRef !== game) {
+    card = makePosterCard(game);
+    card.gameRef = game;
+    posterCache.set(game.key, card);
+  }
+  return card;
+}
 function renderLibrary() {
-  const games = visibleGames();
+  const entries = visibleEntries();
   // Si el foco estaba dentro de la grilla, se recupera sobre el mismo juego y acción tras redibujar.
   const focused = library.contains(document.activeElement)
     ? {
@@ -1427,32 +1372,41 @@ function renderLibrary() {
         action: document.activeElement.dataset.action
       }
     : null;
-  library.className = 'library ' + { icons: 'posters', list: 'rows', detail: 'detail', explorer: 'table' }[state.view];
-  library.innerHTML = '';
+  library.className = 'library ' + (state.view === 'explorer' ? 'table' : 'posters');
   if (renderLibraryState()) {
+    library.replaceChildren();
     document.querySelector('#empty-state').classList.add('hidden');
     document.querySelector('#counter').textContent = state.loading ? 'Cargando juegos…' : '';
     return;
   }
-  if (!games.some((game) => game.key === state.selectedKey) && games[0]) state.selectedKey = games[0].key;
-  if (state.view === 'explorer') library.append(makeTable(games));
-  else if (state.view === 'detail') {
-    const results = document.createElement('div');
-    results.className = 'detail-results';
-    games.forEach((game) => results.append(makeRow(game)));
-    library.append(results, detailPanel(games.find((game) => game.key === state.selectedKey)));
-  } else games.forEach((game) => library.append(state.view === 'icons' ? makePosterCard(game) : makeRow(game)));
-  const active = library.querySelector('.tile.selected') || library.querySelector('.tile');
+  if (!entries.some(({ game }) => game.key === state.selectedKey) && entries[0])
+    state.selectedKey = entries[0].game.key;
+  if (state.view === 'explorer') library.replaceChildren(makeTable(entries));
+  else
+    library.replaceChildren(
+      ...entries.map(({ game, alsoOn }) => {
+        const card = cachedPoster(game);
+        const badge = card.querySelector('.poster-badge');
+        badge.textContent = alsoOn.length ? alsoOn.length + 1 + ' tiendas' : '';
+        badge.title = alsoOn.length ? 'También en ' + alsoOn.map((item) => item.platform).join(', ') : '';
+        return card;
+      })
+    );
+  const active =
+    library.querySelector('.tile[data-key="' + CSS.escape(state.selectedKey) + '"]') || library.querySelector('.tile');
   if (active) selectTile(active, false);
   const tile = focused?.key && library.querySelector('.tile[data-key="' + CSS.escape(focused.key) + '"]');
   if (tile) (focused.action ? tile.querySelector('[data-action="' + focused.action + '"]') : tile)?.focus();
+  const total = GMLCatalog.collapseDuplicates(
+    GMLCatalog.filterGames(state.games, { scope: state.installation })
+  ).length;
   document.querySelector('#counter').textContent =
-    games.length === state.games.length
-      ? games.length + ' juegos'
-      : games.length + ' de ' + state.games.length + ' juegos';
-  document.querySelector('#view-label').textContent = viewInfo[state.view].description;
-  document.querySelector('#empty-state').classList.toggle('hidden', games.length > 0);
+    entries.length === total
+      ? entries.length + (entries.length === 1 ? ' juego' : ' juegos')
+      : entries.length + ' de ' + total + ' juegos';
+  document.querySelector('#empty-state').classList.toggle('hidden', entries.length > 0);
   renderActiveFilters();
+  renderFacets();
   pruneCoverLoads();
 }
 // Favoritos, después los jugados hace poco y después los listos para jugar, sin repetir.
@@ -1613,7 +1567,7 @@ function renderShelves() {
   homeShelvesHost.replaceChildren();
   const hero = heroGame();
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  GMLShelves.homeShelves(state.games, { exclude: hero ? [hero.game.key] : [] }).forEach((shelf) => {
+  GMLShelves.homeShelves(uniqueGames(), { exclude: hero ? [hero.game.key] : [] }).forEach((shelf) => {
     const section = document.createElement('section');
     section.className = 'shelf';
     section.setAttribute('aria-labelledby', 'shelf-' + shelf.id);
@@ -1692,7 +1646,7 @@ function renderHealthSignals() {
       : 'Ninguno necesita revisión.');
 }
 function renderHome() {
-  heroPicks = GMLShelves.heroCandidates(state.games);
+  heroPicks = GMLShelves.heroCandidates(uniqueGames());
   renderHero();
   renderShelves();
   renderHomeEmpty();
@@ -1746,6 +1700,25 @@ function renderGameAside(game) {
   statRow(stats, 'Tu progreso', game.progress || 'Pendiente');
   statRow(stats, 'Tu puntuación', game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar');
   if (game.platform === 'Steam' && game.ownership === 'owned') loadAchievementRing(aside, game);
+  // Otras tiendas donde está el mismo juego.
+  const copies = otherCopies(game);
+  if (copies.length) {
+    const section = document.createElement('section');
+    section.className = 'game-copies';
+    section.innerHTML = '<h3>También en</h3>';
+    copies.forEach((copy) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'game-copy';
+      button.innerHTML = '<span></span><small></small>' + icon('chevronRight');
+      button.querySelector('span').textContent = copy.platform;
+      button.querySelector('small').textContent = statusText(copy);
+      button.setAttribute('aria-label', game.name + ' en ' + copy.platform + ', ' + statusText(copy));
+      button.onclick = () => openGamePage(copy);
+      section.append(button);
+    });
+    aside.append(section);
+  }
 }
 async function loadAchievementRing(aside, game) {
   try {
@@ -1835,74 +1808,97 @@ document.querySelector('#game-aside').addEventListener('click', (event) => {
   const game = state.games.find((item) => item.key === gamePage.dataset.key);
   if (action && game) posterAction(game, action);
 });
-function chips(holder, options, selected, allLabel, choose) {
-  holder.innerHTML = '';
-  [allLabel, ...options].forEach((value) => {
-    const button = document.createElement('button');
-    button.className = 'chip ' + ((!selected && value === allLabel) || selected === value ? 'active' : '');
-    button.textContent = value;
-    button.onclick = () => choose(value === allLabel ? '' : value);
-    holder.append(button);
-  });
-}
 function renderScope() {
-  const installed = state.games.filter((game) => game.installed !== false).length;
+  const unique = (games) => GMLCatalog.collapseDuplicates(games).length;
+  const installed = state.games.filter((game) => game.installed !== false);
   const scope = document.querySelector('#scope');
   // Sin juegos de la cuenta fuera de esta PC el selector no aporta nada y se oculta.
-  scope.classList.toggle('hidden', installed === state.games.length);
+  scope.classList.toggle('hidden', installed.length === state.games.length);
   scope.querySelectorAll('[data-scope]').forEach((button) => {
     const active = button.dataset.scope === state.installation;
     button.setAttribute('aria-pressed', String(active));
-    button.querySelector('.count').textContent = button.dataset.scope ? installed : state.games.length;
+    button.querySelector('.count').textContent = button.dataset.scope ? unique(installed) : unique(state.games);
   });
 }
 function renderFilters() {
   renderScope();
-  chips(
-    document.querySelector('#platforms'),
-    [...new Set(state.games.map((game) => game.platform))].sort(),
-    state.platform,
-    'Todas las plataformas',
-    (value) => {
-      state.platform = value;
-      renderFilters();
-      renderLibrary();
+  renderFacets();
+}
+// Panel de filtros: cada faceta muestra sus opciones con la cantidad de juegos que quedarían al elegirla.
+function renderFacets() {
+  const panel = document.querySelector('#facet-groups');
+  if (!panel) return;
+  const counts = GMLCatalog.facetCounts(state.games, {
+    query: state.query,
+    scope: state.installation,
+    filters: state.filters,
+    favorite: state.favorite
+  });
+  const focusedValue = panel.contains(document.activeElement)
+    ? [document.activeElement.dataset.facet, document.activeElement.dataset.value]
+    : null;
+  panel.replaceChildren();
+  Object.entries(counts).forEach(([id, facet]) => {
+    const selected = state.filters[id];
+    const options = facet.options.filter((option) => option.count > 0 || selected.includes(option.value));
+    if (!options.length) return;
+    const group = document.createElement('section');
+    group.className = 'facet';
+    group.setAttribute('aria-labelledby', 'facet-' + id);
+    group.innerHTML = '<h3></h3><div class="facet-options"></div>';
+    group.querySelector('h3').id = 'facet-' + id;
+    group.querySelector('h3').textContent = facet.label;
+    const holder = group.querySelector('.facet-options');
+    const limit = id === 'genre' || id === 'tag' ? 10 : options.length;
+    options.forEach((option, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'facet-option';
+      button.dataset.facet = id;
+      button.dataset.value = option.value;
+      button.setAttribute('aria-pressed', String(selected.includes(option.value)));
+      button.innerHTML = '<span class="facet-label"></span><span class="facet-count"></span>';
+      button.querySelector('.facet-label').textContent = id === 'tag' ? '#' + option.label : option.label;
+      button.querySelector('.facet-count').textContent = option.count;
+      if (index >= limit && !selected.includes(option.value)) button.hidden = true;
+      holder.append(button);
+    });
+    if (options.length > limit) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'text-button facet-more';
+      more.textContent = 'Ver ' + (options.length - limit) + ' más';
+      more.onclick = () => {
+        holder.querySelectorAll('[hidden]').forEach((button) => (button.hidden = false));
+        more.remove();
+      };
+      group.append(more);
     }
-  );
-  const select = (selector, label, values, current, set) => {
-    const element = document.querySelector(selector);
-    element.innerHTML = '<option value="">' + label + '</option>';
-    values.forEach((value) => element.add(new Option(value, value)));
-    element.value = current;
-    element.onchange = (event) => {
-      set(event.target.value);
-      renderLibrary();
-    };
-  };
-  select(
-    '#drive',
-    'Todas las unidades',
-    [...new Set(state.games.map((game) => game.drive).filter(Boolean))].sort(),
-    state.drive,
-    (value) => (state.drive = value)
-  );
-  select(
-    '#tag',
-    'Todas las etiquetas',
-    [...new Set(state.games.flatMap(tagsOf))].sort((a, b) => a.localeCompare(b, 'es')),
-    state.tag,
-    (value) => (state.tag = value)
-  );
+    panel.append(group);
+  });
+  if (focusedValue)
+    panel
+      .querySelector('[data-facet="' + focusedValue[0] + '"][data-value="' + CSS.escape(focusedValue[1] || '') + '"]')
+      ?.focus();
 }
 function renderActiveFilters() {
   const labels = [];
   if (state.query)
     labels.push(['“' + state.query + '”', () => (document.querySelector('#search').value = state.query = '')]);
-  if (state.platform) labels.push([state.platform, () => (state.platform = '')]);
-  if (state.tag) labels.push(['#' + state.tag, () => (state.tag = '')]);
-  if (state.drive) labels.push([state.drive, () => (state.drive = '')]);
-  if (state.favorite)
-    labels.push(['Favoritos', () => (document.querySelector('#favorites-only').checked = state.favorite = false)]);
+  if (state.favorite) labels.push(['Favoritos', () => (state.favorite = false)]);
+  const facetLabels = {
+    length: Object.fromEntries(GMLCatalog.facets.length.options),
+    played: Object.fromEntries(GMLCatalog.facets.played.options),
+    rating: Object.fromEntries(GMLCatalog.facets.rating.options)
+  };
+  Object.entries(state.filters).forEach(([id, values]) =>
+    values.forEach((value) =>
+      labels.push([
+        id === 'tag' ? '#' + value : facetLabels[id]?.[value] || value,
+        () => (state.filters[id] = state.filters[id].filter((item) => item !== value))
+      ])
+    )
+  );
   const holder = document.querySelector('#active-filters');
   holder.innerHTML = '';
   labels.forEach(([label, remove]) => {
@@ -1914,31 +1910,26 @@ function renderActiveFilters() {
     chip.querySelector('span').textContent = label;
     chip.onclick = () => {
       remove();
-      renderFilters();
+      document.querySelector('#favorites-only').setAttribute('aria-pressed', String(state.favorite));
       renderLibrary();
       (document.querySelector('#active-filters button') || document.querySelector('#search')).focus();
     };
     holder.append(chip);
   });
+  document.querySelector('#clear-filters').classList.toggle('hidden', labels.length === 0);
   const badge = document.querySelector('#active-filter-count');
-  badge.textContent = labels.length;
-  badge.classList.toggle('hidden', labels.length === 0);
+  const facetCount =
+    Object.values(state.filters).reduce((sum, values) => sum + values.length, 0) + (state.favorite ? 1 : 0);
+  badge.textContent = facetCount;
+  badge.classList.toggle('hidden', facetCount === 0);
 }
-// Restablece los filtros; el alcance (instalados o toda la cuenta) se conserva.
+// Quita búsqueda y filtros; el alcance (instalados o toda la cuenta) y el orden se conservan.
 function clearFilters() {
-  Object.assign(state, {
-    platform: '',
-    drive: '',
-    tag: '',
-    query: '',
-    favorite: false,
-    sort: 'name',
-    direction: 'asc'
-  });
+  state.query = '';
+  state.favorite = false;
+  state.filters = { store: [], genre: [], length: [], played: [], rating: [], tag: [] };
   document.querySelector('#search').value = '';
-  document.querySelector('#favorites-only').checked = false;
-  document.querySelector('#sort').value = 'name';
-  renderFilters();
+  document.querySelector('#favorites-only').setAttribute('aria-pressed', 'false');
   renderLibrary();
 }
 async function updatePreference(game, patch) {
@@ -1948,6 +1939,7 @@ async function updatePreference(game, patch) {
     body: JSON.stringify({ key: game.key, ...patch })
   });
   Object.assign(game, saved);
+  posterCache.delete(game.key);
   renderHome();
   renderFilters();
   renderLibrary();
@@ -2223,6 +2215,7 @@ async function load() {
   try {
     const catalog = await request('/api/library');
     state.games = catalog.games;
+    posterCache.clear();
     state.generatedAt = catalog.generatedAt;
     renderSyncStatus();
   } catch (error) {
@@ -2236,7 +2229,9 @@ async function load() {
 }
 function setFiltersOpen(open) {
   document.querySelector('#filter-panel').classList.toggle('hidden', !open);
+  document.querySelector('#library-page').classList.toggle('filters-open', open);
   document.querySelector('#toggle-filters').setAttribute('aria-expanded', String(open));
+  remember('gml-filters-open', open ? 'yes' : 'no');
 }
 // Abre la página del juego desde cualquier lugar (paleta, imagen principal).
 function showGame(game) {
@@ -2291,7 +2286,8 @@ function paletteCommands() {
       keywords: 'filtrar estrella',
       run: () => {
         showPage('library');
-        state.favorite = document.querySelector('#favorites-only').checked = true;
+        state.favorite = true;
+        document.querySelector('#favorites-only').setAttribute('aria-pressed', 'true');
         renderLibrary();
       }
     },
@@ -2454,13 +2450,21 @@ document.querySelector('#search').oninput = (event) => {
   state.query = event.target.value;
   renderLibrary();
 };
-document.querySelector('#favorites-only').onchange = (event) => {
-  state.favorite = event.target.checked;
+document.querySelector('#favorites-only').onclick = (event) => {
+  state.favorite = !state.favorite;
+  event.currentTarget.setAttribute('aria-pressed', String(state.favorite));
   renderLibrary();
 };
+document.querySelector('#facet-groups').addEventListener('click', (event) => {
+  const option = event.target.closest('.facet-option');
+  if (!option) return;
+  const { facet, value } = option.dataset;
+  const selected = state.filters[facet];
+  state.filters[facet] = selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value];
+  renderLibrary();
+});
 document.querySelector('#sort').onchange = (event) => {
-  state.sort = event.target.value;
-  state.direction = event.target.value === 'recent' ? 'desc' : 'asc';
+  setSort(event.target.value);
   renderLibrary();
 };
 document.querySelector('#clear-filters').onclick = clearFilters;
@@ -2474,17 +2478,24 @@ document.querySelectorAll('#scope [data-scope]').forEach((button) => {
 document.querySelector('#empty-clear').onclick = clearFilters;
 document.querySelector('#toggle-filters').onclick = () =>
   setFiltersOpen(document.querySelector('#filter-panel').classList.contains('hidden'));
+function syncViewButtons() {
+  document.querySelectorAll('#views button').forEach((item) => {
+    const active = item.dataset.view === state.view;
+    item.classList.toggle('active', active);
+    item.setAttribute('aria-pressed', String(active));
+  });
+}
 document.querySelectorAll('#views button').forEach(
   (button) =>
     (button.onclick = () => {
       state.view = button.dataset.view;
-      document.querySelectorAll('#views button').forEach((item) => {
-        item.classList.toggle('active', item === button);
-        item.setAttribute('aria-pressed', String(item === button));
-      });
+      remember('gml-library-view', state.view);
+      syncViewButtons();
       renderLibrary();
     })
 );
+syncViewButtons();
+setFiltersOpen(remembered('gml-filters-open', 'no', ['yes', 'no']) === 'yes');
 document
   .querySelectorAll('.nav-item[data-page]')
   .forEach((button) => (button.onclick = () => showPage(button.dataset.page)));

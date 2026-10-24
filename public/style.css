@@ -488,49 +488,12 @@ body {
   color: var(--accent-muted);
   font-size: 11px;
 }
-.detail-results {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.detail-results .cover-initial {
-  font-size: 13px;
-}
-.detail-results .tag-list {
-  display: none;
-}
-.library.explorer {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
-  gap: 14px;
-}
-.library.detail {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(290px, 0.7fr);
-  gap: 16px;
-}
-.detail-panel {
-  position: sticky;
-  top: 20px;
-  align-self: start;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-.detail-panel h2 {
-  margin: 10px 0 5px;
-  font-size: 23px;
-  letter-spacing: -0.035em;
-}
 .notes {
   padding: 10px;
   border-left: 3px solid var(--line-accent);
   background: var(--surface-soft);
   color: var(--ink-soft);
 }
-.detail-actions,
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -755,12 +718,6 @@ legend {
   }
   .filter-grid {
     grid-template-columns: 1fr 1fr;
-  }
-  .library.detail {
-    grid-template-columns: 1fr;
-  }
-  .detail-panel {
-    position: static;
   }
   .settings-grid {
     grid-template-columns: 1fr;

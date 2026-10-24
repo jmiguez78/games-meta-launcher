@@ -269,14 +269,14 @@ body::before {
   border-color: var(--ink-soft);
   background: var(--ink-soft);
 }
-.button.primary[data-action='play']:not(.review),
+.button.primary[data-action='play']:not(.review):not(.install),
 .button.play {
   border-color: var(--play);
   background: var(--play);
   color: var(--play-ink);
   font-weight: 700;
 }
-.button.primary[data-action='play']:not(.review):hover,
+.button.primary[data-action='play']:not(.review):not(.install):hover,
 .button.play:hover {
   border-color: var(--play-strong);
   background: var(--play-strong);
@@ -404,25 +404,6 @@ body::before {
 }
 
 /* Filas, tabla y ficha toman la misma tinta de superficie. */
-.game-row {
-  border-color: transparent;
-  background: var(--surface);
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
-}
-.game-row:hover {
-  border-color: var(--line-strong);
-  background: var(--surface-soft);
-}
-.game-row.selected {
-  border-color: var(--line-accent);
-}
-.row-thumb {
-  border-radius: 6px;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%);
-}
-.detail-panel,
 .data-table,
 .surface-card,
 .settings-card,
@@ -432,11 +413,6 @@ body::before {
   border-color: var(--line);
   background: var(--surface);
   box-shadow: none;
-}
-.detail-panel h2 {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.05;
 }
 .segmented,
 #library-page .search {
@@ -508,8 +484,7 @@ dialog::backdrop {
   .poster-overlay,
   .poster-actions,
   .poster-play,
-  .button,
-  .game-row {
+  .button {
     transition: none;
   }
   .page:not(.hidden) {
@@ -1209,4 +1184,275 @@ body:is([data-page='home'], [data-page='game']) .palette-trigger {
 a.meta-source {
   display: inline-block;
   padding: 4px 0;
+}
+
+/* ── Biblioteca: barra, filtros por facetas y resultados ─────── */
+#library-page .library-toolbar {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+#library-page .search {
+  flex: 1 1 280px;
+}
+.sort-control select {
+  height: var(--control-height);
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239890ab' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 10px center / 16px;
+  color: var(--ink);
+  font: 600 13px/1 var(--font-ui);
+  appearance: none;
+  cursor: pointer;
+}
+#library-page .library-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: start;
+  min-height: 32px;
+  margin: 4px 0 14px;
+}
+.library-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+#library-page.filters-open .library-body {
+  grid-template-columns: 236px minmax(0, 1fr);
+}
+.library-results {
+  min-width: 0;
+}
+.facet-panel {
+  position: sticky;
+  top: 20px;
+  display: grid;
+  gap: 18px;
+  max-height: calc(100dvh - 40px);
+  padding: 4px 6px 16px 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.facet-favorites {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-self: start;
+  height: 36px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: 600 13px/1 var(--font-ui);
+}
+.facet-favorites[aria-pressed='true'] {
+  border-color: var(--favorite);
+  color: var(--ink);
+}
+.facet-favorites[aria-pressed='true'] .icon {
+  color: var(--favorite);
+  fill: currentColor;
+}
+#facet-groups {
+  display: grid;
+  gap: 18px;
+}
+.facet h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.facet-options {
+  display: grid;
+  gap: 2px;
+}
+.facet-option {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: 500 13px/1.2 var(--font-ui);
+  text-align: left;
+}
+.facet-option:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+.facet-option[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 650;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.facet-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.facet-count {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.facet-more {
+  margin: 6px 0 0 10px;
+  font-size: 12px;
+}
+/* Las portadas fuera de la pantalla no se pintan hasta acercarse. */
+.library.posters > .poster {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+}
+.poster-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: rgb(8 7 12 / 70%);
+  color: #f2eff8;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+.poster-badge:empty {
+  display: none;
+}
+
+/* Tabla de juegos */
+.games-table .cell-game {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+.cell-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+}
+.cell-thumb .cover-initial {
+  font-size: 9px;
+}
+.cell-title {
+  display: grid;
+  min-width: 0;
+}
+.cell-title small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.cell-title small:empty {
+  display: none;
+}
+.games-table .cell-number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.games-table td,
+.games-table .cell-actions .button {
+  white-space: nowrap;
+}
+.games-table tbody tr.tile > * {
+  height: 52px;
+}
+
+/* Página de juego: otras tiendas */
+.game-copies {
+  display: grid;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.game-copies h3 {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.game-copy {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: 600 13px/1.2 var(--font-ui);
+  text-align: left;
+}
+.game-copy small {
+  color: var(--muted);
+  font-weight: 500;
+}
+.game-copy:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+@media (max-width: 980px) {
+  #library-page.filters-open .library-body {
+    grid-template-columns: 1fr;
+  }
+  .facet-panel {
+    position: static;
+    max-height: none;
+  }
+}
+.library.table .games-table {
+  min-width: 720px;
+}
+.games-table th,
+.games-table td {
+  padding-right: 10px;
+  padding-left: 10px;
+}
+.games-table thead th:first-child,
+.games-table .cell-name {
+  width: 30%;
+  min-width: 200px;
+}
+.games-table .sort-button {
+  padding: 12px 10px;
+  white-space: nowrap;
+}
+/* En la tabla, Jugar e Instalar son botones de ícono; su nombre accesible y el título dicen la acción. */
+.games-table .cell-actions .button {
+  justify-content: center;
+  width: 36px;
+  padding: 0;
+}
+.games-table .cell-actions .label {
+  display: none;
+}
+.games-table .cell-actions [data-action='play']:not(.review):not(.install) {
+  border-color: var(--play);
+  background: var(--play);
+  color: var(--play-ink);
 }

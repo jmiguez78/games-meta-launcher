@@ -1,0 +1,192 @@
+// Búsqueda, filtros por facetas, orden y agrupación de duplicados de la Biblioteca.
+// Funciones puras sobre la lista de juegos; se usan en la interfaz y en las pruebas (globalThis.GMLCatalog).
+(function (root) {
+  const HOUR = 3600;
+  const time = (value) => {
+    const parsed = Date.parse(value || '');
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const lastPlayed = (game) => Math.max(time(game.lastLaunchedAt), time(game.steam && game.steam.lastPlayedAt));
+  const hoursPlayed = (game) =>
+    game.steam && Number.isFinite(game.steam.playtimeHours) ? game.steam.playtimeHours : null;
+  const rating = (game) => (game.meta && Number.isFinite(game.meta.rating) ? game.meta.rating : null);
+  const length = (game) => {
+    const seconds = game.meta && game.meta.timeToBeat && game.meta.timeToBeat.normally;
+    return Number.isFinite(seconds) && seconds > 0 ? seconds / HOUR : null;
+  };
+  const playable = (game) => game.installed !== false && Boolean(game.launch && game.launch.available);
+  const normalize = (text) =>
+    String(text || '')
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
+  // Título comparable entre tiendas: sin mayúsculas, tildes, marcas ni signos.
+  function titleKey(name) {
+    return normalize(name)
+      .replace(/[®™©]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  // Facetas: cada una devuelve los valores de un juego. Dentro de una faceta las opciones se suman (o);
+  // entre facetas se combinan (y).
+  const facets = {
+    store: { label: 'Tienda', values: (game) => [game.platform] },
+    genre: { label: 'Género', values: (game) => (game.meta && game.meta.genres) || [] },
+    length: {
+      label: 'Duración',
+      options: [
+        ['short', 'Menos de 8 h'],
+        ['medium', 'De 8 a 25 h'],
+        ['long', 'Más de 25 h']
+      ],
+      values: (game) => {
+        const hours = length(game);
+        if (hours == null) return [];
+        return [hours <= 8 ? 'short' : hours <= 25 ? 'medium' : 'long'];
+      }
+    },
+    played: {
+      label: 'Tiempo jugado',
+      options: [
+        ['never', 'Nunca jugado'],
+        ['some', 'Menos de 10 h'],
+        ['lots', '10 h o más']
+      ],
+      values: (game) => {
+        const hours = hoursPlayed(game);
+        if (hours == null) return lastPlayed(game) ? [] : ['never'];
+        if (hours === 0 && !game.lastLaunchedAt) return ['never'];
+        return [hours < 10 ? 'some' : 'lots'];
+      }
+    },
+    rating: {
+      label: 'Valoración',
+      options: [
+        ['90', '90 o más'],
+        ['80', '80 o más'],
+        ['70', '70 o más']
+      ],
+      // Umbrales acumulativos: un juego con 92 cumple los tres.
+      values: (game) => {
+        const value = rating(game);
+        return value == null ? [] : ['90', '80', '70'].filter((threshold) => value >= Number(threshold));
+      }
+    },
+    tag: { label: 'Etiqueta', values: (game) => (Array.isArray(game.tags) ? game.tags : []) }
+  };
+
+  function matchesQuery(game, query) {
+    const words = normalize(query).split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    const haystack = normalize(
+      [
+        game.name,
+        game.originalName,
+        game.platform,
+        ...(Array.isArray(game.tags) ? game.tags : []),
+        ...((game.meta && game.meta.genres) || []),
+        ...((game.meta && game.meta.developers) || [])
+      ].join(' ')
+    );
+    return words.every((word) => haystack.includes(word));
+  }
+  function matchesFacets(game, filters, skip) {
+    for (const [id, facet] of Object.entries(facets)) {
+      const selected = filters[id] || [];
+      if (id === skip || !selected.length) continue;
+      const values = facet.values(game);
+      if (!selected.some((value) => values.includes(value))) return false;
+    }
+    return true;
+  }
+  function matchesScope(game, scope) {
+    return scope !== 'installed' || game.installed !== false;
+  }
+  function filterGames(games, { query = '', scope = '', filters = {}, favorite = false } = {}) {
+    return games.filter(
+      (game) =>
+        matchesScope(game, scope) &&
+        (!favorite || game.favorite) &&
+        matchesQuery(game, query) &&
+        matchesFacets(game, filters)
+    );
+  }
+  // Conteo de cada opción con el resto de los filtros aplicados: muestra cuántos juegos quedarían al elegirla.
+  function facetCounts(games, { query = '', scope = '', filters = {}, favorite = false } = {}) {
+    const base = games.filter(
+      (game) => matchesScope(game, scope) && (!favorite || game.favorite) && matchesQuery(game, query)
+    );
+    const result = {};
+    for (const [id, facet] of Object.entries(facets)) {
+      const counts = new Map();
+      for (const game of base) {
+        if (!matchesFacets(game, filters, id)) continue;
+        for (const value of new Set(facet.values(game))) counts.set(value, (counts.get(value) || 0) + 1);
+      }
+      const options = facet.options
+        ? facet.options.map(([value, label]) => ({ value, label, count: counts.get(value) || 0 }))
+        : [...counts]
+            .map(([value, count]) => ({ value, label: value, count }))
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'es'));
+      result[id] = { label: facet.label, options };
+    }
+    return result;
+  }
+
+  const byName = (a, b) => a.name.localeCompare(b.name, 'es');
+  // Los valores desconocidos van siempre al final, en cualquier dirección.
+  const numeric = (value, direction) => (a, b) => {
+    const first = value(a),
+      second = value(b);
+    if (first == null || second == null) return first == null ? (second == null ? byName(a, b) : 1) : -1;
+    return (first - second) * direction || byName(a, b);
+  };
+  const statusRank = (game) => (playable(game) ? 0 : game.installed === false ? 2 : 1);
+  const sorters = {
+    name: (direction) => (a, b) => byName(a, b) * direction,
+    platform: (direction) => (a, b) => a.platform.localeCompare(b.platform, 'es') * direction || byName(a, b),
+    status: (direction) => (a, b) => (statusRank(a) - statusRank(b)) * direction || byName(a, b),
+    recent: (direction) => numeric((game) => lastPlayed(game) || null, -direction),
+    hours: (direction) => numeric(hoursPlayed, -direction),
+    rating: (direction) => numeric(rating, -direction),
+    length: (direction) => numeric(length, direction)
+  };
+  // direction 'asc' es el orden natural de cada criterio: A–Z, más reciente, más horas, mejor valorado, más corto.
+  function sortGames(games, sort = 'name', direction = 'asc') {
+    const sorter = (sorters[sort] || sorters.name)(direction === 'desc' ? -1 : 1);
+    return [...games].sort(sorter);
+  }
+
+  // Un juego comprado en varias tiendas se muestra una vez. Queda adelante la copia que se puede jugar ya;
+  // las demás viajan en `alsoOn`.
+  function collapseDuplicates(games) {
+    const groups = new Map();
+    for (const game of games) {
+      const key = titleKey(game.name);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(game);
+    }
+    const primaries = new Map();
+    for (const group of groups.values()) {
+      const ordered = [...group].sort(
+        (a, b) => statusRank(a) - statusRank(b) || (a.platform === 'Steam' ? -1 : b.platform === 'Steam' ? 1 : 0)
+      );
+      primaries.set(ordered[0], ordered.slice(1));
+    }
+    return games.filter((game) => primaries.has(game)).map((game) => ({ game, alsoOn: primaries.get(game) }));
+  }
+
+  root.GMLCatalog = {
+    facets,
+    titleKey,
+    lastPlayed,
+    hoursPlayed,
+    rating,
+    length,
+    filterGames,
+    facetCounts,
+    sortGames,
+    collapseDuplicates
+  };
+})(globalThis);

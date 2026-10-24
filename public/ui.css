@@ -578,208 +578,26 @@
 }
 
 /* Filas: vistas Lista y Detalle */
-.library.rows,
-.detail-results {
-  display: grid;
-  gap: var(--space-2);
-  align-content: start;
-}
 .view-description {
   max-width: 420px;
   margin: var(--space-1) 0 0;
   color: var(--ink-soft);
   font-size: 13px;
 }
-.library.rows .game-row,
 .library.table tbody tr {
   cursor: pointer;
 }
-.library.rows .game-row:hover {
-  box-shadow: 0 5px 16px color-mix(in srgb, var(--ink) 8%, transparent);
-}
-.game-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto auto;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--control-radius);
-  background: var(--surface);
-  cursor: pointer;
-}
-.game-row:hover {
-  border-color: var(--line-accent);
-}
-.game-row.selected {
-  border-color: var(--accent);
-  background: var(--row-selected);
-}
-.row-thumb {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  aspect-ratio: 2 / 3;
-  border-radius: 6px;
-  background: linear-gradient(145deg, #40557e, #283a61);
-  color: #fff;
-}
-.row-thumb .cover-initial {
-  font-size: 14px;
-}
-.row-thumb.art-logo {
-  padding: 4px;
-}
-.game-row.steam .row-thumb {
-  background-image: linear-gradient(145deg, #30608c, #173754);
-}
-.game-row.epic .row-thumb {
-  background-image: linear-gradient(145deg, #72608b, #423653);
-}
-.game-row.xbox .row-thumb {
-  background-image: linear-gradient(145deg, #488a70, #245843);
-}
-.game-row.ubisoft .row-thumb {
-  background-image: linear-gradient(145deg, #5b76a9, #304a7b);
-}
-.row-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.row-title {
-  margin: 0;
-  overflow: hidden;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row-played {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.row-actions {
-  display: flex;
-  gap: var(--space-1);
-  align-items: center;
-}
-.game-row .icon-btn[aria-pressed='true'] {
-  color: var(--favorite);
-}
-.library.detail {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
-  gap: var(--space-4);
-  align-items: start;
-}
-.detail-results {
-  position: sticky;
-  top: var(--space-4);
-  max-height: calc(100dvh - 32px);
-  min-width: 0;
-  overflow: auto;
-  scrollbar-gutter: stable;
-}
-.detail-results .row-played,
-.detail-results .row-actions .button {
-  display: none;
-}
-.detail-results .game-row {
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-}
-.detail-results .row-thumb {
-  width: 40px;
-}
 
 /* Ficha del juego */
-.detail-panel {
-  position: sticky;
-  top: var(--space-4);
-  overflow: auto;
-  max-height: calc(100dvh - 32px);
-  min-width: 0;
-  scrollbar-gutter: stable;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: none;
-}
 .detail-empty {
   margin: 0;
   padding: var(--space-6);
   color: var(--muted);
   text-align: center;
 }
-.detail-hero {
-  display: flex;
-  width: 100%;
-  align-items: end;
-  aspect-ratio: 92 / 43;
-  max-height: clamp(140px, 24dvh, 220px);
-  padding: var(--space-4);
-  background: linear-gradient(145deg, #40557e, #283a61);
-  color: #fff;
-}
-.detail-hero .cover-initial {
-  font-size: 32px;
-}
-.detail-hero.art-logo {
-  padding: var(--space-5);
-}
-.detail-hero.steam {
-  background-image: linear-gradient(145deg, #30608c, #173754);
-}
-.detail-hero.epic {
-  background-image: linear-gradient(145deg, #72608b, #423653);
-}
-.detail-hero.xbox {
-  background-image: linear-gradient(145deg, #488a70, #245843);
-}
-.detail-hero.ubisoft {
-  background-image: linear-gradient(145deg, #5b76a9, #304a7b);
-}
-.detail-body {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-5) var(--space-5);
-  min-width: 0;
-}
-.detail-panel h2 {
-  margin: 0;
-  font-size: 22px;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-.detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.detail-actions [data-action='favorite'][aria-pressed='true'] .icon {
-  color: var(--favorite);
-}
-.detail-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-}
-.detail-facts div {
-  padding: var(--space-2) var(--space-3);
-  border-radius: 8px;
-  background: var(--surface-soft);
-}
-.detail-facts dt,
 .detail-tech dt {
   color: var(--muted);
   font-size: 12px;
-}
-.detail-facts dd {
-  margin: 2px 0 0;
-  font-weight: 600;
 }
 .detail-section {
   display: grid;
@@ -1430,48 +1248,13 @@ dialog input:disabled {
     animation: none;
   }
 }
-
-@media (max-width: 980px) {
-  .library.detail {
-    grid-template-columns: minmax(200px, 0.6fr) minmax(0, 1.4fr);
-  }
-}
-@media (max-width: 740px) {
-  .library.detail {
-    grid-template-columns: 1fr;
-  }
-  .detail-panel {
-    position: static;
-    order: -1;
-    max-height: none;
-  }
-  .detail-results {
-    position: static;
-    max-height: none;
-  }
-  .game-row {
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-  }
-  .game-row .row-played {
-    display: none;
-  }
-  .row-thumb {
-    width: 40px;
-  }
-}
 @media (max-width: 520px) {
-  .detail-body {
-    padding: var(--space-4);
-  }
   .detail-tabpanel .detail-tech {
     grid-template-columns: 1fr;
     gap: 2px;
   }
   .detail-tabpanel .detail-tech dd {
     margin-bottom: var(--space-2);
-  }
-  .game-row .row-actions .button .label {
-    display: none;
   }
 }
 

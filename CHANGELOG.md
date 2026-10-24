@@ -1,5 +1,18 @@
 # Registro de cambios
 
+## 0.19.0 — 24 de octubre de 2026
+
+Segunda ronda, etapa A: una Biblioteca para encontrar cualquier juego en segundos.
+
+- Dos vistas: Portadas y Tabla. Lista y Ficha se retiran, porque la página de cada juego cumple su función. La vista elegida se recuerda.
+- El orden está a la vista junto a la búsqueda: nombre, jugados recientemente, más horas, mejor valorados, más cortos primero y tienda.
+- Panel de filtros lateral con conteos: tienda, género, duración, tiempo jugado (incluye «Nunca jugado»), valoración y etiquetas, más «Sólo favoritos». Las opciones de un mismo grupo se suman y los grupos se combinan. El panel recuerda si quedó abierto.
+- Tabla nueva: portada, nombre, tienda, estado, horas jugadas, última sesión (desde la aplicación o Steam), valoración y duración. Todas las columnas se ordenan, y Jugar e Instalar son botones de ícono.
+- Un juego comprado en varias tiendas aparece una vez, con la copia jugable adelante. La portada indica en cuántas tiendas está, y la página del juego suma «También en» para abrir las otras copias.
+- La búsqueda ignora tildes, combina palabras y reutiliza las portadas ya armadas: responde unas tres veces más rápido. Las portadas fuera de pantalla no se pintan hasta acercarse.
+- Inicio tampoco repite juegos entre tiendas.
+- La lógica de búsqueda, filtros, orden y duplicados vive en `public/catalog.js` y tiene pruebas automáticas.
+
 ## 0.18.0 — 24 de octubre de 2026
 
 Fase 3 del plan de experiencia: una página propia para cada juego.

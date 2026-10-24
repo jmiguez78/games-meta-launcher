@@ -76,18 +76,7 @@ async function installSteamGame(game) {
 }
 function steamShowGame(appid) {
   const game = state.games.find((row) => row.platform === 'Steam' && String(row.id) === String(appid));
-  if (!game) return;
-  clearFilters();
-  state.selectedKey = game.key;
-  state.view = 'detail';
-  state.detailTab = 'summary';
-  document.querySelectorAll('[data-view]').forEach((button) => {
-    const active = button.dataset.view === 'detail';
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', String(active));
-  });
-  showPage('library');
-  renderLibrary();
+  if (game) openGamePage(game);
 }
 function steamGameCard(parent, item) {
   if (typeof item === 'number' || typeof item === 'string') item = { appid: item };

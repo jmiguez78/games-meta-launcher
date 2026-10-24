@@ -11,6 +11,7 @@ import { setup as setupCouch } from './couch.js';
 import { request } from './api.js';
 import { readSnapshot, saveSnapshot } from './snapshot.js';
 import { report, setup as setupReport } from './report.js';
+import { loadUpdates, setup as setupUpdates } from './updates.js';
 import { setAmbient } from './art.js';
 import { posterCache } from './cards.js';
 import { loadHealth } from './diagnostics.js';
@@ -56,6 +57,7 @@ export function showPage(page, { focus = true } = {}) {
     loadIgdb();
     loadMame();
     loadSteamSettings();
+    loadUpdates();
   }
   if (page === 'library' && focus) document.querySelector('#search').focus();
 }
@@ -135,6 +137,7 @@ setupSettings();
 setupPalette();
 setupEditor();
 setupCouch();
+setupUpdates();
 document
   .querySelectorAll('.nav-item[data-page]')
   .forEach((button) => (button.onclick = () => showPage(button.dataset.page)));

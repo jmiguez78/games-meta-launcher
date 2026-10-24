@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { protect, unprotect } from './secrets.mjs';
+import { badGateway, badRequest, conflict } from './http.mjs';
 import { readJsonCached, writeJsonAtomic } from './json-file.mjs';
 
 const DAY = 86400000;
@@ -233,7 +234,7 @@ export function createSteam(dataDir, options = {}) {
     status.error = null;
     syncPromise = (async () => {
       const saved = await credentials();
-      if (!saved) throw new Error('Conectá tu cuenta de Steam en Configuración.');
+      if (!saved) throw conflict('Conectá tu cuenta de Steam en Configuración.');
       const url = new URL('https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/');
       url.search = new URLSearchParams({
         key: saved.apiKey,
@@ -246,9 +247,9 @@ export function createSteam(dataDir, options = {}) {
       try {
         response = await fetchImpl(url, { signal: AbortSignal.timeout(25000), redirect: 'error' });
       } catch {
-        throw new Error('No se pudo conectar con Steam. Se conserva la biblioteca anterior.');
+        throw badGateway('No se pudo conectar con Steam. Se conserva la biblioteca anterior.');
       }
-      if (!response.ok) throw new Error('Steam rechazó la consulta de biblioteca. Revisá la clave y tu conexión.');
+      if (!response.ok) throw badGateway('Steam rechazó la consulta de biblioteca. Revisá la clave y tu conexión.');
       const payload = (await response.json()).response;
       if (!Number.isInteger(payload?.game_count) || payload.game_count < 0)
         throw new Error('La biblioteca no está disponible. Revisá la privacidad de tus juegos en Steam.');
@@ -345,10 +346,10 @@ export function createSteam(dataDir, options = {}) {
     },
     async connect(apiKey, steamId) {
       if (!/^[a-f0-9]{32}$/i.test(apiKey) || !accountId(steamId))
-        throw new Error('Indicá una clave de 32 caracteres hexadecimales y un SteamID64 válido.');
+        throw badRequest('Indicá una clave de 32 caracteres hexadecimales y un SteamID64 válido.');
       const saved = { apiKey, steamId };
       const check = await rawCall('get_player_summary', { steamid: steamId }, saved);
-      if (check.found === false) throw new Error('Steam no pudo validar la cuenta. Revisá la clave y el SteamID64.');
+      if (check.found === false) throw badRequest('Steam no pudo validar la cuenta. Revisá la clave y el SteamID64.');
       await write(credentialFile, { secret: await encrypt(JSON.stringify(saved)) });
       credentialsPromise = Promise.resolve(saved);
       return this.settings();
@@ -359,7 +360,7 @@ export function createSteam(dataDir, options = {}) {
       try {
         saved = JSON.parse(await decrypt(await fs.readFile(file, 'utf8')));
       } catch {
-        throw new Error('No se encontró una conexión de Steam guardada para este usuario.');
+        throw conflict('No se encontró una conexión de Steam guardada para este usuario.');
       }
       return this.connect(saved.apiKey, saved.steamId);
     },
@@ -369,7 +370,7 @@ export function createSteam(dataDir, options = {}) {
       transport?.stop();
     },
     async details(appid, force = false) {
-      if (!gameId(appid)) throw new Error('App ID de Steam inválido.');
+      if (!gameId(appid)) throw badRequest('App ID de Steam inválido.');
       const fields = [
         ['store', 'get_game'],
         ['compatibility', 'get_items'],
@@ -417,9 +418,9 @@ export function createSteam(dataDir, options = {}) {
       return result;
     },
     async achievements(appid, force = false) {
-      if (!gameId(appid)) throw new Error('App ID de Steam inválido.');
+      if (!gameId(appid)) throw badRequest('App ID de Steam inválido.');
       const saved = await credentials();
-      if (!saved) throw new Error('Conectá Steam para consultar tus logros.');
+      if (!saved) throw conflict('Conectá Steam para consultar tus logros.');
       // Consulta directa para obtener la lista completa, sin los recortes de la herramienta MCP.
       const hash = crypto.createHash('sha256').update(`${saved.steamId}:${appid}`).digest('hex');
       const file = path.join(dataDir, 'steam-cache', 'achievements-' + hash + '.json');
@@ -486,10 +487,10 @@ export function createSteam(dataDir, options = {}) {
         compare: ['compare_players', { other_steamid: otherSteamId }],
         owners: ['find_friends_who_own', { appids: [Number(appid)] }]
       };
-      if (!tools[kind]) throw new Error('Consulta de Steam no válida.');
-      if (kind === 'compare' && !accountId(otherSteamId)) throw new Error('Indicá un SteamID64 válido para comparar.');
-      if (kind === 'owners' && !gameId(appid)) throw new Error('App ID de Steam inválido.');
-      if (!(await credentials())) throw new Error('Conectá Steam en Configuración.');
+      if (!tools[kind]) throw badRequest('Consulta de Steam no válida.');
+      if (kind === 'compare' && !accountId(otherSteamId)) throw badRequest('Indicá un SteamID64 válido para comparar.');
+      if (kind === 'owners' && !gameId(appid)) throw badRequest('App ID de Steam inválido.');
+      if (!(await credentials())) throw conflict('Conectá Steam en Configuración.');
       const [tool, args] = tools[kind];
       const result = await cachedCall(tool, args, { force, ttl: kind === 'friends' ? 300000 : 3600000 });
       if (kind === 'followed' && result.data?.found !== false && Array.isArray(result.data?.games)) {

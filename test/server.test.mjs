@@ -230,12 +230,13 @@ test('agrega los metadatos de IGDB sin exponer identificadores internos de imág
 test('la integración informa que no está configurada y no expone secretos', async () => {
   assert.deepEqual(await (await fetch(`${base}/api/integrations/igdb`)).json(), { configured: false, clientId: '' });
   const refresh = await fetch(`${base}/api/metadata/refresh`, { method: 'POST' });
-  assert.equal(refresh.status, 400);
+  // 409: falta conectar IGDB antes de pedir la actualización.
+  assert.equal(refresh.status, 409);
   const invalid = await fetch(`${base}/api/integrations/igdb`, {
     method: 'PUT',
     ...json({ clientId: 'abc; rm', clientSecret: 'x' })
   });
-  assert.equal(invalid.status, 500);
+  assert.equal(invalid.status, 400);
   assert.match((await invalid.json()).error, /letras y números/);
 });
 
@@ -258,9 +259,9 @@ test('guarda el tema y lo conserva al restaurar un respaldo', async () => {
 test('Arcade sin MAME configurado no indexa ni rompe la biblioteca', async () => {
   const info = await (await fetch(`${base}/api/integrations/mame`)).json();
   assert.equal(info.configured, false);
-  assert.equal((await fetch(`${base}/api/mame/scan`, { method: 'POST' })).status, 400);
+  assert.equal((await fetch(`${base}/api/mame/scan`, { method: 'POST' })).status, 409);
   const invalid = await fetch(`${base}/api/integrations/mame`, { method: 'PUT', ...json({ exe: 'C:\\juego.exe' }) });
-  assert.equal(invalid.status, 500);
+  assert.equal(invalid.status, 400);
   assert.match((await invalid.json()).error, /mame.exe/);
   assert.equal((await fetch(`${base}/api/launch/arcade%3Apacman`, { method: 'POST' })).status, 404);
 });
@@ -269,7 +270,7 @@ test('Steam sin cuenta no expone secretos ni permite instalar un juego ajeno', a
   const settings = await (await fetch(`${base}/api/integrations/steam`)).json();
   assert.equal(settings.configured, false);
   assert.equal(settings.apiKey, undefined);
-  assert.equal((await fetch(`${base}/api/steam/sync`, { method: 'POST' })).status, 400);
+  assert.equal((await fetch(`${base}/api/steam/sync`, { method: 'POST' })).status, 409);
   const result = await fetch(`${base}/api/install/steam%3A10`, { method: 'POST' });
   assert.equal(result.status, 400);
 });
@@ -322,4 +323,43 @@ test('registra errores de la interfaz y exporta un diagnóstico sin secretos', a
   // Ninguna clave ni secreto guardado (los mensajes de error pueden nombrarlos, pero nunca incluir su valor).
   assert.equal(/"(apiKey|clientSecret|secret)"\s*:/.test(text), false);
   assert.equal(text.includes('cambio'), false, text.match(/.{80}cambio.{40}/)?.[0]);
+});
+
+test('la API responde 400, 404 y 405 con mensajes claros en lugar de 500', async () => {
+  const bad = await fetch(`${base}/api/preferences`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: '{roto'
+  });
+  assert.equal(bad.status, 400);
+  assert.match((await bad.json()).error, /JSON/);
+  const list = await fetch(`${base}/api/preferences`, { method: 'PUT', ...json([1, 2]) });
+  assert.equal(list.status, 400);
+  const noKey = await fetch(`${base}/api/preferences`, { method: 'PUT', ...json({ favorite: true }) });
+  assert.equal(noKey.status, 400);
+  assert.equal((await fetch(`${base}/api/no-existe`)).status, 404);
+  const wrongMethod = await fetch(`${base}/api/library`, { method: 'DELETE' });
+  assert.equal(wrongMethod.status, 405);
+  assert.equal(wrongMethod.headers.get('allow'), 'GET');
+  assert.equal((await fetch(`${base}/api/steam/games/abc/details`)).status, 404);
+  const time = await fetch(`${base}/api/schedule`, { method: 'PUT', ...json({ time: '25:99' }) });
+  assert.equal(time.status, 400);
+  const cover = await fetch(`${base}/api/covers`, {
+    method: 'POST',
+    ...json({ key: 'steam:10', dataUrl: 'data:text/plain;base64,AA==' })
+  });
+  assert.equal(cover.status, 400);
+  const big = await fetch(`${base}/api/log`, { method: 'POST', ...json({ message: 'x'.repeat(8_100_000) }) });
+  assert.equal(big.status, 413);
+  const log = await (await fetch(`${base}/api/diagnostics`)).json();
+  assert.equal(
+    log.log.some((line) => /\[error\] servidor/.test(line) && /JSON|preferences/.test(line)),
+    false
+  );
+});
+
+test('sin repositorio de publicaciones, el aviso de versión nueva queda apagado', async () => {
+  const updates = await (await fetch(`${base}/api/updates`)).json();
+  assert.equal(typeof updates.current, 'string');
+  assert.ok('enabled' in updates);
 });

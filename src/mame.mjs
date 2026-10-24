@@ -10,6 +10,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { readZipEntries } from './zip-index.mjs';
 import { readJsonCached, writeJsonAtomic } from './json-file.mjs';
+import { badRequest, conflict, notFound } from './http.mjs';
 import { parseCommandDat, formatCommands } from './mame-commands.mjs';
 
 const CACHE_SCHEMA = 1;
@@ -495,9 +496,9 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
 
   async function index() {
     const { exe } = await settings();
-    if (!exe) throw new Error('Indicá dónde está mame.exe.');
+    if (!exe) throw conflict('Indicá dónde está mame.exe.');
     await fs.access(exe).catch(() => {
-      throw new Error('No se encontró mame.exe en esa ruta.');
+      throw badRequest('No se encontró mame.exe en esa ruta.');
     });
     const mameDir = path.dirname(exe);
     status.phase = 'version';
@@ -611,11 +612,11 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
         const exe = String(update.exe ?? '')
           .trim()
           .replace(/^"|"$/g, '');
-        if (exe && !/mame[^\\/]*\.exe$/i.test(exe)) throw new Error('Indicá la ruta completa de mame.exe.');
+        if (exe && !/mame[^\\/]*\.exe$/i.test(exe)) throw badRequest('Indicá la ruta completa de mame.exe.');
         patch.exe = exe;
       }
       if ('showAdult' in update) {
-        if (typeof update.showAdult !== 'boolean') throw new Error('Valor no válido.');
+        if (typeof update.showAdult !== 'boolean') throw badRequest('Valor no válido.');
         patch.showAdult = update.showAdult;
       }
       await saveSettings(patch);
@@ -714,10 +715,10 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     async launch(id, onExit) {
       const current = await loadCatalog();
       const { exe } = await settings();
-      if (!exe || !current) throw new Error('Configurá MAME en Configuración.');
-      if (!/^[a-z0-9_]+$/i.test(id)) throw new Error('Set de MAME no válido.');
+      if (!exe || !current) throw conflict('Configurá MAME en Configuración.');
+      if (!/^[a-z0-9_]+$/i.test(id)) throw badRequest('Set de MAME no válido.');
       const known = current.games.some((game) => game.id === id || game.arcade.versions.some((item) => item.id === id));
-      if (!known) throw new Error('Ese set no está en tu biblioteca de Arcade.');
+      if (!known) throw notFound('Ese set no está en tu biblioteca de Arcade.');
       const started = Date.now();
       const child = spawnImpl(exe, [id], { cwd: path.dirname(exe), stdio: 'ignore', windowsHide: false });
       child.once('exit', () => onExit?.(Math.round((Date.now() - started) / 1000)));

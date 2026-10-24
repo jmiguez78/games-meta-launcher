@@ -1,5 +1,16 @@
 # Registro de cambios
 
+## 0.29.0
+
+Tanda 2 del plan, «base para crecer»: una red de pruebas para cambiar sin miedo y una API más prolija. F2 (módulos) y F3 (estilos en capas) ya estaban hechas.
+
+- **Integración continua (B10).** Flujos de GitHub Actions listos en `tools/ci/` (se copian una vez a `.github/workflows/`): cada push corre la revisión, el formato y las pruebas en Windows, las pruebas de interfaz en Linux y deja el portable como artefacto; al subir una etiqueta `vX.Y.Z` se publica la versión con sus notas de este registro.
+- **Pruebas de interfaz en el repositorio.** `npm run test:ui` levanta la aplicación con una biblioteca inventada y prueba cada pantalla, los recorridos principales (buscar, favoritos, paleta, modo sala, arranque instantáneo, diagnóstico), la accesibilidad en ambos temas y siete capturas de referencia. Fallan si aparece un error de la página o un bloqueo de la política de contenido. `npm run verify` corre todo.
+- **Aviso de versión nueva.** Configuración muestra la versión instalada y, si hay una publicada más nueva, un botón para ver las novedades; al abrir aparece un aviso una sola vez por versión. Se activa cuando el repositorio de GitHub tenga publicaciones.
+- **Rutas declarativas (B5).** La API pasó de una función de 240 líneas a una tabla de rutas por dominio (`src/routes/`). Los errores de quien llama responden 400, 404, 405, 409 o 413 con un mensaje en español en lugar de 500; sólo lo inesperado queda como error en el registro.
+- **Corrección:** el atajo «Ctrl K» del buscador no tenía contraste suficiente sobre la imagen principal en el tema claro (lo encontró la prueba de accesibilidad).
+- `npm run check` revisa la sintaxis de todos los archivos sin una lista a mano.
+
 ## 0.28.0
 
 Tanda 1 del plan, «blindaje»: datos protegidos, apertura más rápida y todo en español.

@@ -4,11 +4,11 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.28.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
+Versión `0.29.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 
-1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.26.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
+1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.29.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
 2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en una portada abre la página del juego; Jugar lo inicia.
 3. En **Biblioteca**, buscá, ordená y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
 4. En **Configuración**, elegí el tema, si la ventana se minimiza al jugar y la pantalla grande; conectá Steam e IGDB; programá la búsqueda nocturna y respaldá tus preferencias.
@@ -22,11 +22,15 @@ La versión portable incluye su propio runtime. Para desarrollo se requiere `npm
 | ----------------- | -------------------------------------------------------------------------------------------------------- |
 | `npm start`       | Inicia la interfaz local.                                                                                |
 | `npm run scan`    | Reconstruye el inventario sin abrir la interfaz.                                                         |
-| `npm run check`   | Comprueba la sintaxis de los archivos de aplicación.                                                     |
-| `npm test`        | Ejecuta las pruebas automáticas de la API y el indexador.                                                |
+| `npm run check`   | Sintaxis de todo el código, `import` de la interfaz y reglas de los estilos.                             |
+| `npm test`        | Pruebas automáticas del servidor, los módulos y las herramientas (`node:test`).                          |
+| `npm run test:ui` | Pruebas de interfaz con Playwright: pantallas, flujos, accesibilidad y capturas de referencia.           |
+| `npm run verify`  | Todo lo anterior, como la integración continua. Conviene correrlo antes de etiquetar una versión.        |
 | `npm run format`  | Formatea el código con Prettier.                                                                         |
 | `npm run desktop` | Abre la aplicación en una ventana de escritorio.                                                         |
 | `npm run package` | Genera el portable de Windows y lo guarda en `releases/`. Conserva sólo la versión actual y la anterior. |
+
+La primera vez, `npx playwright install chromium` descarga el navegador de las pruebas de interfaz. Si un cambio visual es intencional, `npm run test:ui -- --update-snapshots` actualiza las capturas de referencia (`test/ui/capturas/`).
 
 El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC. Tus favoritos, etiquetas, progreso, notas, puntuaciones, portadas y fecha de última vez jugado se guardan localmente en `data/preferences.json` y `data/covers/`, también excluidos del repositorio. La fecha de juego se registra al iniciar un título desde Games Meta Launcher. La aplicación portable guarda esos datos en el perfil local de Windows.
 
@@ -73,5 +77,7 @@ La caché conserva los últimos datos válidos ante fallas de red, con fecha y a
 ## Versionado
 
 Cada versión se marca con una etiqueta de Git (`v0.18.0`). Los ejecutables no se archivan: una versión anterior se reconstruye con `git checkout v0.18.0` y `npm run package`.
+
+Con los flujos de `tools/ci/` copiados a `.github/workflows/`, en GitHub cada push corre las pruebas en Windows y las de interfaz en Linux (`ci.yml`) y deja el portable como artefacto. Al subir una etiqueta `vX.Y.Z`, `release.yml` arma el portable y publica la versión con sus notas de `CHANGELOG.md`; la aplicación consulta esa publicación (repositorio en `gml.releases` de `package.json`) y avisa cuando hay una más nueva.
 
 Se usa versionado semántico: `MAYOR.MENOR.PARCHE`. Los cambios incompatibles incrementan MAYOR; las funciones nuevas compatibles, MENOR; las correcciones, PARCHE.

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { protect, unprotect } from './secrets.mjs';
+import { badGateway, badRequest, conflict } from './http.mjs';
 import { createVersionedFile, readJsonCached, writeJsonAtomic } from './json-file.mjs';
 
 // Cliente de IGDB (Twitch). Sólo envía identificadores y nombres de juegos; nunca rutas ni datos personales.
@@ -255,15 +256,15 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
       signal: AbortSignal.timeout(10000)
     });
     if (response.status === 400 || response.status === 403)
-      throw new Error('Twitch rechazó el ID de cliente o el secreto. Revisalos en la consola de desarrolladores.');
-    if (!response.ok) throw new Error('No se pudo conectar con Twitch. Probá de nuevo más tarde.');
+      throw badRequest('Twitch rechazó el ID de cliente o el secreto. Revisalos en la consola de desarrolladores.');
+    if (!response.ok) throw badGateway('No se pudo conectar con Twitch. Probá de nuevo más tarde.');
     const data = await response.json();
     return { clientId, value: data.access_token, expiresAt: Date.now() + (data.expires_in - 300) * 1000 };
   }
   async function query(endpoint, body, retried = false) {
     if (!token || token.expiresAt < Date.now()) {
       const saved = await credentials();
-      if (!saved) throw new Error('Conectá IGDB en Configuración para obtener información de los juegos.');
+      if (!saved) throw conflict('Conectá IGDB en Configuración para obtener información de los juegos.');
       token = await requestToken(saved);
     }
     const wait = lastRequest + requestGapMs - Date.now();
@@ -401,7 +402,7 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
     },
     async connect(clientId, clientSecret) {
       if (!/^[a-z0-9]{10,64}$/i.test(clientId) || !/^[a-z0-9]{10,64}$/i.test(clientSecret))
-        throw new Error('El ID de cliente y el secreto sólo contienen letras y números.');
+        throw badRequest('El ID de cliente y el secreto sólo contienen letras y números.');
       token = await requestToken({ clientId, clientSecret });
       const all = await readJson(credentialsPath, {});
       await writeJson(credentialsPath, { ...all, igdb: { clientId, secret: await protect(clientSecret) } });

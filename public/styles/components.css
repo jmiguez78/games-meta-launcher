@@ -1267,6 +1267,11 @@ body:is([data-page='home'], [data-page='game']) .palette-trigger {
   backdrop-filter: blur(12px);
   color: var(--ink-on-dark);
 }
+/* Sobre la imagen principal (oscura en ambos temas) el atajo usa tinta clara: con el gris del tema claro no se leía. */
+body:is([data-page='home'], [data-page='game']) .palette-trigger .search-hint {
+  border-color: rgb(var(--white-rgb) / 22%);
+  color: rgb(var(--white-rgb) / 72%);
+}
 
 /* ── Avisos ── */
 /* Notificaciones: oscuras por diseño en ambos temas, apiladas abajo a la derecha */

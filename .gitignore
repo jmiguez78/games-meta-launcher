@@ -14,3 +14,6 @@ data/steam-account.json
 data/steam-cache/
 releases/
 _to_delete/
+test/ui/.data/
+test/ui/.resultados/
+test/ui/.informe/

@@ -16,6 +16,12 @@ import { displayName } from './names.mjs';
 import { arcadeCategoryEs, metaEs } from './es.mjs';
 import { createVersionedFile, readJsonCached } from './json-file.mjs';
 import { configureLog, log, recentLog } from './log.mjs';
+import { badRequest, conflict, createRouter, notImplemented, send } from './http.mjs';
+import { libraryRoutes } from './routes/library.mjs';
+import { preferencesRoutes } from './routes/preferences.mjs';
+import { integrationRoutes } from './routes/integrations.mjs';
+import { systemRoutes } from './routes/system.mjs';
+import { createUpdates } from './updates.mjs';
 import { readFileSync } from 'node:fs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -122,6 +128,18 @@ const steam = createSteam(dataDir);
 const steamAssets = createSteamAssets(dataDir);
 const arcade = createArcade(dataDir);
 const wiki = createWiki();
+// Aviso de versión nueva: el repositorio de publicaciones se indica en package.json (gml.releases).
+const updates = createUpdates({
+  current: appVersion,
+  repository: (() => {
+    if (process.env.GML_OFFLINE === '1') return null;
+    try {
+      return JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).gml?.releases ?? null;
+    } catch {
+      return null;
+    }
+  })()
+});
 const isArcade = (game) => game.platform === 'Arcade';
 // IGDB: los juegos de Arcade entran con el identificador que da Wikidata o con una búsqueda acotada a Arcade.
 // Con colecciones muy grandes sólo se buscan los favoritos y los jugados, para no saturar los servicios.
@@ -148,7 +166,10 @@ async function afterArcadeIndex() {
 }
 const isSteamApp = (game) => game.platform === 'Steam' && /^\d+$/.test(game.id);
 // Rutas clásicas de la CDN: alcanzan para saber si hay arte en línea sin consultar a Steam.
+// GML_OFFLINE=1 (pruebas de interfaz): sólo imágenes locales, nunca descargas.
+const offline = process.env.GML_OFFLINE === '1';
 function onlineSources(game, meta, kind) {
+  if (offline) return [];
   if (isArcade(game)) return arcade.onlineSources(game, kind);
   const sources = [];
   if (isSteamApp(game))
@@ -338,8 +359,8 @@ async function schedule() {
   }
 }
 async function configureSchedule(time) {
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Indicá una hora válida en formato HH:MM.');
-  if (process.platform !== 'win32') throw new Error('La indexación programada sólo está disponible en Windows.');
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw badRequest('Indicá una hora válida en formato HH:MM.');
+  if (process.platform !== 'win32') throw notImplemented('La indexación programada sólo está disponible en Windows.');
   const command = process.versions.electron
     ? `"${process.env.PORTABLE_EXECUTABLE_FILE || process.execPath}" --scan`
     : `"${process.execPath}" "${path.join(root, 'src', 'indexer.mjs')}"`;
@@ -390,18 +411,6 @@ const CONTENT_SECURITY_POLICY = [
   "base-uri 'none'",
   "form-action 'self'"
 ].join('; ');
-function reply(res, code, body, type = 'application/json; charset=utf-8') {
-  res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
-  res.end(body);
-}
-async function body(req) {
-  let value = '';
-  for await (const chunk of req) {
-    value += chunk;
-    if (value.length > 8_000_000) throw new Error('Archivo o solicitud demasiado grande.');
-  }
-  return JSON.parse(value || '{}');
-}
 // Sin cmd.exe: sus metacaracteres (&, |) permitirían encadenar comandos desde una ruta de lanzamiento.
 function startDetached(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -414,7 +423,7 @@ function startDetached(command, args, options = {}) {
   });
 }
 async function launch(game) {
-  if (!game.launch?.available) throw new Error(`El lanzamiento directo aún no está disponible para ${game.platform}.`);
+  if (!game.launch?.available) throw conflict(`El lanzamiento directo aún no está disponible para ${game.platform}.`);
   const { type, target } = game.launch;
   if (type === 'appsFolder') return startDetached('explorer.exe', [`shell:AppsFolder\\${target}`]);
   if (type === 'file' && /\.exe$/i.test(target)) return startDetached(target, [], { cwd: path.dirname(target) });
@@ -448,9 +457,9 @@ async function saveCover(update) {
   const match =
     typeof update.dataUrl === 'string' &&
     update.dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
-  if (!match) throw new Error('La portada debe ser PNG, JPG o WebP.');
+  if (!match) throw badRequest('La portada debe ser PNG, JPG o WebP.');
   const bytes = Buffer.from(match[2], 'base64');
-  if (bytes.length > 5_000_000) throw new Error('La portada no puede superar 5 MB.');
+  if (bytes.length > 5_000_000) throw badRequest('La portada no puede superar 5 MB.');
   const name = `${crypto.createHash('sha256').update(update.key).digest('hex').slice(0, 20)}${extensionByMime[match[1]]}`;
   await fs.mkdir(coversDir, { recursive: true });
   const temporary = path.join(coversDir, `${name}.${crypto.randomUUID()}.tmp`);
@@ -535,248 +544,133 @@ async function diagnostics() {
     log: await recentLog(1500)
   };
 }
+// Rutas de la API agrupadas por dominio (src/routes/). Lo que no es /api se sirve desde public/.
 export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
+  const router = createRouter();
+  const deps = {
+    library,
+    libraryJson,
+    health,
+    preferences,
+    updatePreferences,
+    gameUpdate,
+    saveCover,
+    readCover,
+    appSettings,
+    themes,
+    steam,
+    igdb,
+    arcade,
+    forIgdb,
+    afterArcadeIndex,
+    gameArt,
+    startDetached,
+    schedule,
+    configureSchedule,
+    diagnostics,
+    updates,
+    clientLog,
+    async scan() {
+      const scanned = await scanLibrary();
+      log('info', 'biblioteca', `Búsqueda de juegos: ${scanned.games.length} encontrados`);
+      if ((await steam.settings()).configured) steam.sync().catch(() => {});
+      if ((await arcade.settings()).exe) arcade.start(afterArcadeIndex);
+      return scanned;
+    },
+    async play(game, key) {
+      if (game.launch?.type === 'mame')
+        await arcade.launch(key.slice('arcade:'.length), async (seconds) => {
+          await recordSession(game.key, seconds).catch(() => {});
+          onGameExit?.(game);
+        });
+      else await launch(game);
+      log('info', 'juego', `Iniciado ${game.key} (${game.launch?.type ?? 'sin tipo'})`);
+      await updatePreferences((prefs) => {
+        prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
+      });
+      // La aplicación de escritorio se minimiza para dejar el juego adelante.
+      const minimize = (await appSettings()).minimizeOnLaunch;
+      if (minimize) setTimeout(() => onLaunch?.(game), 1200);
+      return { ok: true, minimize };
+    },
+    async importPreferences(imported) {
+      const games = Object.fromEntries(
+        Object.entries(imported.games)
+          .filter(([, saved]) => saved && typeof saved === 'object')
+          .map(([key, saved]) => [key, importedGame(saved)])
+      );
+      await updatePreferences((prefs) => ({ ...prefs, games }));
+      log('info', 'preferencias', `Preferencias importadas: ${Object.keys(games).length} juegos`);
+      return { ok: true };
+    },
+    async saveSettings(patch) {
+      await updatePreferences((prefs) => ({ ...prefs, settings: { ...prefs.settings, ...patch } }));
+      const settings = await appSettings();
+      onSettingsChange?.(settings);
+      return settings;
+    }
+  };
+  libraryRoutes(router, deps);
+  preferencesRoutes(router, deps);
+  integrationRoutes(router, deps);
+  systemRoutes(router, deps);
+
   const server = http.createServer(async (req, res) => {
     try {
-      if (!trustedRequest(req)) return reply(res, 403, JSON.stringify({ error: 'Solicitud no permitida.' }));
+      if (!trustedRequest(req)) return send(res, 403, JSON.stringify({ error: 'Solicitud no permitida.' }));
       const url = new URL(req.url, `http://${req.headers.host}`);
-      if (url.pathname === '/api/integrations/steam') {
-        if (req.method === 'GET') return reply(res, 200, JSON.stringify(await steam.settings()));
-        if (req.method === 'PUT') {
-          const update = await body(req);
-          await steam.connect(String(update.apiKey || '').trim(), String(update.steamId || '').trim());
-          return reply(res, 200, JSON.stringify(await steam.settings()));
-        }
-        if (req.method === 'DELETE') {
-          await steam.disconnect();
-          return reply(res, 200, JSON.stringify({ configured: false }));
-        }
-      }
-      if (req.method === 'POST' && url.pathname === '/api/steam/import-local') {
-        await steam.importLocal();
-        return reply(res, 200, JSON.stringify(await steam.settings()));
-      }
-      if (req.method === 'POST' && url.pathname === '/api/steam/sync') {
-        if (!(await steam.settings()).configured)
-          return reply(res, 400, JSON.stringify({ error: 'Conectá Steam primero.' }));
-        steam.sync().catch(() => {});
-        return reply(res, 202, JSON.stringify(await steam.settings()));
-      }
-      const steamGameRoute = url.pathname.match(/^\/api\/steam\/games\/(\d+)\/(details|achievements)$/);
-      if (req.method === 'GET' && steamGameRoute) {
-        const [, appid, kind] = steamGameRoute;
-        return reply(res, 200, JSON.stringify(await steam[kind](appid, url.searchParams.get('refresh') === '1')));
-      }
-      const steamCollectionRoute = url.pathname.match(
-        /^\/api\/steam\/(wishlist|followed|recommendations|friends|compare|owners)$/
-      );
-      if (req.method === 'GET' && steamCollectionRoute) {
-        return reply(
-          res,
-          200,
-          JSON.stringify(
-            await steam.collection(steamCollectionRoute[1], {
-              force: url.searchParams.get('refresh') === '1',
-              otherSteamId: url.searchParams.get('steamid'),
-              appid: url.searchParams.get('appid')
-            })
-          )
-        );
-      }
-      if (req.method === 'POST' && url.pathname.startsWith('/api/install/')) {
-        const key = decodeURIComponent(url.pathname.slice('/api/install/'.length));
-        const game = (await library()).games.find((item) => item.key === key);
-        if (!game || game.platform !== 'Steam' || game.ownership !== 'owned' || !/^\d+$/.test(game.id))
-          return reply(
-            res,
-            400,
-            JSON.stringify({ error: 'Este juego no tiene una instalación de Steam disponible desde tu biblioteca.' })
-          );
-        await startDetached('explorer.exe', [`steam://install/${game.id}`]);
-        return reply(res, 200, JSON.stringify({ ok: true }));
-      }
-      if (url.pathname === '/api/settings') {
-        if (req.method === 'PUT') {
-          const update = await body(req);
-          const patch = {};
-          if ('theme' in update) {
-            if (!themes.includes(update.theme)) return reply(res, 400, JSON.stringify({ error: 'Tema no válido.' }));
-            patch.theme = update.theme;
-          }
-          if ('minimizeOnLaunch' in update) {
-            if (typeof update.minimizeOnLaunch !== 'boolean')
-              return reply(res, 400, JSON.stringify({ error: 'Valor no válido para minimizar al jugar.' }));
-            patch.minimizeOnLaunch = update.minimizeOnLaunch;
-          }
-          if (!Object.keys(patch).length)
-            return reply(res, 400, JSON.stringify({ error: 'No hay cambios para guardar.' }));
-          await updatePreferences((prefs) => ({ ...prefs, settings: { ...prefs.settings, ...patch } }));
-          onSettingsChange?.(await appSettings());
-        }
-        if (req.method === 'GET' || req.method === 'PUT') return reply(res, 200, JSON.stringify(await appSettings()));
-      }
-      if (req.method === 'GET' && url.pathname === '/api/library') return reply(res, 200, libraryJson(await library()));
-      if (req.method === 'GET' && url.pathname === '/api/health')
-        return reply(res, 200, JSON.stringify(await health()));
-      if (req.method === 'GET' && url.pathname === '/api/schedule')
-        return reply(res, 200, JSON.stringify(await schedule()));
-      if (req.method === 'PUT' && url.pathname === '/api/schedule') {
-        const update = await body(req);
-        return reply(res, 200, JSON.stringify(await configureSchedule(String(update.time || ''))));
-      }
-      if (req.method === 'POST' && url.pathname === '/api/scan') {
-        const scanned = await scanLibrary();
-        log('info', 'biblioteca', `Búsqueda de juegos: ${scanned.games.length} encontrados`);
-        if ((await steam.settings()).configured) steam.sync().catch(() => {});
-        if ((await arcade.settings()).exe) arcade.start(afterArcadeIndex);
-        return reply(res, 200, JSON.stringify(scanned));
-      }
-      if (url.pathname === '/api/integrations/mame') {
-        if (req.method === 'PUT') {
-          const update = await body(req);
-          await arcade.configure(update);
-          if ('exe' in update && (await arcade.settings()).exe) arcade.start(afterArcadeIndex);
-        }
-        if (req.method === 'GET' || req.method === 'PUT') return reply(res, 200, JSON.stringify(await arcade.info()));
-      }
-      if (req.method === 'POST' && url.pathname === '/api/mame/scan') {
-        if (!(await arcade.settings()).exe)
-          return reply(res, 400, JSON.stringify({ error: 'Indicá dónde está mame.exe primero.' }));
-        arcade.start(afterArcadeIndex);
-        return reply(res, 202, JSON.stringify(await arcade.info()));
-      }
-      const commandsRoute = req.method === 'GET' && url.pathname.match(/^\/api\/arcade\/([a-z0-9_]+)\/commands$/);
-      if (commandsRoute) {
-        const sections = await arcade.commands(commandsRoute[1]);
-        return sections
-          ? reply(res, 200, JSON.stringify({ sections }))
-          : reply(res, 404, JSON.stringify({ error: 'Sin movimientos para este juego.' }));
-      }
-      if (url.pathname === '/api/integrations/igdb') {
-        if (req.method === 'GET') return reply(res, 200, JSON.stringify(await igdb.settings()));
-        if (req.method === 'PUT') {
-          const update = await body(req);
-          await igdb.connect(String(update.clientId ?? '').trim(), String(update.clientSecret ?? '').trim());
-          igdb.start(await forIgdb((await library()).games));
-          return reply(res, 200, JSON.stringify({ ...(await igdb.settings()), status: igdb.status() }));
-        }
-        if (req.method === 'DELETE') {
-          await igdb.disconnect();
-          return reply(res, 200, JSON.stringify(await igdb.settings()));
-        }
-      }
-      if (req.method === 'GET' && url.pathname === '/api/metadata/status')
-        return reply(res, 200, JSON.stringify(igdb.status()));
-      if (req.method === 'POST' && url.pathname === '/api/metadata/refresh') {
-        if (!(await igdb.settings()).configured)
-          return reply(res, 400, JSON.stringify({ error: 'Conectá IGDB en Configuración primero.' }));
-        igdb.start(await forIgdb((await library()).games));
-        return reply(res, 202, JSON.stringify(igdb.status()));
-      }
-      if (req.method === 'GET' && url.pathname === '/api/preferences/export')
-        return reply(res, 200, JSON.stringify(await preferences()), 'application/json; charset=utf-8');
-      if (req.method === 'POST' && url.pathname === '/api/preferences/import') {
-        const imported = await body(req);
-        if (!imported?.games || typeof imported.games !== 'object')
-          return reply(res, 400, JSON.stringify({ error: 'El archivo no contiene preferencias válidas.' }));
-        const games = Object.fromEntries(
-          Object.entries(imported.games)
-            .filter(([, saved]) => saved && typeof saved === 'object')
-            .map(([key, saved]) => [key, importedGame(saved)])
-        );
-        await updatePreferences((prefs) => ({ ...prefs, games }));
-        log('info', 'preferencias', `Preferencias importadas: ${Object.keys(games).length} juegos`);
-        return reply(res, 200, JSON.stringify({ ok: true }));
-      }
-      if (req.method === 'POST' && url.pathname === '/api/covers') {
-        const update = await body(req);
-        if (!update.key) return reply(res, 400, JSON.stringify({ error: 'Falta el juego asociado a la portada.' }));
-        const file = await saveCover(update);
-        await updatePreferences((prefs) => {
-          prefs.games[update.key] = { ...(prefs.games[update.key] ?? {}), coverFile: file };
-        });
-        return reply(res, 200, JSON.stringify({ coverFile: file }));
-      }
-      if (req.method === 'PUT' && url.pathname === '/api/preferences') {
-        const update = await body(req);
-        if (!update.key) return reply(res, 400, JSON.stringify({ error: 'Falta la clave del juego.' }));
-        const prefs = await updatePreferences((current) => {
-          current.games[update.key] = gameUpdate(current.games[update.key] ?? {}, update);
-        });
-        return reply(res, 200, JSON.stringify(prefs.games[update.key]));
-      }
-      if (req.method === 'POST' && url.pathname.startsWith('/api/launch/')) {
-        const key = decodeURIComponent(url.pathname.slice('/api/launch/'.length));
-        const games = (await library()).games;
-        // Una versión regional de Arcade se juega con su set, pero el tiempo se suma al juego.
-        const game =
-          games.find((item) => item.key === key) ??
-          (key.startsWith('arcade:')
-            ? games.find((item) => item.arcade?.versions.some((version) => `arcade:${version.id}` === key))
-            : null);
-        if (!game) return reply(res, 404, JSON.stringify({ error: 'Juego no encontrado.' }));
-        if (game.launch?.type === 'mame')
-          await arcade.launch(key.slice('arcade:'.length), async (seconds) => {
-            await recordSession(game.key, seconds).catch(() => {});
-            onGameExit?.(game);
-          });
-        else await launch(game);
-        log('info', 'juego', `Iniciado ${game.key} (${game.launch?.type ?? 'sin tipo'})`);
-        await updatePreferences((prefs) => {
-          prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
-        });
-        // La aplicación de escritorio se minimiza para dejar el juego adelante.
-        const minimize = (await appSettings()).minimizeOnLaunch;
-        if (minimize) setTimeout(() => onLaunch?.(game), 1200);
-        return reply(res, 200, JSON.stringify({ ok: true, minimize }));
-      }
-      if (req.method === 'POST' && url.pathname === '/api/log') {
-        const entry = await body(req);
-        if (clientLogAllowed())
-          log(
-            ['info', 'warn', 'error'].includes(entry.level) ? entry.level : 'error',
-            'interfaz',
-            String(entry.message ?? '').slice(0, 1000),
-            entry.detail ? String(entry.detail).slice(0, 2000) : undefined
-          );
-        return reply(res, 204, '');
-      }
-      if (req.method === 'GET' && url.pathname === '/api/diagnostics')
-        return reply(res, 200, JSON.stringify(await diagnostics(), null, 2));
-      const artRoute = req.method === 'GET' && url.pathname.match(/^\/api\/art\/(cover|hero|wordmark)\/([^/]+)$/);
-      if (artRoute) {
-        const image = await gameArt(decodeURIComponent(artRoute[2]), artRoute[1]);
-        if (!image) return reply(res, 404, 'Sin imagen.', 'text/plain');
-        res.writeHead(200, { 'content-type': image.type, 'cache-control': 'private, max-age=3600' });
-        return res.end(image.bytes);
-      }
-      if (req.method === 'GET' && url.pathname.startsWith('/covers/')) {
-        const name = path.basename(url.pathname);
-        const target = path.join(coversDir, name);
-        if (!coverName.test(name)) return reply(res, 403, 'Acceso denegado.', 'text/plain');
-        try {
-          return reply(res, 200, await fs.readFile(target), types[path.extname(target)]);
-        } catch {
-          return reply(res, 404, 'No encontrado.', 'text/plain');
-        }
-      }
-      const relative = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, '');
-      const target = path.resolve(publicDir, relative);
-      if (!target.startsWith(publicDir)) return reply(res, 403, 'Acceso denegado.', 'text/plain');
-      try {
-        const bytes = await fs.readFile(target);
-        if (target.endsWith('.html')) res.setHeader('content-security-policy', CONTENT_SECURITY_POLICY);
-        return reply(res, 200, bytes, types[path.extname(target)] || 'application/octet-stream');
-      } catch {
-        return reply(res, 404, 'No encontrado.', 'text/plain');
-      }
+      if (await router.handle(req, res, url)) return;
+      if (url.pathname.startsWith('/api/')) return send(res, 404, JSON.stringify({ error: 'Ruta no encontrada.' }));
+      if (req.method !== 'GET' && req.method !== 'HEAD')
+        return send(res, 405, JSON.stringify({ error: 'Método no permitido.' }), undefined, { allow: 'GET' });
+      return serveStatic(res, url);
     } catch (error) {
-      log('error', 'servidor', `${req.method} ${req.url?.split('?')[0]}: ${error.message}`, error.stack);
-      return reply(res, 500, JSON.stringify({ error: error.message || 'Error inesperado.' }));
+      const status = Number.isInteger(error.status) ? error.status : 500;
+      if (status >= 500)
+        log('error', 'servidor', `${req.method} ${req.url?.split('?')[0]}: ${error.message}`, error.stack);
+      else log('info', 'servidor', `${status} ${req.method} ${req.url?.split('?')[0]}: ${error.message}`);
+      if (res.headersSent) return res.end();
+      return send(res, status, JSON.stringify({ error: error.message || 'Error inesperado.' }));
     }
   });
   server.on('close', () => steam.close());
   return server;
+}
+async function serveStatic(res, url) {
+  const relative = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, '');
+  let target;
+  try {
+    target = path.resolve(publicDir, decodeURIComponent(relative));
+  } catch {
+    return send(res, 400, 'Dirección mal formada.', 'text/plain');
+  }
+  if (!target.startsWith(publicDir + path.sep)) return send(res, 403, 'Acceso denegado.', 'text/plain');
+  try {
+    const bytes = await fs.readFile(target);
+    const headers = target.endsWith('.html') ? { 'content-security-policy': CONTENT_SECURITY_POLICY } : {};
+    return send(res, 200, bytes, types[path.extname(target)] || 'application/octet-stream', headers);
+  } catch {
+    return send(res, 404, 'No encontrado.', 'text/plain');
+  }
+}
+// Portada propia: null si no existe, false si el nombre no es válido.
+async function readCover(name) {
+  if (!coverName.test(name)) return false;
+  try {
+    const target = path.join(coversDir, name);
+    return { bytes: await fs.readFile(target), type: types[path.extname(target)] };
+  } catch {
+    return null;
+  }
+}
+function clientLog(entry) {
+  if (!clientLogAllowed()) return;
+  log(
+    ['info', 'warn', 'error'].includes(entry.level) ? entry.level : 'error',
+    'interfaz',
+    String(entry.message ?? '').slice(0, 1000),
+    entry.detail ? String(entry.detail).slice(0, 2000) : undefined
+  );
 }
 export function startServer(port = Number(process.env.PORT || 4321), options = {}) {
   const server = createServer(options);

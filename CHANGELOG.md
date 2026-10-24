@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.21.0 — 24 de octubre de 2026
+
+Segunda ronda, etapa C: el momento de jugar.
+
+- Al apretar Jugar aparece de inmediato una pantalla con el arte y el logo del juego y «Iniciando en Steam…» (o la tienda que corresponda). Cuando la tienda confirma, pasa a «Listo. Que lo disfrutes.» y se cierra sola. También se cierra con un clic o Escape.
+- La ventana se minimiza al iniciar un juego para que quede adelante. Se puede desactivar en Configuración → General → «Al iniciar un juego».
+- El aviso «inicio solicitado» se reemplaza por esa pantalla.
+
 ## 0.20.0 — 24 de octubre de 2026
 
 Segunda ronda, etapa B: Configuración ordenada.

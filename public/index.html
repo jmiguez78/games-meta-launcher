@@ -197,6 +197,21 @@
                   </div>
                 </div>
               </section>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Al iniciar un juego</h3>
+                  <p>Minimiza Games Meta Launcher para que el juego quede adelante.</p>
+                </div>
+                <div class="settings-control">
+                  <label class="switch"
+                    ><input id="minimize-on-launch" type="checkbox" role="switch" checked /><span
+                      class="switch-track"
+                      aria-hidden="true"
+                    ></span
+                    ><span>Minimizar la ventana</span></label
+                  >
+                </div>
+              </section>
             </section>
             <section class="settings-group" aria-labelledby="settings-accounts">
               <h2 id="settings-accounts">Cuentas e información</h2>
@@ -437,6 +452,15 @@
       </footer>
     </dialog>
     <section id="toasts" class="toasts" aria-label="Notificaciones" aria-live="polite"></section>
+    <div id="launch-overlay" class="launch-overlay" hidden>
+      <div class="hero-backdrop" aria-hidden="true"></div>
+      <div class="launch-content" role="status" aria-live="assertive">
+        <img id="launch-wordmark" class="hero-wordmark" alt="" hidden />
+        <p id="launch-title" class="hero-title"></p>
+        <p id="launch-message" class="launch-message"></p>
+        <span class="launch-progress" aria-hidden="true"><span></span></span>
+      </div>
+    </div>
     <script src="/shelves.js"></script>
     <script src="/catalog.js"></script>
     <script src="/steam-ui.js"></script>

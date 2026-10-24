@@ -343,11 +343,15 @@ function trustedRequest(req) {
 }
 const themes = ['system', 'light', 'dark'];
 export async function appSettings() {
-  const theme = (await preferences()).settings?.theme;
+  const settings = (await preferences()).settings ?? {};
   // Oscuro primero: sin una elección guardada, la aplicación usa el tema oscuro.
-  return { theme: themes.includes(theme) ? theme : 'dark' };
+  // Al iniciar un juego, la ventana se minimiza salvo que se haya desactivado.
+  return {
+    theme: themes.includes(settings.theme) ? settings.theme : 'dark',
+    minimizeOnLaunch: settings.minimizeOnLaunch !== false
+  };
 }
-export function createServer({ onSettingsChange } = {}) {
+export function createServer({ onSettingsChange, onLaunch } = {}) {
   const server = http.createServer(async (req, res) => {
     try {
       if (!trustedRequest(req)) return reply(res, 403, JSON.stringify({ error: 'Solicitud no permitida.' }));
@@ -410,9 +414,20 @@ export function createServer({ onSettingsChange } = {}) {
       if (url.pathname === '/api/settings') {
         if (req.method === 'PUT') {
           const update = await body(req);
-          if (!themes.includes(update.theme)) return reply(res, 400, JSON.stringify({ error: 'Tema no válido.' }));
+          const patch = {};
+          if ('theme' in update) {
+            if (!themes.includes(update.theme)) return reply(res, 400, JSON.stringify({ error: 'Tema no válido.' }));
+            patch.theme = update.theme;
+          }
+          if ('minimizeOnLaunch' in update) {
+            if (typeof update.minimizeOnLaunch !== 'boolean')
+              return reply(res, 400, JSON.stringify({ error: 'Valor no válido para minimizar al jugar.' }));
+            patch.minimizeOnLaunch = update.minimizeOnLaunch;
+          }
+          if (!Object.keys(patch).length)
+            return reply(res, 400, JSON.stringify({ error: 'No hay cambios para guardar.' }));
           const prefs = await preferences();
-          await writePreferences({ ...prefs, settings: { ...prefs.settings, theme: update.theme } });
+          await writePreferences({ ...prefs, settings: { ...prefs.settings, ...patch } });
           onSettingsChange?.(await appSettings());
         }
         if (req.method === 'GET' || req.method === 'PUT') return reply(res, 200, JSON.stringify(await appSettings()));
@@ -493,7 +508,10 @@ export function createServer({ onSettingsChange } = {}) {
         const prefs = await preferences();
         prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
         await writePreferences(prefs);
-        return reply(res, 200, JSON.stringify({ ok: true }));
+        // La aplicación de escritorio se minimiza para dejar el juego adelante.
+        const minimize = (await appSettings()).minimizeOnLaunch;
+        if (minimize) setTimeout(() => onLaunch?.(game), 1200);
+        return reply(res, 200, JSON.stringify({ ok: true, minimize }));
       }
       const artRoute = req.method === 'GET' && url.pathname.match(/^\/api\/art\/(cover|hero|wordmark)\/([^/]+)$/);
       if (artRoute) {

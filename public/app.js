@@ -2017,15 +2017,62 @@ async function uploadCover(game, file) {
     reader.readAsDataURL(file);
   });
 }
+// Pantalla «Iniciando…»: responde al instante con el arte del juego mientras la tienda lo abre.
+const launchOverlay = document.querySelector('#launch-overlay');
+const launcherNames = {
+  Steam: 'Steam',
+  'Epic Games': 'Epic Games',
+  'Xbox / Microsoft Store': 'Xbox',
+  'Ubisoft Connect': 'Ubisoft Connect',
+  'EA app': 'EA app',
+  'GOG Galaxy': 'GOG Galaxy'
+};
+let launchTimer;
+function hideLaunchOverlay() {
+  clearTimeout(launchTimer);
+  launchOverlay.classList.remove('show');
+  launchTimer = setTimeout(() => (launchOverlay.hidden = true), 300);
+}
+function showLaunchOverlay(game) {
+  clearTimeout(launchTimer);
+  launchOverlay.dataset.key = game.key;
+  launchOverlay.classList.remove('done');
+  launchOverlay.style.removeProperty('--art');
+  if (artColors.get(game.key)) launchOverlay.style.setProperty('--art', artColors.get(game.key));
+  showWordmark(
+    document.querySelector('#launch-wordmark'),
+    document.querySelector('#launch-title'),
+    game,
+    launchOverlay
+  );
+  const custom = game.launchOverride || game.launch?.type === 'file';
+  document.querySelector('#launch-message').textContent =
+    custom || !launcherNames[game.platform] ? 'Iniciando…' : 'Iniciando en ' + launcherNames[game.platform] + '…';
+  paintBackdrop(launchOverlay, game);
+  launchOverlay.hidden = false;
+  requestAnimationFrame(() => launchOverlay.classList.add('show'));
+}
+launchOverlay.addEventListener('click', hideLaunchOverlay);
+// Al volver a la aplicación (por ejemplo, después de jugar), la pantalla ya no hace falta.
+window.addEventListener('focus', () => {
+  if (launchOverlay.classList.contains('done')) hideLaunchOverlay();
+});
 async function playGame(game) {
   if (game.installed === false) return installSteamGame(game);
+  showLaunchOverlay(game);
   try {
-    await request('/api/launch/' + encodeURIComponent(game.key), { method: 'POST' });
+    const result = await request('/api/launch/' + encodeURIComponent(game.key), { method: 'POST' });
     game.lastLaunchedAt = new Date().toISOString();
+    launchOverlay.classList.add('done');
+    document.querySelector('#launch-message').textContent = result.minimize
+      ? 'Listo. Que lo disfrutes.'
+      : 'Listo. El juego se está abriendo.';
+    launchTimer = setTimeout(hideLaunchOverlay, 2600);
+    posterCache.delete(game.key);
     renderHome();
     renderLibrary();
-    notify(game.name + ': inicio solicitado.', { type: 'success' });
   } catch (error) {
+    hideLaunchOverlay();
     notifyError(error, () => playGame(game));
   }
 }
@@ -2153,11 +2200,34 @@ function applyTheme(theme) {
 }
 async function loadSettings() {
   try {
-    applyTheme((await request('/api/settings')).theme);
+    const settings = await request('/api/settings');
+    applyTheme(settings.theme);
+    document.querySelector('#minimize-on-launch').checked = settings.minimizeOnLaunch !== false;
   } catch {
     applyTheme('dark');
   }
 }
+document.querySelector('#minimize-on-launch').onchange = async (event) => {
+  const input = event.currentTarget;
+  try {
+    await request('/api/settings', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ minimizeOnLaunch: input.checked })
+    });
+    notify(
+      input.checked
+        ? 'La ventana se va a minimizar al iniciar un juego.'
+        : 'La ventana va a quedar abierta al iniciar un juego.',
+      {
+        type: 'success'
+      }
+    );
+  } catch (error) {
+    input.checked = !input.checked;
+    notifyError(error);
+  }
+};
 let igdbPoll;
 function describeIgdbStatus(settings, status) {
   if (status.running) return 'Buscando información… ' + status.done + ' de ' + status.total + ' juegos.';
@@ -2712,6 +2782,10 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.key === 'Escape' && state.page === 'library' && !document.querySelector('dialog[open]'))
     setFiltersOpen(false);
+  if (event.key === 'Escape' && !launchOverlay.hidden) {
+    hideLaunchOverlay();
+    return;
+  }
   if (event.key === 'Escape' && state.page === 'game' && !document.querySelector('dialog[open]')) closeGamePage();
 });
 hydrateIcons(document);

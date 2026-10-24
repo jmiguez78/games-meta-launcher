@@ -25,10 +25,12 @@ async function openWindow() {
     nativeTheme.themeSource = theme;
   };
   applyTheme(await appSettings());
-  server = startServer(0, { onSettingsChange: applyTheme });
+  let window;
+  // Al iniciar un juego, la ventana se minimiza para que el juego quede adelante (se puede desactivar).
+  server = startServer(0, { onSettingsChange: applyTheme, onLaunch: () => window?.minimize() });
   await new Promise((resolve) => server.once('listening', resolve));
   const port = server.address().port;
-  const window = new BrowserWindow({
+  window = new BrowserWindow({
     width: 1360,
     height: 900,
     minWidth: 920,

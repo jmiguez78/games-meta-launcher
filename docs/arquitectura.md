@@ -18,22 +18,26 @@ flowchart LR
 
 - `src/indexer.mjs`: recorre bibliotecas conocidas y genera un catálogo normalizado.
 - `src/server.mjs`: expone la interfaz y una API local para leer, actualizar, lanzar títulos, guardar preferencias y configurar la tarea nocturna.
-- `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla.
-- `src/igdb.mjs`: integración opcional con Twitch/IGDB. Descarga fichas ampliadas y tiempos estimados, conserva las coincidencias conocidas y guarda una caché local en `metadata.json` (esquema 2). Cada ficha incluye la respuesta original en `source`; la API local omite ese campo para evitar duplicar el contenido enviado a la interfaz.
+- `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla. Una sola instancia (abrir el .exe otra vez trae la ventana al frente), `sandbox`, sin navegación fuera de la interfaz (los enlaces https se abren en el navegador), sólo el permiso de pantalla completa y puerto fijo 47321 (con otro libre si está ocupado), para que la interfaz conserve lo que guarda en el navegador entre aperturas.
+- `src/json-file.mjs`: lectura y escritura de los JSON del perfil. Las lecturas quedan en memoria mientras el archivo no cambie (fecha y tamaño); las escrituras son atómicas (temporal y renombre, con reintentos en Windows) y van en fila por archivo, así dos cambios seguidos nunca se pisan. `createVersionedFile` agrega versión de esquema y migraciones, con copia `nombre.vN.bak.json` antes de migrar.
+- `src/log.mjs`: registro de diagnóstico en `logs/gml.log` del perfil (rota al pasar 1 MB, se conservan tres). `GET /api/diagnostics` arma el diagnóstico que exporta Configuración; `POST /api/log` recibe los errores de la interfaz (como mucho 30 por minuto).
+- `src/es.mjs`: géneros, temáticas, modos y perspectivas de IGDB y categorías de MAME en español. Los datos guardan los nombres originales; la traducción se aplica al armar `/api/library`.
+- `src/igdb.mjs`: integración opcional con Twitch/IGDB. Descarga fichas ampliadas y tiempos estimados, conserva las coincidencias conocidas y guarda una caché local compacta en `metadata.json` (esquema 3, sin la respuesta original de IGDB).
 - `src/secrets.mjs`: cifra el secreto de Twitch con DPAPI de Windows para el usuario actual. `integrations.json` no se versiona.
 - `public/`: interfaz HTML, CSS y JavaScript sin dependencias ni compilación. `index.html` carga tres scripts clásicos con lógica pura y pruebas (`catalog.js`: búsqueda, filtros, orden y duplicados; `shelves.js`: filas de Inicio; `gamepad.js`: mando y pantalla grande) y el punto de entrada `js/main.js` como módulo ES. `styles.css` ordena los estilos en capas (`@layer`) e importa una hoja por capa desde `styles/`: tokens, base, componentes, pantallas, modo sala y utilidades. Tipografías y marca en `fonts/` y `brand/` (ver [Sistema de diseño](sistema-de-diseno.md)).
 - `public/js/`: la interfaz en módulos ES, uno por responsabilidad. Cada módulo exporta sus funciones y, si tiene enlaces de eventos, una función `setup()` que `main.js` llama una sola vez, después de que todos los módulos se cargaron (así ningún módulo usa a otro antes de tiempo).
 
-| Módulo                                                | Responsabilidad                                                                |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `main.js`                                             | Navegación entre páginas, carga de la biblioteca, atajos globales y arranque   |
-| `state.js`                                            | Estado de la interfaz y preferencias de este equipo                            |
-| `api.js`, `icons.js`, `feedback.js`                   | Pedidos a la API, íconos, avisos y errores de formulario                       |
-| `art.js`, `cards.js`                                  | Portadas, imagen principal, color ambiental; tarjetas y navegación por teclado |
-| `home.js`, `library.js`, `game-page.js`, `details.js` | Inicio, Biblioteca, página del juego y contenido de la ficha                   |
-| `launch.js`, `editor.js`, `palette.js`                | Jugar, editar un juego y paleta de comandos                                    |
-| `couch.js`                                            | Modo sala para TV y mando (con `styles/couch.css`)                             |
-| `settings.js`, `diagnostics.js`, `steam.js`           | Configuración, Para revisar y todo lo de Steam                                 |
+| Módulo                                                | Responsabilidad                                                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `main.js`                                             | Navegación entre páginas, carga de la biblioteca, atajos globales y arranque               |
+| `state.js`                                            | Estado de la interfaz y preferencias de este equipo                                        |
+| `api.js`, `icons.js`, `feedback.js`                   | Pedidos a la API, íconos, avisos y errores de formulario                                   |
+| `art.js`, `cards.js`                                  | Portadas, imagen principal, color ambiental; tarjetas y navegación por teclado             |
+| `home.js`, `library.js`, `game-page.js`, `details.js` | Inicio, Biblioteca, página del juego y contenido de la ficha                               |
+| `launch.js`, `editor.js`, `palette.js`                | Jugar, editar un juego y paleta de comandos                                                |
+| `couch.js`                                            | Modo sala para TV y mando (con `styles/couch.css`)                                         |
+| `settings.js`, `diagnostics.js`, `steam.js`           | Configuración, Para revisar y todo lo de Steam                                             |
+| `snapshot.js`, `report.js`                            | Arranque instantáneo (última biblioteca en IndexedDB) y errores de la interfaz al registro |
 
 `npm run check` comprueba la sintaxis de cada módulo y que cada `import` exista en su módulo de origen (`tools/check-modules.mjs`). `window.GML` expone el estado y la navegación para depurar desde la consola.
 
@@ -48,6 +52,20 @@ flowchart LR
 - `tools/package.mjs`: empaquetado que deja sólo los dos últimos ejecutables en `releases/`.
 - `data/library.json`: inventario local generado; se excluye del control de versiones.
 - `test/`: pruebas automáticas con `node:test` de la API y del indexador.
+
+## Datos del perfil
+
+| Archivo                        | Versión            | Contenido                                                      |
+| ------------------------------ | ------------------ | -------------------------------------------------------------- |
+| `preferences.json`             | `schemaVersion: 1` | Favoritos, etiquetas, notas, progreso, tiempo jugado y ajustes |
+| `metadata.json`                | `schemaVersion: 3` | Fichas de IGDB, compactas                                      |
+| `library.json`                 | `schema: 2`        | Inventario de la última búsqueda (se regenera)                 |
+| `arcade-*.json`, `mame-*.json` | `schema` propio    | Índice de Arcade (se regenera)                                 |
+| `logs/gml.log`                 | —                  | Registro de diagnóstico                                        |
+
+El servidor calcula `/api/library` una vez por versión de sus entradas: si ningún archivo cambió, reutiliza el resultado (y su JSON). La interfaz guarda la última biblioteca en IndexedDB y la pinta al abrir mientras pide la actual (`public/js/snapshot.js`).
+
+La interfaz se sirve con una política de contenido estricta: sólo sus scripts, conexiones sólo a este servidor e imágenes por https.
 
 ## Decisiones iniciales
 

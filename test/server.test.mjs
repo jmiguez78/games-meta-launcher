@@ -218,7 +218,7 @@ test('agrega los metadatos de IGDB sin exponer identificadores internos de imág
     igdbId: 7,
     title: 'Roto',
     summary: 'Resumen',
-    genres: ['RPG'],
+    genres: ['Rol'],
     fetchedAt: '2026-10-23T22:34:58.000Z',
     languages: [{ name: 'Spanish', support: 'Subtitles' }]
   });
@@ -272,4 +272,54 @@ test('Steam sin cuenta no expone secretos ni permite instalar un juego ajeno', a
   assert.equal((await fetch(`${base}/api/steam/sync`, { method: 'POST' })).status, 400);
   const result = await fetch(`${base}/api/install/steam%3A10`, { method: 'POST' });
   assert.equal(result.status, 400);
+});
+
+test('la interfaz usa una política de contenido estricta', async () => {
+  const response = await fetch(`${base}/`);
+  const policy = response.headers.get('content-security-policy');
+  assert.match(policy, /default-src 'self'/);
+  assert.match(policy, /script-src 'self'(;|$)/);
+  assert.match(policy, /connect-src 'self'/);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+});
+
+test('los cambios simultáneos de preferencias no se pisan y el archivo queda versionado', async () => {
+  const keys = Array.from({ length: 12 }, (_, i) => 'steam:9' + i);
+  await Promise.all(
+    keys.map((key, i) =>
+      fetch(`${base}/api/preferences`, { method: 'PUT', ...json({ key, favorite: true, rating: (i % 5) + 1 }) })
+    )
+  );
+  const saved = await preferencesFile();
+  for (const key of keys) assert.equal(saved.games[key].favorite, true);
+  assert.equal(saved.schemaVersion, 1);
+  assert.deepEqual(
+    (await fs.readdir(dataDir)).filter((name) => name.endsWith('.tmp')),
+    []
+  );
+});
+
+test('la biblioteca se reutiliza mientras nada cambie y se actualiza al cambiar un archivo', async () => {
+  const first = await (await fetch(`${base}/api/library`)).text();
+  assert.equal(await (await fetch(`${base}/api/library`)).text(), first);
+  await fetch(`${base}/api/preferences`, { method: 'PUT', ...json({ key: 'steam:10', notes: 'cambio' }) });
+  const after = await (await fetch(`${base}/api/library`)).json();
+  assert.equal(after.games.find((game) => game.key === 'steam:10').notes, 'cambio');
+});
+
+test('registra errores de la interfaz y exporta un diagnóstico sin secretos', async () => {
+  const logged = await fetch(`${base}/api/log`, {
+    method: 'POST',
+    ...json({ level: 'error', message: 'Falla de prueba', detail: 'pila' })
+  });
+  assert.equal(logged.status, 204);
+  const report = await (await fetch(`${base}/api/diagnostics`)).json();
+  assert.ok(report.app.version);
+  assert.equal(report.library.total >= 3, true);
+  assert.ok(report.files.some((file) => file.name === 'preferences.json' && file.schema === 1));
+  assert.ok(report.log.some((line) => /\[error\] interfaz: Falla de prueba \| pila/.test(line)));
+  const text = JSON.stringify(report);
+  // Ninguna clave ni secreto guardado (los mensajes de error pueden nombrarlos, pero nunca incluir su valor).
+  assert.equal(/"(apiKey|clientSecret|secret)"\s*:/.test(text), false);
+  assert.equal(text.includes('cambio'), false, text.match(/.{80}cambio.{40}/)?.[0]);
 });

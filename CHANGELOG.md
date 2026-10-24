@@ -1,5 +1,17 @@
 # Registro de cambios
 
+## 0.28.0
+
+Tanda 1 del plan, «blindaje»: datos protegidos, apertura más rápida y todo en español.
+
+- **Escrituras seguras (B1).** Preferencias, fichas, inventario, ajustes, portadas propias y arte descargado se guardan primero en un archivo temporal y después se renombran: un corte de luz o un cierre a mitad de camino ya no deja archivos a medio escribir. Los cambios a un mismo archivo van en fila, así marcar favorito y calificar seguido nunca se pisan.
+- **Caché en memoria (B2).** Los archivos se leen una vez y se reutilizan mientras no cambien; la biblioteca se arma una sola vez por cambio. En una prueba con 280 juegos, pedir la biblioteca pasó de unos 20 ms a 4 ms y 60 portadas locales, de 750 ms a 95 ms.
+- **Electron endurecido (B3).** Política de contenido estricta, `sandbox`, sin navegación fuera de la interfaz, sólo el permiso de pantalla completa e instancia única: abrir el .exe otra vez trae la ventana al frente en lugar de abrir otra con su propio servidor. Puerto fijo, para que la vista, la colección y el modo sala elegidos se recuerden de verdad entre aperturas.
+- **Registro de diagnóstico (B4).** Errores del servidor y de la interfaz, juegos iniciados, búsquedas y migraciones quedan en `logs/gml.log` del perfil (rota al pasar 1 MB). Configuración → Mantenimiento → «Exportar diagnóstico» arma un archivo para compartir, sin claves ni datos personales.
+- **Datos versionados (B9).** `preferences.json` (versión 1) y `metadata.json` (versión 3) llevan versión de esquema; antes de migrar se deja una copia (`preferences.v0.bak.json`). `metadata.json` ya no guarda la respuesta completa de IGDB: con la biblioteca actual pasa de 11,4 MB a 2,5 MB.
+- **Arranque instantáneo (F4).** La última biblioteca se guarda en el navegador y se muestra al abrir mientras se pide la actual; si no cambió, no se redibuja nada.
+- **Todo en español (F5).** Géneros, temáticas, modos y perspectivas de IGDB y las categorías de MAME («Disparos / Vuelo vertical») se muestran en español en filtros, fichas, Inicio y modo sala.
+
 ## 0.27.0
 
 Estilos en capas (F3). Sin cambios visibles: se verificó con los estilos calculados de cada elemento y capturas de 55 estados (temas oscuro, claro y del sistema, tres anchos de ventana, movimiento reducido y modo sala) antes y después.

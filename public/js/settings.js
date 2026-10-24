@@ -19,6 +19,21 @@ export async function exportPreferences() {
   }
 }
 
+// Diagnóstico: versión, archivos de datos y registro, para adjuntar cuando algo falla.
+export async function exportDiagnostics() {
+  try {
+    const data = await request('/api/diagnostics');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    link.download = 'games-meta-launcher-diagnostico-' + new Date().toISOString().slice(0, 10) + '.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    notify('Diagnóstico preparado.', { type: 'success' });
+  } catch (error) {
+    notifyError(error, exportDiagnostics);
+  }
+}
+
 export function restorePreferences(data) {
   return request('/api/preferences/import', {
     method: 'POST',
@@ -318,6 +333,7 @@ export function setup() {
     }
   };
   document.querySelector('#export-preferences').onclick = exportPreferences;
+  document.querySelector('#export-diagnostics').onclick = exportDiagnostics;
   document.querySelector('#import-preferences').onchange = (event) => {
     const file = event.target.files[0];
     if (file) importPreferences(file);

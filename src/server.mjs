@@ -13,6 +13,10 @@ import { createSteamAssets } from './steam-assets.mjs';
 import { createArcade } from './mame.mjs';
 import { createWiki } from './wiki.mjs';
 import { displayName } from './names.mjs';
+import { arcadeCategoryEs, metaEs } from './es.mjs';
+import { createVersionedFile, readJsonCached } from './json-file.mjs';
+import { configureLog, log, recentLog } from './log.mjs';
+import { readFileSync } from 'node:fs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -20,6 +24,14 @@ const dataDir = process.env.GML_DATA_DIR ? path.resolve(process.env.GML_DATA_DIR
 const dataPath = path.join(dataDir, 'library.json');
 const preferencesPath = path.join(dataDir, 'preferences.json');
 const coversDir = path.join(dataDir, 'covers');
+configureLog(dataDir);
+const appVersion = (() => {
+  try {
+    return JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+  } catch {
+    return 'desconocida';
+  }
+})();
 const types = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -43,25 +55,48 @@ function imageType(bytes) {
 const extensionByMime = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
 const execFileAsync = promisify(execFile);
 const scheduleName = 'Games Meta Launcher - Indexación nocturna';
-async function readJson(target, fallback) {
-  try {
-    return JSON.parse(await fs.readFile(target, 'utf8'));
-  } catch {
-    return fallback;
+// Preferencias por juego (favorito, etiquetas, notas, tiempo) y de la aplicación. Versión 1: { games, settings }.
+const prefsFile = createVersionedFile(preferencesPath, {
+  version: 1,
+  fallback: () => ({ games: {}, settings: {} }),
+  migrations: {
+    1: (saved) => ({
+      ...saved,
+      games: saved.games && typeof saved.games === 'object' ? saved.games : {},
+      settings: saved.settings ?? {}
+    })
   }
-}
+});
+// Lectura compartida (no se modifica). Para cambiar algo: updatePreferences.
 async function preferences() {
-  const data = await readJson(preferencesPath, { games: {} });
-  return data?.games ? data : { games: {} };
+  const data = await prefsFile.read();
+  return data?.games ? data : { games: {}, settings: {} };
 }
-async function writePreferences(data) {
-  await fs.mkdir(path.dirname(preferencesPath), { recursive: true });
-  await fs.writeFile(preferencesPath, JSON.stringify(data, null, 2), 'utf8');
+function updatePreferences(change) {
+  return prefsFile.update((prefs) => {
+    prefs.games ??= {};
+    return change(prefs);
+  });
 }
 async function rawLibrary() {
-  const catalog = await readJson(dataPath, null);
+  const catalog = await readJsonCached(dataPath, null);
   return Array.isArray(catalog?.games) && catalog.schema === CATALOG_SCHEMA ? catalog : scanLibrary();
 }
+// Memoria de resultados: si las entradas son los mismos objetos (nada cambió en disco), se reutiliza el cálculo.
+function memo(compute) {
+  let inputs = null;
+  let value;
+  return (...args) => {
+    if (inputs && inputs.length === args.length && inputs.every((item, index) => item === args[index])) return value;
+    inputs = args;
+    value = compute(...args);
+    return value;
+  };
+}
+const mergedLibrary = memo((games, account) => {
+  const list = mergeSteamLibrary(games, account);
+  return { list, byKey: new Map(list.map((game) => [game.key, game])) };
+});
 function safeOverride(value) {
   return value &&
     ['uri', 'file', 'appsFolder'].includes(value.type) &&
@@ -167,7 +202,10 @@ async function downloadArt(sources, file, missFile) {
       const bytes = Buffer.from(await response.arrayBuffer());
       if (bytes.length > 5_000_000) continue;
       await fs.mkdir(artCacheDir, { recursive: true });
-      await fs.writeFile(file, bytes);
+      // Temporal y renombre: un corte a mitad de la descarga no deja una imagen rota en la caché.
+      const temporary = `${file}.${crypto.randomUUID()}.tmp`;
+      await fs.writeFile(temporary, bytes);
+      await fs.rename(temporary, file);
       return { bytes, type: imageType(bytes) };
     } catch {
       /* sin conexión o recurso inválido: se prueba el siguiente */
@@ -233,7 +271,7 @@ async function gameArt(key, kind) {
     return onlineArt(game, null, kind);
   }
   const [catalog, metadata, account] = await Promise.all([rawLibrary(), igdb.metadata(), steam.account()]);
-  const game = mergeSteamLibrary(catalog.games, account).find((item) => item.key === key);
+  const game = mergedLibrary(catalog.games, account).byKey.get(key);
   if (!game) return null;
   // Los juegos de la cuenta que no están instalados (y los inventarios anteriores, que no registraban el logo)
   // pueden tener el arte en la caché local del cliente de Steam: se busca ahí antes de descargar.
@@ -254,10 +292,14 @@ async function library() {
     steam.account(),
     arcade.games()
   ]);
+  return buildLibrary(catalog, prefs, metadata, account, arcadeGames);
+}
+const buildLibrary = memo((catalog, prefs, metadata, account, arcadeGames) => {
+  const merged = mergedLibrary(catalog.games, account).list;
   return {
     ...catalog,
     steamUpdatedAt: account.updatedAt,
-    games: [...mergeSteamLibrary(catalog.games, account), ...arcadeGames].map(({ art, ...game }) => {
+    games: [...merged, ...arcadeGames].map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
       const name = displayName(game.name);
       return {
@@ -267,7 +309,10 @@ async function library() {
         artwork: isArcade(game)
           ? { cover: 'portrait', hero: true, wordmark: true, background: null }
           : artwork(game, art, metadata[game.key]),
-        meta: publicMeta(metadata[game.key]) ?? game.meta ?? null,
+        meta: metaEs(publicMeta(metadata[game.key]) ?? game.meta ?? null),
+        ...(game.arcade?.category
+          ? { arcade: { ...game.arcade, category: arcadeCategoryEs(game.arcade.category) } }
+          : {}),
         favorite: false,
         tags: [],
         progress: 'Pendiente',
@@ -279,7 +324,9 @@ async function library() {
       };
     })
   };
-}
+});
+// La respuesta de /api/library se serializa una vez por versión de la biblioteca.
+const libraryJson = memo((value) => JSON.stringify(value));
 async function schedule() {
   if (process.platform !== 'win32') return { supported: false, configured: false };
   const script = `$task = Get-ScheduledTask -TaskName '${scheduleName}' -ErrorAction SilentlyContinue; if ($null -eq $task) { @{ configured = $false } | ConvertTo-Json -Compress } else { $info = Get-ScheduledTaskInfo -TaskName '${scheduleName}'; $trigger = $task.Triggers | Select-Object -First 1; [pscustomobject]@{ configured = $true; enabled = $task.State -ne 'Disabled'; nextRun = $info.NextRunTime; lastRun = $info.LastRunTime; time = if ($trigger.StartBoundary) { ([datetime]$trigger.StartBoundary).ToString('HH:mm') } else { $null } } | ConvertTo-Json -Compress }`;
@@ -328,8 +375,23 @@ async function health() {
     platforms: [...groups.values()].sort((a, b) => a.platform.localeCompare(b.platform, 'es'))
   };
 }
+// Política de contenido: la interfaz sólo ejecuta sus propios scripts y sólo habla con este servidor. Las imágenes
+// pueden venir de las tiendas (capturas de Steam e IGDB, arte de libretro), siempre por https.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' https:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'"
+].join('; ');
 function reply(res, code, body, type = 'application/json; charset=utf-8') {
-  res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
+  res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
   res.end(body);
 }
 async function body(req) {
@@ -391,7 +453,9 @@ async function saveCover(update) {
   if (bytes.length > 5_000_000) throw new Error('La portada no puede superar 5 MB.');
   const name = `${crypto.createHash('sha256').update(update.key).digest('hex').slice(0, 20)}${extensionByMime[match[1]]}`;
   await fs.mkdir(coversDir, { recursive: true });
-  await fs.writeFile(path.join(coversDir, name), bytes);
+  const temporary = path.join(coversDir, `${name}.${crypto.randomUUID()}.tmp`);
+  await fs.writeFile(temporary, bytes);
+  await fs.rename(temporary, path.join(coversDir, name));
   return name;
 }
 function trustedRequest(req) {
@@ -413,10 +477,63 @@ export async function appSettings() {
 // Suma el tiempo de una sesión que el launcher pudo medir (hoy, Arcade: abre y ve cerrarse a MAME).
 async function recordSession(key, seconds) {
   if (!Number.isFinite(seconds) || seconds < 5) return;
-  const prefs = await preferences();
-  const saved = prefs.games[key] ?? {};
-  prefs.games[key] = { ...saved, playSeconds: (saved.playSeconds ?? 0) + Math.min(seconds, 86400) };
-  await writePreferences(prefs);
+  log('info', 'juego', `Sesión de ${Math.round(seconds)} s en ${key}`);
+  await updatePreferences((prefs) => {
+    const saved = prefs.games[key] ?? {};
+    prefs.games[key] = { ...saved, playSeconds: (saved.playSeconds ?? 0) + Math.min(seconds, 86400) };
+  });
+}
+// La interfaz puede registrar errores; se limita la cantidad para que un error en bucle no llene el disco.
+let clientLogWindow = { start: 0, count: 0 };
+function clientLogAllowed() {
+  const now = Date.now();
+  if (now - clientLogWindow.start > 60000) clientLogWindow = { start: now, count: 0 };
+  clientLogWindow.count += 1;
+  return clientLogWindow.count <= 30;
+}
+// Diagnóstico para exportar: versión, sistema, archivos de datos (tamaño, fecha y versión de esquema, nunca su
+// contenido), juegos por tienda, integraciones conectadas (sin claves) y las últimas líneas del registro.
+async function diagnostics() {
+  const files = [];
+  for (const name of (await fs.readdir(dataDir).catch(() => [])).sort()) {
+    const info = await fs.stat(path.join(dataDir, name)).catch(() => null);
+    if (!info?.isFile() || !name.endsWith('.json')) continue;
+    const saved = info.size < 50_000_000 ? await readJsonCached(path.join(dataDir, name), null) : null;
+    files.push({
+      name,
+      bytes: info.size,
+      modifiedAt: info.mtime.toISOString(),
+      schema: saved?.schemaVersion ?? saved?.schema ?? null,
+      readable: saved !== null
+    });
+  }
+  const catalog = await library().catch(() => ({ games: [] }));
+  const byPlatform = {};
+  for (const game of catalog.games) byPlatform[game.platform] = (byPlatform[game.platform] ?? 0) + 1;
+  const [steamSettings, igdbSettings, arcadeInfo, settings] = await Promise.all([
+    steam.settings().catch((error) => ({ error: error.message })),
+    igdb.settings().catch((error) => ({ error: error.message })),
+    arcade.info().catch((error) => ({ error: error.message })),
+    appSettings()
+  ]);
+  return {
+    generatedAt: new Date().toISOString(),
+    app: { version: appVersion, electron: process.versions.electron ?? null, node: process.versions.node },
+    system: { platform: process.platform, release: (await import('node:os')).release(), arch: process.arch },
+    settings,
+    library: { total: catalog.games.length, generatedAt: catalog.generatedAt ?? null, byPlatform },
+    integrations: {
+      steam: { configured: Boolean(steamSettings.configured), updatedAt: steamSettings.updatedAt ?? null },
+      igdb: { configured: Boolean(igdbSettings.configured), status: igdb.status() },
+      arcade: {
+        configured: Boolean(arcadeInfo.exe || arcadeInfo.configured),
+        version: arcadeInfo.version ?? null,
+        visible: arcadeInfo.visible ?? null
+      }
+    },
+    files,
+    log: await recentLog(1500)
+  };
 }
 export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
   const server = http.createServer(async (req, res) => {
@@ -493,14 +610,12 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
           }
           if (!Object.keys(patch).length)
             return reply(res, 400, JSON.stringify({ error: 'No hay cambios para guardar.' }));
-          const prefs = await preferences();
-          await writePreferences({ ...prefs, settings: { ...prefs.settings, ...patch } });
+          await updatePreferences((prefs) => ({ ...prefs, settings: { ...prefs.settings, ...patch } }));
           onSettingsChange?.(await appSettings());
         }
         if (req.method === 'GET' || req.method === 'PUT') return reply(res, 200, JSON.stringify(await appSettings()));
       }
-      if (req.method === 'GET' && url.pathname === '/api/library')
-        return reply(res, 200, JSON.stringify(await library()));
+      if (req.method === 'GET' && url.pathname === '/api/library') return reply(res, 200, libraryJson(await library()));
       if (req.method === 'GET' && url.pathname === '/api/health')
         return reply(res, 200, JSON.stringify(await health()));
       if (req.method === 'GET' && url.pathname === '/api/schedule')
@@ -511,6 +626,7 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
       }
       if (req.method === 'POST' && url.pathname === '/api/scan') {
         const scanned = await scanLibrary();
+        log('info', 'biblioteca', `Búsqueda de juegos: ${scanned.games.length} encontrados`);
         if ((await steam.settings()).configured) steam.sync().catch(() => {});
         if ((await arcade.settings()).exe) arcade.start(afterArcadeIndex);
         return reply(res, 200, JSON.stringify(scanned));
@@ -568,24 +684,25 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
             .filter(([, saved]) => saved && typeof saved === 'object')
             .map(([key, saved]) => [key, importedGame(saved)])
         );
-        await writePreferences({ ...(await preferences()), games });
+        await updatePreferences((prefs) => ({ ...prefs, games }));
+        log('info', 'preferencias', `Preferencias importadas: ${Object.keys(games).length} juegos`);
         return reply(res, 200, JSON.stringify({ ok: true }));
       }
       if (req.method === 'POST' && url.pathname === '/api/covers') {
         const update = await body(req);
         if (!update.key) return reply(res, 400, JSON.stringify({ error: 'Falta el juego asociado a la portada.' }));
         const file = await saveCover(update);
-        const prefs = await preferences();
-        prefs.games[update.key] = { ...(prefs.games[update.key] ?? {}), coverFile: file };
-        await writePreferences(prefs);
+        await updatePreferences((prefs) => {
+          prefs.games[update.key] = { ...(prefs.games[update.key] ?? {}), coverFile: file };
+        });
         return reply(res, 200, JSON.stringify({ coverFile: file }));
       }
       if (req.method === 'PUT' && url.pathname === '/api/preferences') {
         const update = await body(req);
         if (!update.key) return reply(res, 400, JSON.stringify({ error: 'Falta la clave del juego.' }));
-        const prefs = await preferences();
-        prefs.games[update.key] = gameUpdate(prefs.games[update.key] ?? {}, update);
-        await writePreferences(prefs);
+        const prefs = await updatePreferences((current) => {
+          current.games[update.key] = gameUpdate(current.games[update.key] ?? {}, update);
+        });
         return reply(res, 200, JSON.stringify(prefs.games[update.key]));
       }
       if (req.method === 'POST' && url.pathname.startsWith('/api/launch/')) {
@@ -604,14 +721,28 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
             onGameExit?.(game);
           });
         else await launch(game);
-        const prefs = await preferences();
-        prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
-        await writePreferences(prefs);
+        log('info', 'juego', `Iniciado ${game.key} (${game.launch?.type ?? 'sin tipo'})`);
+        await updatePreferences((prefs) => {
+          prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
+        });
         // La aplicación de escritorio se minimiza para dejar el juego adelante.
         const minimize = (await appSettings()).minimizeOnLaunch;
         if (minimize) setTimeout(() => onLaunch?.(game), 1200);
         return reply(res, 200, JSON.stringify({ ok: true, minimize }));
       }
+      if (req.method === 'POST' && url.pathname === '/api/log') {
+        const entry = await body(req);
+        if (clientLogAllowed())
+          log(
+            ['info', 'warn', 'error'].includes(entry.level) ? entry.level : 'error',
+            'interfaz',
+            String(entry.message ?? '').slice(0, 1000),
+            entry.detail ? String(entry.detail).slice(0, 2000) : undefined
+          );
+        return reply(res, 204, '');
+      }
+      if (req.method === 'GET' && url.pathname === '/api/diagnostics')
+        return reply(res, 200, JSON.stringify(await diagnostics(), null, 2));
       const artRoute = req.method === 'GET' && url.pathname.match(/^\/api\/art\/(cover|hero|wordmark)\/([^/]+)$/);
       if (artRoute) {
         const image = await gameArt(decodeURIComponent(artRoute[2]), artRoute[1]);
@@ -633,11 +764,14 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
       const target = path.resolve(publicDir, relative);
       if (!target.startsWith(publicDir)) return reply(res, 403, 'Acceso denegado.', 'text/plain');
       try {
-        return reply(res, 200, await fs.readFile(target), types[path.extname(target)] || 'application/octet-stream');
+        const bytes = await fs.readFile(target);
+        if (target.endsWith('.html')) res.setHeader('content-security-policy', CONTENT_SECURITY_POLICY);
+        return reply(res, 200, bytes, types[path.extname(target)] || 'application/octet-stream');
       } catch {
         return reply(res, 404, 'No encontrado.', 'text/plain');
       }
     } catch (error) {
+      log('error', 'servidor', `${req.method} ${req.url?.split('?')[0]}: ${error.message}`, error.stack);
       return reply(res, 500, JSON.stringify({ error: error.message || 'Error inesperado.' }));
     }
   });

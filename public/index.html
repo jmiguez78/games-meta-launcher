@@ -368,12 +368,19 @@
               </section>
               <section class="settings-row">
                 <div class="settings-copy">
-                  <h3>Estado de la biblioteca</h3>
+                  <h3>Estado y diagnóstico</h3>
                   <p id="settings-health">Revisando la biblioteca…</p>
+                  <p class="helper-text">
+                    Si algo falla, el diagnóstico reúne la versión, el estado de los archivos de datos y el registro de
+                    errores en un archivo para compartir. No incluye claves, notas ni otros datos personales.
+                  </p>
                 </div>
                 <div class="settings-control">
                   <div class="button-row">
-                    <button type="button" class="button" id="open-diagnostics">Ver el estado por plataforma</button>
+                    <button type="button" class="button" id="open-diagnostics">Ver el estado por plataforma</button
+                    ><button type="button" class="button" id="export-diagnostics">
+                      <span data-icon="download"></span> Exportar diagnóstico
+                    </button>
                   </div>
                 </div>
               </section>

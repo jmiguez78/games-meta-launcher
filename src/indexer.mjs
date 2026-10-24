@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { writeJsonAtomic } from './json-file.mjs';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -284,8 +285,7 @@ export async function scanLibrary() {
     generatedAt: new Date().toISOString(),
     games: [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
   };
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, JSON.stringify(result, null, 2), 'utf8');
+  await writeJsonAtomic(outputPath, result);
   return result;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url))

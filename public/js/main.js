@@ -9,6 +9,8 @@ import { setup as setupPalette } from './palette.js';
 import { setup as setupEditor } from './editor.js';
 import { setup as setupCouch } from './couch.js';
 import { request } from './api.js';
+import { readSnapshot, saveSnapshot } from './snapshot.js';
+import { report, setup as setupReport } from './report.js';
 import { setAmbient } from './art.js';
 import { posterCache } from './cards.js';
 import { loadHealth } from './diagnostics.js';
@@ -58,24 +60,57 @@ export function showPage(page, { focus = true } = {}) {
   if (page === 'library' && focus) document.querySelector('#search').focus();
 }
 
-export async function load() {
-  Object.assign(state, { loading: !state.games.length, loadError: '' });
-  renderLibrary();
-  try {
-    const catalog = await request('/api/library');
-    state.games = catalog.games;
-    posterCache.clear();
-    state.generatedAt = catalog.generatedAt;
-    renderSyncStatus();
-  } catch (error) {
-    state.loadError = error.message || 'Revisá que la aplicación siga abierta y volvé a intentarlo.';
-  } finally {
-    state.loading = false;
-  }
+// Texto de la última biblioteca aplicada: si la respuesta nueva es idéntica, no se redibuja nada.
+let shownText = null;
+function applyCatalog(text) {
+  const catalog = JSON.parse(text);
+  state.games = catalog.games;
+  posterCache.clear();
+  state.generatedAt = catalog.generatedAt;
+  shownText = text;
+  renderSyncStatus();
+}
+function renderAll() {
   renderHome();
   renderFilters();
   renderLibrary();
   window.dispatchEvent(new Event('gml-library'));
+}
+
+// Al abrir, se pinta la última biblioteca guardada (arranque instantáneo) y se pide la actual en paralelo.
+export async function load() {
+  const firstLoad = !state.games.length;
+  const pending = fetch('/api/library').then(async (response) => {
+    const text = await response.text();
+    if (!response.ok) throw new Error(JSON.parse(text).error || 'No se pudo cargar la biblioteca.');
+    return text;
+  });
+  if (firstLoad) {
+    const saved = await readSnapshot();
+    if (saved) {
+      try {
+        applyCatalog(saved);
+        renderAll();
+      } catch {
+        shownText = null;
+      }
+    }
+  }
+  Object.assign(state, { loading: !state.games.length, loadError: '' });
+  if (state.loading) renderLibrary();
+  try {
+    const text = await pending;
+    if (text === shownText) return;
+    applyCatalog(text);
+    saveSnapshot(text);
+  } catch (error) {
+    if (!state.games.length)
+      state.loadError = error.message || 'Revisá que la aplicación siga abierta y volvé a intentarlo.';
+    else report('warn', 'No se pudo actualizar la biblioteca: ' + error.message);
+  } finally {
+    state.loading = false;
+  }
+  renderAll();
 }
 
 // Estado de la última búsqueda de juegos, en palabras relativas y al pie de la barra lateral.
@@ -90,6 +125,7 @@ export function renderSyncStatus() {
 // Compatibilidad con los scripts clásicos (gamepad.js usa notify) y depuración desde la consola.
 window.notify = notify;
 window.GML = { state, openGamePage, showPage, load };
+setupReport();
 setupFeedback();
 setupLibrary();
 setupHome();

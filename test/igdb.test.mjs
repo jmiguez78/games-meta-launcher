@@ -117,7 +117,8 @@ test('conserva textos completos, idiomas, clasificaciones, compañías y relacio
   assert.deepEqual(meta.websites, [{ label: 'Official', url: 'https://example.com/game' }]);
   assert.deepEqual(meta.ratings.users, { value: 0, count: 2 });
   assert.deepEqual(meta.ratings.total, { value: 81.5, count: 12 });
-  assert.equal(meta.source.future_field, 'valor preservado');
+  // Desde el esquema 3 no se guarda la respuesta original completa.
+  assert.equal(meta.source, undefined);
 });
 
 test('tolera campos ausentes y descarta fechas, valoraciones y enlaces inválidos', () => {
@@ -163,11 +164,12 @@ test('actualiza fichas y duración conservando las coincidencias existentes', as
   assert.equal(calls[0].url.includes('secret'), false);
   assert.match(calls[1].body, /where id = \(42\)/);
   const saved = JSON.parse(await fs.readFile(path.join(dir, 'metadata.json'), 'utf8'));
-  assert.equal(saved.schemaVersion, 2);
+  assert.equal(saved.schemaVersion, 3);
   assert.equal(saved.games['epic:x'].igdbId, 42);
   assert.equal(saved.games['epic:x'].timeToBeat.normally, 7200);
   assert.equal(saved.games['epic:x'].timeToBeat.count, 8);
-  assert.deepEqual(saved.games['epic:x'].source.screenshots, [{ image_id: 'sc42' }]);
+  assert.deepEqual(saved.games['epic:x'].screenshots, ['sc42']);
+  assert.equal(saved.games['epic:x'].source, undefined);
 });
 
 test('una falla de IGDB mantiene intacta la información previamente descargada', async (t) => {
@@ -190,7 +192,11 @@ test('una falla de IGDB mantiene intacta la información previamente descargada'
   client.start([{ key: 'epic:x', id: 'x', name: 'Juego', platform: 'Epic Games' }]);
   while (client.status().running) await new Promise((resolve) => setTimeout(resolve, 5));
   assert.match(client.status().error, /503/);
-  assert.equal(await fs.readFile(path.join(dir, 'metadata.json'), 'utf8'), previous);
+  // Las fichas siguen intactas; el archivo sólo se migró de versión, con copia del original.
+  const saved = JSON.parse(await fs.readFile(path.join(dir, 'metadata.json'), 'utf8'));
+  assert.deepEqual(saved.games, JSON.parse(previous).games);
+  assert.equal(saved.schemaVersion, 3);
+  assert.equal(await fs.readFile(path.join(dir, 'metadata.v0.bak.json'), 'utf8'), previous);
 });
 
 test('Arcade: usa el identificador de Wikidata y, si no hay, sólo acepta el mismo título en Arcade', async (t) => {

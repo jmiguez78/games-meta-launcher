@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { protect, unprotect } from './secrets.mjs';
+import { createVersionedFile, readJsonCached, writeJsonAtomic } from './json-file.mjs';
 
 // Cliente de IGDB (Twitch). Sólo envía identificadores y nombres de juegos; nunca rutas ni datos personales.
 const API = 'https://api.igdb.com/v4';
@@ -83,17 +84,8 @@ const dateOf = (value) =>
 const score = (value) => (Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value * 10) / 10 : null);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-async function readJson(target, fallback) {
-  try {
-    return JSON.parse(await fs.readFile(target, 'utf8'));
-  } catch {
-    return fallback;
-  }
-}
-async function writeJson(target, data) {
-  await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target, JSON.stringify(data, null, 2), 'utf8');
-}
+const readJson = readJsonCached;
+const writeJson = (target, data) => writeJsonAtomic(target, data);
 
 export function normalizeTitle(name) {
   return String(name)
@@ -214,15 +206,34 @@ export function toMetadata(game) {
             url: safeWebUrl(item.url, 'www.igdb.com')
           }))
       ])
-    ),
-    // Conserva la respuesta completa para futuras mejoras sin perder campos todavía no presentados.
-    source: game
+    )
   };
 }
 
+const EMPTY = Object.freeze({});
+const pick = (all, games) =>
+  Object.fromEntries(games.filter((game) => all[game.key]).map((game) => [game.key, all[game.key]]));
 export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, requestGapMs = REQUEST_GAP_MS } = {}) {
   const credentialsPath = path.join(dataDir, 'integrations.json');
   const metadataPath = path.join(dataDir, 'metadata.json');
+  // Versión 3: sin la respuesta original de IGDB en cada ficha (ocupaba la mayor parte del archivo y no se usaba).
+  // Se guarda compacto: no está pensado para leerse a mano.
+  const metadataFile = createVersionedFile(metadataPath, {
+    version: 3,
+    pretty: false,
+    fallback: () => ({ games: {} }),
+    migrations: {
+      3: (saved) => ({
+        ...saved,
+        games: Object.fromEntries(
+          Object.entries(saved.games ?? {}).map(([key, value]) => {
+            const { source, ...rest } = value ?? {};
+            return [key, rest];
+          })
+        )
+      })
+    }
+  });
   let token = null;
   let lastRequest = 0;
   const status = { running: false, done: 0, total: 0, matched: 0, error: null, finishedAt: null };
@@ -326,7 +337,8 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
   }
 
   async function refresh(games) {
-    const saved = await readJson(metadataPath, { games: {} });
+    const saved = structuredClone(await metadataFile.read());
+    saved.games ??= {};
     const steam = await steamMatches(games.filter((game) => game.platform === 'Steam'));
     const ids = new Map();
     status.total = games.length;
@@ -373,12 +385,16 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
       saved.games[game.key] = detail ? { ...detail, fetchedAt } : { igdbId: null, fetchedAt };
       if (detail) status.matched += 1;
     }
-    await writeJson(metadataPath, { schemaVersion: 2, updatedAt: fetchedAt, games: saved.games });
+    await metadataFile.update((current) => ({
+      ...current,
+      updatedAt: fetchedAt,
+      games: { ...current.games, ...pick(saved.games, games) }
+    }));
   }
 
   return {
     status: () => ({ ...status }),
-    metadata: async () => (await readJson(metadataPath, { games: {} })).games ?? {},
+    metadata: async () => (await metadataFile.read()).games ?? EMPTY,
     async settings() {
       const saved = (await readJson(credentialsPath, {})).igdb;
       return { configured: Boolean(saved?.clientId && saved?.secret), clientId: saved?.clientId ?? '' };
@@ -391,7 +407,7 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
       await writeJson(credentialsPath, { ...all, igdb: { clientId, secret: await protect(clientSecret) } });
     },
     async disconnect() {
-      const all = await readJson(credentialsPath, {});
+      const all = structuredClone(await readJson(credentialsPath, {}));
       delete all.igdb;
       token = null;
       await writeJson(credentialsPath, all);

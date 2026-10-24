@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { readZipEntries } from './zip-index.mjs';
+import { readJsonCached, writeJsonAtomic } from './json-file.mjs';
 import { parseCommandDat, formatCommands } from './mame-commands.mjs';
 
 const CACHE_SCHEMA = 1;
@@ -398,18 +399,13 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
       return fallback;
     }
   }
-  async function writeJson(file, value) {
-    await fs.mkdir(path.dirname(file), { recursive: true });
-    const temporary = `${file}.${crypto.randomUUID()}.tmp`;
-    await fs.writeFile(temporary, JSON.stringify(value));
-    await fs.rename(temporary, file);
-  }
+  const writeJson = (file, value) => writeJsonAtomic(file, value, { pretty: false });
   async function settings() {
-    const saved = await readJson(settingsPath, {});
+    const saved = await readJsonCached(settingsPath, {});
     return { exe: typeof saved.exe === 'string' ? saved.exe : '', showAdult: saved.showAdult === true };
   }
   async function saveSettings(patch) {
-    await writeJson(settingsPath, { ...(await readJson(settingsPath, {})), ...patch });
+    await writeJson(settingsPath, { ...(await readJsonCached(settingsPath, {})), ...patch });
   }
   async function loadCommands() {
     if (!commandsCache) commandsCache = await readJson(commandsPath, {});
@@ -418,6 +414,35 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
   async function loadCatalog() {
     if (!catalog) catalog = await readJson(catalogPath, null);
     return catalog?.schema === CACHE_SCHEMA ? catalog : null;
+  }
+
+  // Lista visible, recalculada sólo si cambió el catálogo, el ajuste de adultos, la información o los comandos.
+  const NO_GAMES = Object.freeze([]);
+  let visibleMemo = null;
+  function visibleGames(current, showAdult, info, commands) {
+    if (
+      visibleMemo &&
+      visibleMemo.current === current &&
+      visibleMemo.showAdult === showAdult &&
+      visibleMemo.info === info &&
+      visibleMemo.commands === commands
+    )
+      return visibleMemo.value;
+    const value = current.games
+      .filter((game) => showAdult || !game.adult)
+      .map((game) => {
+        const found = info[game.id]?.result;
+        const hasCommands = [game.id, game.arcade.parent, ...game.arcade.versions.map((item) => item.id)].some(
+          (id) => commands[id]
+        );
+        return {
+          ...game,
+          ...(found?.igdbSlug ? { igdbSlug: found.igdbSlug } : {}),
+          arcade: { ...game.arcade, ...(found?.es ? { wiki: found.es } : {}), commands: hasCommands }
+        };
+      });
+    visibleMemo = { current, showAdult, info, commands, value };
+    return value;
   }
 
   function run(exe, args) {
@@ -603,23 +628,11 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     // Suma lo que se encontró en Wikipedia (descripción en español) y el identificador de IGDB.
     async games() {
       const current = await loadCatalog();
-      if (!current) return [];
+      if (!current) return NO_GAMES;
       const { showAdult } = await settings();
-      const info = (await readJson(infoPath, {})).games ?? {};
+      const info = (await readJsonCached(infoPath, {})).games ?? {};
       const commands = await loadCommands();
-      return current.games
-        .filter((game) => showAdult || !game.adult)
-        .map((game) => {
-          const found = info[game.id]?.result;
-          const hasCommands = [game.id, game.arcade.parent, ...game.arcade.versions.map((item) => item.id)].some(
-            (id) => commands[id]
-          );
-          return {
-            ...game,
-            ...(found?.igdbSlug ? { igdbSlug: found.igdbSlug } : {}),
-            arcade: { ...game.arcade, ...(found?.es ? { wiki: found.es } : {}), commands: hasCommands }
-          };
-        });
+      return visibleGames(current, showAdult, info, commands);
     },
     // Movimientos del juego (o de su versión original), en secciones legibles.
     async commands(id) {
@@ -635,7 +648,8 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     // Información de Wikipedia/Wikidata, de a un juego por vez. Se recuerda 30 días (también la falta de
     // coincidencia); un error de red no se recuerda y se reintenta la próxima vez.
     async enrich(games, wiki) {
-      const saved = await readJson(infoPath, { games: {} });
+      const saved = structuredClone(await readJsonCached(infoPath, { games: {} }));
+      saved.games ??= {};
       const pending = games.filter((game) => {
         const entry = saved.games?.[game.id];
         return !entry || Date.now() - Date.parse(entry.fetchedAt) > SUPPORT_MAX_AGE;

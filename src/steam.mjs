@@ -5,24 +5,15 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { protect, unprotect } from './secrets.mjs';
+import { readJsonCached, writeJsonAtomic } from './json-file.mjs';
 
 const DAY = 86400000;
 const gameId = (value) => /^\d{1,10}$/.test(String(value)) && Number(value) > 0;
 const accountId = (value) => /^765\d{14}$/.test(String(value));
 const now = () => new Date().toISOString();
-async function read(file, fallback) {
-  try {
-    return JSON.parse(await fs.readFile(file, 'utf8'));
-  } catch {
-    return fallback;
-  }
-}
-async function write(file, value) {
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  const temporary = file + '.' + crypto.randomUUID() + '.tmp';
-  await fs.writeFile(temporary, JSON.stringify(value, null, 2));
-  await fs.rename(temporary, file);
-}
+const read = readJsonCached;
+const write = (file, value) => writeJsonAtomic(file, value);
+const NO_ACCOUNT = Object.freeze({ games: Object.freeze([]), updatedAt: null });
 function decodeResult(response) {
   if (response.error || response.result?.isError)
     throw new Error('Steam no pudo completar la consulta. Revisá tu conexión y la privacidad del perfil.');
@@ -207,7 +198,7 @@ export function createSteam(dataDir, options = {}) {
   async function account() {
     const saved = await credentials();
     const cached = await read(accountFile, null);
-    return saved && cached?.steamId === saved.steamId ? cached : { games: [], updatedAt: null };
+    return saved && cached?.steamId === saved.steamId ? cached : NO_ACCOUNT;
   }
   async function cachedCall(tool, args = {}, { ttl = DAY, force = false } = {}) {
     const saved = await credentials();

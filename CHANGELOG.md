@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.20.0 — 24 de octubre de 2026
+
+Segunda ronda, etapa B: Configuración ordenada.
+
+- Configuración pasa de un mosaico de tarjetas a tres secciones (General, Cuentas e información y Mantenimiento), con la explicación a la izquierda y los controles a la derecha.
+- Con Steam o IGDB conectados se ve el estado en una línea («Conectada: 279 juegos, sincronizada hace 3 h») y las acciones. Los campos de credenciales quedan ocultos hasta elegir «Cambiar de cuenta».
+- El tema oscuro aparece primero entre las opciones de apariencia.
+- Los campos de texto tienen bordes con contraste suficiente en el tema claro.
+
 ## 0.19.0 — 24 de octubre de 2026
 
 Segunda ronda, etapa A: una Biblioteca para encontrar cualquier juego en segundos.

@@ -177,118 +177,136 @@
         </section>
 
         <section id="settings-page" class="page hidden">
-          <p class="page-intro">Administrá la apariencia, el mantenimiento de tu biblioteca y tus datos personales.</p>
-          <div class="settings-grid">
-            <section class="settings-card status-card">
-              <span class="card-icon" data-icon="activity"></span>
-              <div>
-                <h2>Estado de la biblioteca</h2>
-                <p id="settings-health">Revisando la biblioteca…</p>
-              </div>
-              <div class="button-row">
-                <button type="button" class="button" id="open-diagnostics">Ver el estado por plataforma</button>
-              </div>
-            </section>
-            <section class="settings-card">
-              <span class="card-icon" data-icon="gamepad"></span>
-              <div>
-                <h2>Cuenta de Steam</h2>
-                <p>
-                  Juegos de tu cuenta, actividad, logros y datos para enriquecer las fichas de la biblioteca. La clave
-                  se cifra con tu cuenta de Windows. La disponibilidad de los datos depende de la privacidad del perfil.
-                </p>
-              </div>
-              <form id="steam-form" class="schedule-form" autocomplete="off" novalidate>
-                <label for="steam-account-id">SteamID64</label
-                ><input id="steam-account-id" inputmode="numeric" spellcheck="false" /><label for="steam-api-key"
-                  >Clave de Steam Web API</label
-                ><input id="steam-api-key" type="password" spellcheck="false" />
-                <div class="button-row">
-                  <button class="button primary" type="submit">Conectar Steam</button
-                  ><button class="button" id="steam-import-local" type="button">
-                    Usar conexión guardada en esta PC</button
-                  ><button class="button" id="steam-sync" type="button">Sincronizar biblioteca</button
-                  ><button class="text-button" id="steam-disconnect" type="button">Desconectar Steam</button>
+          <div class="settings-list">
+            <section class="settings-group" aria-labelledby="settings-general">
+              <h2 id="settings-general">General</h2>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Apariencia</h3>
+                  <p>El tema oscuro deja que el color lo ponga el arte de cada juego. «Sistema» sigue a Windows.</p>
                 </div>
-                <p id="steam-settings-status" class="helper-text" role="status"></p>
-                <p id="steam-form-error" class="form-error" role="alert"></p>
-              </form>
-            </section>
-            <section class="settings-card">
-              <span class="card-icon" data-icon="palette"></span>
-              <div>
-                <h2>Apariencia</h2>
-                <p>Elegí un tema o seguí el de Windows.</p>
-              </div>
-              <div id="theme-options" class="segmented theme-options" role="group" aria-label="Tema">
-                <button type="button" data-theme-option="system" aria-pressed="false">
-                  <span data-icon="monitor"></span><span>Sistema</span></button
-                ><button type="button" data-theme-option="light" aria-pressed="false">
-                  <span data-icon="sun"></span><span>Claro</span></button
-                ><button type="button" data-theme-option="dark" aria-pressed="false">
-                  <span data-icon="moon"></span><span>Oscuro</span>
-                </button>
-              </div>
-            </section>
-            <section class="settings-card">
-              <span class="card-icon" data-icon="clock"></span>
-              <div>
-                <h2>Indexación nocturna</h2>
-                <p>Actualiza el inventario cada día sin abrir la aplicación.</p>
-              </div>
-              <form id="schedule-form" class="schedule-form" novalidate>
-                <label for="schedule-time">Hora de ejecución</label>
-                <div class="field-row">
-                  <input id="schedule-time" type="time" value="03:00" /><button class="button primary" type="submit">
-                    Guardar horario
-                  </button>
+                <div class="settings-control">
+                  <div id="theme-options" class="segmented theme-options" role="group" aria-label="Tema">
+                    <button type="button" data-theme-option="dark" aria-pressed="false">
+                      <span data-icon="moon"></span><span>Oscuro</span></button
+                    ><button type="button" data-theme-option="light" aria-pressed="false">
+                      <span data-icon="sun"></span><span>Claro</span></button
+                    ><button type="button" data-theme-option="system" aria-pressed="false">
+                      <span data-icon="monitor"></span><span>Sistema</span>
+                    </button>
+                  </div>
                 </div>
-                <p id="schedule-status" class="helper-text">Consultando la tarea programada…</p>
-                <p id="schedule-error" class="form-error" role="alert"></p>
-              </form>
+              </section>
             </section>
-            <section class="settings-card">
-              <span class="card-icon" data-icon="archive"></span>
-              <div>
-                <h2>Tu biblioteca personal</h2>
-                <p>Guardá una copia de favoritos, notas, etiquetas, portadas y rutas personalizadas.</p>
-              </div>
-              <div class="button-row">
-                <button id="export-preferences" class="button"><span data-icon="download"></span> Respaldar</button
-                ><label class="button import-button"
-                  ><span data-icon="upload"></span> Restaurar<input
-                    id="import-preferences"
-                    type="file"
-                    accept="application/json"
-                    class="visually-hidden"
-                /></label>
-              </div>
-            </section>
-            <section class="settings-card">
-              <span class="card-icon" data-icon="info"></span>
-              <div>
-                <h2>Información de juegos <span class="badge-beta">Beta</span></h2>
-                <p>
-                  Descripción, géneros, desarrolladora y portadas faltantes desde
-                  <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB</a>. Incluye historia, idiomas,
-                  modos de juego, compañías, valoraciones, duración estimada, clasificaciones de edad, lanzamientos,
-                  capturas, videos y juegos relacionados cuando están disponibles. Requiere una aplicación de
-                  <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">Twitch</a>.
-                </p>
-              </div>
-              <form id="igdb-form" class="schedule-form" autocomplete="off" novalidate>
-                <label for="igdb-client-id">ID de cliente</label>
-                <input id="igdb-client-id" spellcheck="false" aria-required="true" />
-                <label for="igdb-secret">Secreto</label>
-                <input id="igdb-secret" type="password" spellcheck="false" aria-required="true" />
-                <div class="button-row">
-                  <button class="button primary" type="submit">Conectar</button
-                  ><button id="igdb-refresh" class="button" type="button">Actualizar información</button
-                  ><button id="igdb-remove" class="text-button" type="button">Desconectar</button>
+            <section class="settings-group" aria-labelledby="settings-accounts">
+              <h2 id="settings-accounts">Cuentas e información</h2>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Cuenta de Steam</h3>
+                  <p>
+                    Suma los juegos de tu cuenta, las horas jugadas y los logros. La clave se cifra con tu usuario de
+                    Windows. Lo que se ve depende de la privacidad de tu perfil.
+                  </p>
                 </div>
-                <p id="igdb-status" class="helper-text">Consultando la conexión…</p>
-                <p id="igdb-error" class="form-error" role="alert"></p>
-              </form>
+                <div class="settings-control">
+                  <form id="steam-form" class="schedule-form" autocomplete="off" novalidate>
+                    <p id="steam-settings-status" class="settings-status" role="status"></p>
+                    <div id="steam-fields" class="settings-fields">
+                      <label for="steam-account-id">SteamID64</label
+                      ><input id="steam-account-id" inputmode="numeric" spellcheck="false" /><label for="steam-api-key"
+                        >Clave de Steam Web API</label
+                      ><input id="steam-api-key" type="password" spellcheck="false" />
+                    </div>
+                    <div class="button-row">
+                      <button class="button primary" id="steam-connect" type="submit">Conectar Steam</button
+                      ><button class="button" id="steam-import-local" type="button">
+                        Usar conexión guardada en esta PC</button
+                      ><button class="button" id="steam-sync" type="button">Sincronizar ahora</button
+                      ><button class="text-button" id="steam-change" type="button" hidden>Cambiar de cuenta</button
+                      ><button class="text-button" id="steam-disconnect" type="button">Desconectar</button>
+                    </div>
+                    <p id="steam-form-error" class="form-error" role="alert"></p>
+                  </form>
+                </div>
+              </section>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Información de juegos <span class="badge-beta">Beta</span></h3>
+                  <p>
+                    Descripciones, géneros, duración, valoraciones, capturas y videos desde
+                    <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB</a>. Requiere una aplicación de
+                    <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">Twitch</a>.
+                  </p>
+                </div>
+                <div class="settings-control">
+                  <form id="igdb-form" class="schedule-form" autocomplete="off" novalidate>
+                    <p id="igdb-status" class="settings-status">Consultando la conexión…</p>
+                    <div id="igdb-fields" class="settings-fields">
+                      <label for="igdb-client-id">ID de cliente</label>
+                      <input id="igdb-client-id" spellcheck="false" aria-required="true" />
+                      <label for="igdb-secret">Secreto</label>
+                      <input id="igdb-secret" type="password" spellcheck="false" aria-required="true" />
+                    </div>
+                    <div class="button-row">
+                      <button class="button primary" id="igdb-connect" type="submit">Conectar</button
+                      ><button id="igdb-refresh" class="button" type="button">Actualizar información</button
+                      ><button class="text-button" id="igdb-change" type="button" hidden>Cambiar credenciales</button
+                      ><button id="igdb-remove" class="text-button" type="button">Desconectar</button>
+                    </div>
+                    <p id="igdb-error" class="form-error" role="alert"></p>
+                  </form>
+                </div>
+              </section>
+            </section>
+            <section class="settings-group" aria-labelledby="settings-maintenance">
+              <h2 id="settings-maintenance">Mantenimiento</h2>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Búsqueda nocturna de juegos</h3>
+                  <p>Actualiza la biblioteca todos los días, sin abrir la aplicación.</p>
+                </div>
+                <div class="settings-control">
+                  <form id="schedule-form" class="schedule-form" novalidate>
+                    <label for="schedule-time">Hora</label>
+                    <div class="field-row">
+                      <input id="schedule-time" type="time" value="03:00" /><button class="button" type="submit">
+                        Guardar horario
+                      </button>
+                    </div>
+                    <p id="schedule-status" class="helper-text">Consultando la tarea programada…</p>
+                    <p id="schedule-error" class="form-error" role="alert"></p>
+                  </form>
+                </div>
+              </section>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Respaldo de tu biblioteca personal</h3>
+                  <p>Favoritos, notas, etiquetas, portadas propias y rutas de lanzamiento personalizadas.</p>
+                </div>
+                <div class="settings-control">
+                  <div class="button-row">
+                    <button id="export-preferences" class="button"><span data-icon="download"></span> Respaldar</button
+                    ><label class="button import-button"
+                      ><span data-icon="upload"></span> Restaurar<input
+                        id="import-preferences"
+                        type="file"
+                        accept="application/json"
+                        class="visually-hidden"
+                    /></label>
+                  </div>
+                </div>
+              </section>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Estado de la biblioteca</h3>
+                  <p id="settings-health">Revisando la biblioteca…</p>
+                </div>
+                <div class="settings-control">
+                  <div class="button-row">
+                    <button type="button" class="button" id="open-diagnostics">Ver el estado por plataforma</button>
+                  </div>
+                </div>
+              </section>
             </section>
           </div>
         </section>

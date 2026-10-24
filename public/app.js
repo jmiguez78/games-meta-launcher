@@ -2166,16 +2166,19 @@ function describeIgdbStatus(settings, status) {
     return 'Listo: se encontró información de ' + status.matched + ' de ' + status.total + ' juegos.';
   return settings.configured
     ? 'Conectado. Usá «Actualizar información» cuando agregues juegos.'
-    : 'Sin conectar. Creá una aplicación en Twitch y pegá aquí sus credenciales.';
+    : 'Sin conectar. Creá una aplicación en Twitch y pegá acá sus credenciales.';
 }
 async function loadIgdb() {
   try {
     const [settings, status] = await Promise.all([request('/api/integrations/igdb'), request('/api/metadata/status')]);
     document.querySelector('#igdb-client-id').value = settings.clientId;
     document.querySelector('#igdb-secret').placeholder = settings.configured ? 'Guardado de forma segura' : '';
-    document.querySelector('#igdb-refresh').disabled = !settings.configured || status.running;
+    document.querySelector('#igdb-refresh').hidden = !settings.configured;
+    document.querySelector('#igdb-refresh').disabled = status.running;
     document.querySelector('#igdb-remove').classList.toggle('hidden', !settings.configured);
+    showCredentialFields('igdb', settings.configured);
     document.querySelector('#igdb-status').textContent = describeIgdbStatus(settings, status);
+    document.querySelector('#igdb-status').classList.toggle('connected', Boolean(settings.configured));
     clearTimeout(igdbPoll);
     if (status.running) igdbPoll = setTimeout(loadIgdb, 1000);
     else if (status.finishedAt && status.finishedAt !== state.metadataLoadedAt) {
@@ -2666,6 +2669,7 @@ document.querySelector('#igdb-form').onsubmit = async (event) => {
       body: JSON.stringify({ clientId: clientId.value, clientSecret: secret.value })
     });
     secret.value = '';
+    delete form.dataset.editing;
     notify('IGDB conectado. Buscando información de tus juegos…', { type: 'success' });
     await loadIgdb();
   } catch (error) {
@@ -2673,6 +2677,11 @@ document.querySelector('#igdb-form').onsubmit = async (event) => {
   } finally {
     button.disabled = false;
   }
+};
+document.querySelector('#igdb-change').onclick = () => {
+  document.querySelector('#igdb-form').dataset.editing = 'true';
+  showCredentialFields('igdb', true);
+  document.querySelector('#igdb-client-id').focus();
 };
 document.querySelector('#igdb-refresh').onclick = async () => {
   try {

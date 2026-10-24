@@ -213,24 +213,34 @@ async function syncSteamAccount() {
     button.disabled = false;
   }
 }
+// Con una cuenta conectada, los campos de credenciales quedan ocultos hasta pedir «Cambiar de cuenta».
+function showCredentialFields(prefix, configured) {
+  const form = document.querySelector('#' + prefix + '-form');
+  const editing = !configured || form.dataset.editing === 'true';
+  document.querySelector('#' + prefix + '-fields').hidden = !editing;
+  document.querySelector('#' + prefix + '-connect').hidden = !editing;
+  document.querySelector('#' + prefix + '-change').hidden = editing;
+}
 async function loadSteamSettings() {
   try {
     const settings = await request('/api/integrations/steam');
     document.querySelector('#steam-account-id').value = settings.steamId;
     document.querySelector('#steam-api-key').placeholder = settings.configured ? 'Clave guardada de forma cifrada' : '';
-    document.querySelector('#steam-import-local').hidden = !settings.localConnectionAvailable;
+    document.querySelector('#steam-import-local').hidden = settings.configured || !settings.localConnectionAvailable;
     document.querySelector('#steam-disconnect').hidden = !settings.configured;
-    document.querySelector('#steam-sync').disabled = !settings.configured || settings.running;
+    document.querySelector('#steam-sync').hidden = !settings.configured;
+    document.querySelector('#steam-sync').disabled = settings.running;
+    showCredentialFields('steam', settings.configured);
     document.querySelector('#steam-settings-status').textContent = settings.configured
-      ? 'Cuenta conectada · ' +
+      ? 'Conectada: ' +
         settings.total +
-        ' juegos sincronizados. Sus datos enriquecen la biblioteca y las fichas.' +
-        (settings.updatedAt
-          ? ' Última sincronización: ' + new Date(settings.updatedAt).toLocaleString('es-AR') + '.'
-          : '') +
-        (settings.stale ? ' Datos pendientes de actualizar.' : '') +
+        ' juegos' +
+        (settings.updatedAt ? ', sincronizada ' + GMLShelves.relativeTime(settings.updatedAt) : '') +
+        '.' +
+        (settings.stale ? ' Hay datos pendientes de actualizar.' : '') +
         (settings.error ? ' ' + settings.error : '')
       : 'Sin conectar.';
+    document.querySelector('#steam-settings-status').classList.toggle('connected', Boolean(settings.configured));
   } catch (error) {
     document.querySelector('#steam-settings-status').textContent = error.message;
   }
@@ -451,6 +461,11 @@ function steamCompatibility(value) {
 }
 function initializeSteamUI() {
   document.querySelector('#steam-sync').onclick = syncSteamAccount;
+  document.querySelector('#steam-change').onclick = () => {
+    document.querySelector('#steam-form').dataset.editing = 'true';
+    showCredentialFields('steam', true);
+    document.querySelector('#steam-account-id').focus();
+  };
   document.querySelector('#steam-form').onsubmit = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -470,6 +485,7 @@ function initializeSteamUI() {
         body: JSON.stringify({ apiKey: key.value.trim(), steamId: id.value.trim() })
       });
       key.value = '';
+      delete form.dataset.editing;
       await syncSteamAccount();
     } catch (error) {
       document.querySelector('#steam-form-error').textContent = error.message;

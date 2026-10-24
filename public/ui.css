@@ -915,20 +915,9 @@
 }
 
 /* Configuración */
-.settings-card {
-  align-content: start;
-}
-.card-icon .icon {
-  width: 20px;
-  height: 20px;
-}
 .theme-options button {
   flex: 1;
   justify-content: center;
-}
-.settings-card .segmented {
-  grid-column: 1 / -1;
-  margin-top: var(--space-2);
 }
 
 /* Diálogos */

@@ -66,7 +66,7 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 
 | Componente | Uso |
 | --- | --- |
-| Barra lateral | 76 px con íconos; se expande a 236 px con el puntero o con foco de teclado. Al pie: «Buscar juegos nuevos» y antigüedad del inventario. «Para revisar» aparece sólo con juegos que necesitan atención, con su cantidad. |
+| Barra lateral | 76 px con íconos; se expande a 256 px con el puntero o con foco de teclado. Al pie: «Buscar juegos nuevos» y antigüedad del inventario. «Para revisar» aparece sólo con juegos que necesitan atención, con su cantidad. |
 | Portada | Imagen 2:3 sin marco, título en una línea y plataforma o un dato de contexto. Al pasar el mouse se eleva, toma el brillo del juego y muestra Jugar. «Listo» no se muestra; «No instalado» va en gris con un aro y «Requiere revisión» en ámbar. |
 | Imagen principal (Inicio) | Arte panorámico a todo el ancho, logo del juego o título, motivo («Seguí donde lo dejaste»), datos, Jugar, Ver ficha y Favorito. Las miniaturas eligen entre cinco destacados. |
 | Fila de Inicio | Título, explicación breve y desplazamiento horizontal con botones. Flechas izquierda y derecha dentro de la fila; arriba y abajo entre filas. |

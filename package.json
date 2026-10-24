@@ -1,6 +1,6 @@
 {
   "name": "games-meta-launcher",
-  "version": "0.11.0",
+  "version": "0.14.2",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "scan": "node src/indexer.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "format": "prettier --write src public test",
-    "check": "node --check src/server.mjs && node --check src/indexer.mjs && node --check public/app.js",
+    "check": "node --check src/server.mjs && node --check src/indexer.mjs && node --check src/steam.mjs && node --check public/app.js && node --check public/steam-ui.js",
     "desktop": "electron .",
     "package": "electron-builder --win portable"
   },
@@ -36,7 +36,10 @@
     ],
     "asar": false,
     "directories": {
-      "output": "release-v0110"
+      "output": "release-v0142-final"
     }
+  },
+  "dependencies": {
+    "steam-games-mcp": "0.17.0"
   }
 }

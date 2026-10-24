@@ -41,33 +41,39 @@
         </header>
 
         <section id="home-page" class="page">
-          <div class="welcome-banner">
+          <section class="home-summary">
             <div>
-              <p class="eyebrow">PLAYER ONE · BIBLIOTECA LOCAL</p>
-              <h2>Elegí tu próxima partida.</h2>
-              <p>Tu colección, tus accesos directos y tus notas en un único lugar.</p>
-              <button class="button primary" data-go-library>Ver biblioteca <span data-icon="arrow"></span></button>
+              <p class="eyebrow">TU BIBLIOTECA</p>
+              <h2>Elegí qué jugar.</h2>
+              <p id="home-summary">Tus juegos, tu ritmo y lo que querés volver a jugar.</p>
             </div>
-            <div class="banner-token" aria-hidden="true">★</div>
-          </div>
-          <section class="stat-grid" aria-label="Resumen de biblioteca">
-            <article class="stat">
-              <span>Total</span><strong id="stat-total">—</strong><small>juegos detectados</small>
+            <button class="button" data-go-library>Explorar biblioteca <span data-icon="arrow"></span></button>
+          </section>
+          <section class="collection-pulse" aria-label="Resumen de biblioteca">
+            <article class="collection-metric">
+              <span class="metric-icon" data-icon="gamepad" aria-hidden="true"></span>
+              <span>En colección</span><strong id="stat-total">—</strong><small>juegos reunidos</small>
             </article>
-            <article class="stat">
-              <span>Listos</span><strong id="stat-ready">—</strong><small>para iniciar</small>
+            <article class="collection-metric" id="metric-ready">
+              <span class="metric-icon" data-icon="play" aria-hidden="true"></span>
+              <span>Para jugar</span><strong id="stat-ready">—</strong><small>listos para iniciar</small
+              ><i class="metric-meter" aria-hidden="true"></i>
             </article>
-            <article class="stat">
-              <span>Favoritos</span><strong id="stat-favorites">—</strong><small>elegidos por vos</small>
+            <article class="collection-metric" id="metric-favorites">
+              <span class="metric-icon" data-icon="star" aria-hidden="true"></span>
+              <span>Favoritos</span><strong id="stat-favorites">—</strong><small>elegidos por vos</small
+              ><i class="metric-meter" aria-hidden="true"></i>
             </article>
-            <article class="stat">
-              <span>En curso</span><strong id="stat-progress">—</strong><small>partidas activas</small>
+            <article class="collection-metric" id="metric-progress">
+              <span class="metric-icon" data-icon="activity" aria-hidden="true"></span>
+              <span>En curso</span><strong id="stat-progress">—</strong><small>partidas activas</small
+              ><i class="metric-meter" aria-hidden="true"></i>
             </article>
           </section>
           <section class="section-heading">
             <div>
-              <h2 id="quick-heading">Acceso rápido</h2>
-              <p id="quick-subtitle">Tus favoritos y juegos recientes.</p>
+              <h2 id="quick-heading">Para jugar ahora</h2>
+              <p id="quick-subtitle">Tus favoritos, juegos recientes y accesos listos.</p>
             </div>
             <button class="text-button" data-go-library>Explorar todo <span data-icon="arrow"></span></button>
           </section>
@@ -98,8 +104,8 @@
                 <span data-icon="grid"></span><span class="segment-label">Portadas</span></button
               ><button data-view="list" aria-pressed="false" title="Lista">
                 <span data-icon="list"></span><span class="segment-label">Lista</span></button
-              ><button data-view="detail" aria-pressed="false" title="Detalle">
-                <span data-icon="panel"></span><span class="segment-label">Detalle</span></button
+              ><button data-view="detail" aria-pressed="false" title="Ficha">
+                <span data-icon="panel"></span><span class="segment-label">Ficha</span></button
               ><button data-view="explorer" aria-pressed="false" title="Tabla">
                 <span data-icon="table"></span><span class="segment-label">Tabla</span>
               </button>
@@ -114,6 +120,11 @@
               <button id="clear-filters" class="text-button">Restablecer</button>
             </div>
             <div id="platforms" class="chips"></div>
+            <div id="installation-filter" class="chips" role="group" aria-label="Estado de instalación">
+              <button class="chip active" data-installation="">Todos</button
+              ><button class="chip" data-installation="installed">Instalados</button
+              ><button class="chip" data-installation="not-installed">No instalados</button>
+            </div>
             <div class="filter-grid">
               <div>
                 <label for="tag">Etiqueta</label
@@ -134,6 +145,9 @@
                   <option value="platform">Plataforma</option>
                   <option value="drive">Unidad</option>
                   <option value="recent">Últimos lanzados</option>
+                  <option value="hours">Horas en Steam (mayor a menor)</option>
+                  <option value="recent-hours">Actividad de las últimas dos semanas</option>
+                  <option value="unplayed">Sin tiempo registrado primero</option>
                 </select>
               </div>
               <label class="check"><input id="favorites-only" type="checkbox" /><span>Solo favoritos</span></label>
@@ -144,10 +158,11 @@
               <p id="counter" role="status"></p>
               <div id="active-filters" class="active-filters" aria-label="Filtros activos"></div>
             </div>
-            <p id="view-label" class="visually-hidden">Portadas</p>
+            <p id="view-label" class="view-description">Explorá visualmente tu colección.</p>
           </div>
           <p id="library-help" class="visually-hidden">
-            Usá las flechas para moverte entre los juegos. Enter juega, F marca como favorito y E edita la ficha.
+            Usá las flechas para moverte entre los juegos. Enter abre la ficha en Lista y Tabla; en Portadas juega. F
+            marca como favorito y E edita la ficha.
           </p>
           <section id="library-state" class="library-state hidden" aria-live="polite"></section>
           <section id="library" class="library icons" aria-label="Juegos" aria-describedby="library-help"></section>
@@ -158,7 +173,6 @@
             <button id="empty-clear" class="button">Limpiar filtros</button>
           </section>
         </section>
-
         <section id="diagnostics-page" class="page hidden">
           <div class="page-intro">
             <h2>Estado de la colección</h2>
@@ -192,6 +206,31 @@
         <section id="settings-page" class="page hidden">
           <p class="page-intro">Administrá la apariencia, el mantenimiento de tu biblioteca y tus datos personales.</p>
           <div class="settings-grid">
+            <section class="settings-card">
+              <span class="card-icon" data-icon="gamepad"></span>
+              <div>
+                <h2>Cuenta de Steam</h2>
+                <p>
+                  Juegos de tu cuenta, actividad, logros y datos para enriquecer las fichas de la biblioteca. La clave
+                  se cifra con tu cuenta de Windows. La disponibilidad de los datos depende de la privacidad del perfil.
+                </p>
+              </div>
+              <form id="steam-form" class="schedule-form" autocomplete="off" novalidate>
+                <label for="steam-account-id">SteamID64</label
+                ><input id="steam-account-id" inputmode="numeric" spellcheck="false" /><label for="steam-api-key"
+                  >Clave de Steam Web API</label
+                ><input id="steam-api-key" type="password" spellcheck="false" />
+                <div class="button-row">
+                  <button class="button primary" type="submit">Conectar Steam</button
+                  ><button class="button" id="steam-import-local" type="button">
+                    Usar conexión guardada en esta PC</button
+                  ><button class="button" id="steam-sync" type="button">Sincronizar biblioteca</button
+                  ><button class="text-button" id="steam-disconnect" type="button">Desconectar Steam</button>
+                </div>
+                <p id="steam-settings-status" class="helper-text" role="status"></p>
+                <p id="steam-form-error" class="form-error" role="alert"></p>
+              </form>
+            </section>
             <section class="settings-card">
               <span class="card-icon" data-icon="palette"></span>
               <div>
@@ -248,7 +287,9 @@
                 <h2>Información de juegos <span class="badge-beta">Beta</span></h2>
                 <p>
                   Descripción, géneros, desarrolladora y portadas faltantes desde
-                  <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB</a>. Requiere una aplicación de
+                  <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB</a>. Incluye historia, idiomas,
+                  modos de juego, compañías, valoraciones, duración estimada, clasificaciones de edad, lanzamientos,
+                  capturas, videos y juegos relacionados cuando están disponibles. Requiere una aplicación de
                   <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">Twitch</a>.
                 </p>
               </div>
@@ -381,6 +422,7 @@
       </footer>
     </dialog>
     <section id="toasts" class="toasts" aria-label="Notificaciones" aria-live="polite"></section>
+    <script src="/steam-ui.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

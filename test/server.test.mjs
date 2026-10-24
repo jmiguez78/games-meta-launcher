@@ -66,7 +66,9 @@ before(async () => {
           genres: ['RPG'],
           cover: 'co7',
           artwork: null,
-          fetchedAt: 'x'
+          fetchedAt: '2026-10-23T22:34:58.000Z',
+          source: { id: 7, screenshots: [{ image_id: 'internal' }] },
+          languages: [{ name: 'Spanish', support: 'Subtitles' }]
         },
         'epic games:x': { igdbId: null, fetchedAt: 'x' }
       }
@@ -200,7 +202,15 @@ test('sirve la imagen local y responde 404 cuando no hay ninguna fuente', async 
 test('agrega los metadatos de IGDB sin exponer identificadores internos de imágenes', async () => {
   const library = await (await fetch(`${base}/api/library`)).json();
   const roto = library.games.find((game) => game.key === 'gog galaxy:roto');
-  assert.deepEqual(roto.meta, { igdbId: 7, title: 'Roto', summary: 'Resumen', genres: ['RPG'] });
+  assert.deepEqual(roto.meta, {
+    igdbId: 7,
+    title: 'Roto',
+    summary: 'Resumen',
+    genres: ['RPG'],
+    fetchedAt: '2026-10-23T22:34:58.000Z',
+    languages: [{ name: 'Spanish', support: 'Subtitles' }]
+  });
+  assert.equal(roto.meta.source, undefined);
   assert.deepEqual(roto.artwork, { cover: 'portrait', hero: false, background: null });
   assert.equal(library.games.find((game) => game.key === 'epic games:x').meta, null);
 });
@@ -225,4 +235,13 @@ test('guarda el tema y lo conserva al restaurar un respaldo', async () => {
   assert.deepEqual(await saved.json(), { theme: 'dark' });
   await fetch(`${base}/api/preferences/import`, { method: 'POST', ...json({ games: {} }) });
   assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'dark' });
+});
+
+test('Steam sin cuenta no expone secretos ni permite instalar un juego ajeno', async () => {
+  const settings = await (await fetch(`${base}/api/integrations/steam`)).json();
+  assert.equal(settings.configured, false);
+  assert.equal(settings.apiKey, undefined);
+  assert.equal((await fetch(`${base}/api/steam/sync`, { method: 'POST' })).status, 400);
+  const result = await fetch(`${base}/api/install/steam%3A10`, { method: 'POST' });
+  assert.equal(result.status, 400);
 });

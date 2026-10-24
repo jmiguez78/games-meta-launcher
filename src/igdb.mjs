@@ -6,8 +6,81 @@ import { protect, unprotect } from './secrets.mjs';
 const API = 'https://api.igdb.com/v4';
 const REQUEST_GAP_MS = 300; // IGDB admite 4 solicitudes por segundo.
 const IMAGE_ID = /^[a-z0-9]+$/i;
-const detailFields =
-  'name,summary,url,first_release_date,aggregated_rating,total_rating,genres.name,cover.image_id,artworks.image_id,screenshots.image_id,involved_companies.developer,involved_companies.company.name';
+export const detailFields = [
+  '*',
+  'genres.name',
+  'themes.name',
+  'keywords.name',
+  'game_modes.name',
+  'player_perspectives.name',
+  'platforms.name',
+  'game_engines.name',
+  'collections.name',
+  'franchises.name',
+  'game_type.type',
+  'game_status.status',
+  'cover.image_id',
+  'artworks.image_id',
+  'screenshots.image_id',
+  'videos.name',
+  'videos.video_id',
+  'alternative_names.name',
+  'alternative_names.comment',
+  'involved_companies.developer',
+  'involved_companies.publisher',
+  'involved_companies.porting',
+  'involved_companies.supporting',
+  'involved_companies.company.name',
+  'language_supports.language.name',
+  'language_supports.language.native_name',
+  'language_supports.language.locale',
+  'language_supports.language_support_type.name',
+  'age_ratings.organization.name',
+  'age_ratings.rating_category.rating',
+  'age_ratings.rating_content_descriptions.description',
+  'age_ratings.synopsis',
+  'release_dates.human',
+  'release_dates.date',
+  'release_dates.platform.name',
+  'release_dates.release_region.region',
+  'release_dates.status.name',
+  'websites.url',
+  'websites.type.type',
+  'multiplayer_modes.*',
+  'multiplayer_modes.platform.name',
+  ...[
+    'parent_game',
+    'version_parent',
+    'dlcs',
+    'expansions',
+    'standalone_expansions',
+    'remakes',
+    'remasters',
+    'ports',
+    'expanded_games',
+    'bundles',
+    'similar_games'
+  ].flatMap((field) => [`${field}.name`, `${field}.url`])
+].join(',');
+
+export function safeWebUrl(value, hostname) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && (!hostname || url.hostname === hostname)
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+const names = (rows = []) => [
+  ...new Set(rows.map((row) => row?.name).filter((name) => typeof name === 'string' && name))
+];
+const dateOf = (value) =>
+  Number.isFinite(value) && value > 0 && Number.isFinite(new Date(value * 1000).getTime())
+    ? new Date(value * 1000).toISOString()
+    : null;
+const score = (value) => (Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value * 10) / 10 : null);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function readJson(target, fallback) {
@@ -41,24 +114,113 @@ export function toMetadata(game) {
   return {
     igdbId: game.id,
     title: game.name,
-    summary: typeof game.summary === 'string' ? game.summary.slice(0, 2000) : '',
-    url: typeof game.url === 'string' && game.url.startsWith('https://www.igdb.com/') ? game.url : null,
-    year: game.first_release_date ? new Date(game.first_release_date * 1000).getUTCFullYear() : null,
-    rating: Math.round(game.aggregated_rating ?? game.total_rating ?? 0) || null,
-    genres: (game.genres ?? [])
-      .map((genre) => genre.name)
-      .filter(Boolean)
-      .slice(0, 6),
-    developers: (game.involved_companies ?? [])
-      .filter((item) => item.developer && item.company?.name)
-      .map((item) => item.company.name)
-      .slice(0, 3),
+    summary: typeof game.summary === 'string' ? game.summary : '',
+    url: safeWebUrl(game.url, 'www.igdb.com'),
+    year: dateOf(game.first_release_date) ? new Date(game.first_release_date * 1000).getUTCFullYear() : null,
+    rating:
+      score(game.aggregated_rating ?? game.total_rating) == null
+        ? null
+        : Math.round(game.aggregated_rating ?? game.total_rating),
+    genres: names(game.genres),
+    developers: names((game.involved_companies ?? []).filter((item) => item.developer).map((item) => item.company)),
     cover: imageOf(game.cover),
-    artwork: imageOf(game.artworks?.[0]) ?? imageOf(game.screenshots?.[0])
+    artwork: imageOf(game.artworks?.[0]) ?? imageOf(game.screenshots?.[0]),
+    storyline: typeof game.storyline === 'string' ? game.storyline : '',
+    firstReleaseDate: dateOf(game.first_release_date),
+    sourceUpdatedAt: dateOf(game.updated_at),
+    type: game.game_type?.type ?? null,
+    status: game.game_status?.status ?? null,
+    versionTitle: game.version_title ?? null,
+    themes: names(game.themes),
+    keywords: names(game.keywords),
+    modes: names(game.game_modes),
+    perspectives: names(game.player_perspectives),
+    platforms: names(game.platforms),
+    engines: names(game.game_engines),
+    collections: names(game.collections),
+    franchises: names(game.franchises),
+    companies: (game.involved_companies ?? [])
+      .filter((item) => item.company?.name)
+      .map((item) => ({
+        name: item.company.name,
+        roles: ['developer', 'publisher', 'porting', 'supporting'].filter((role) => item[role])
+      })),
+    ratings: {
+      critics: { value: score(game.aggregated_rating), count: game.aggregated_rating_count ?? 0 },
+      users: { value: score(game.rating), count: game.rating_count ?? 0 },
+      total: { value: score(game.total_rating), count: game.total_rating_count ?? 0 }
+    },
+    alternativeNames: (game.alternative_names ?? [])
+      .filter((item) => item.name)
+      .map((item) => ({ name: item.name, comment: item.comment ?? '' })),
+    languages: (game.language_supports ?? [])
+      .filter((item) => item.language?.name)
+      .map((item) => ({
+        name: item.language.name,
+        nativeName: item.language.native_name ?? '',
+        locale: item.language.locale ?? '',
+        support: item.language_support_type?.name ?? ''
+      })),
+    ageRatings: (game.age_ratings ?? [])
+      .filter((item) => item.organization?.name && item.rating_category?.rating)
+      .map((item) => ({
+        organization: item.organization.name,
+        rating: item.rating_category.rating,
+        descriptions: (item.rating_content_descriptions ?? []).map((row) => row.description).filter(Boolean),
+        synopsis: item.synopsis ?? ''
+      })),
+    releases: (game.release_dates ?? []).map((item) => ({
+      date: dateOf(item.date),
+      label: item.human ?? '',
+      platform: item.platform?.name ?? '',
+      region: item.release_region?.region ?? '',
+      status: item.status?.name ?? ''
+    })),
+    websites: (game.websites ?? [])
+      .map((item) => ({ label: item.type?.type ?? 'Sitio web', url: safeWebUrl(item.url) }))
+      .filter((item) => item.url),
+    screenshots: (game.screenshots ?? []).map(imageOf).filter(Boolean),
+    artworks: (game.artworks ?? []).map(imageOf).filter(Boolean),
+    videos: (game.videos ?? [])
+      .filter((item) => /^[a-zA-Z0-9_-]{11}$/.test(item.video_id))
+      .map((item) => ({
+        name: item.name || 'Video',
+        url: `https://www.youtube.com/watch?v=${item.video_id}`
+      })),
+    multiplayer: (game.multiplayer_modes ?? []).map(({ id, game: ignored, checksum, platform, ...mode }) => ({
+      ...mode,
+      platform: platform?.name ?? ''
+    })),
+    related: Object.fromEntries(
+      [
+        'parent_game',
+        'version_parent',
+        'dlcs',
+        'expansions',
+        'standalone_expansions',
+        'remakes',
+        'remasters',
+        'ports',
+        'expanded_games',
+        'bundles',
+        'similar_games'
+      ].map((field) => [
+        field,
+        (Array.isArray(game[field]) ? game[field] : [game[field]])
+          .filter((item) => item?.name)
+          .map((item) => ({
+            id: item.id,
+            name: item.name,
+            url: safeWebUrl(item.url, 'www.igdb.com')
+          }))
+      ])
+    ),
+    // Conserva la respuesta completa para futuras mejoras sin perder campos todavía no presentados.
+    source: game
   };
 }
 
-export function createIgdb(dataDir) {
+export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, requestGapMs = REQUEST_GAP_MS } = {}) {
   const credentialsPath = path.join(dataDir, 'integrations.json');
   const metadataPath = path.join(dataDir, 'metadata.json');
   let token = null;
@@ -68,7 +230,7 @@ export function createIgdb(dataDir) {
   async function credentials() {
     const saved = (await readJson(credentialsPath, {})).igdb;
     if (!saved?.clientId || !saved?.secret) return null;
-    return { clientId: saved.clientId, clientSecret: await unprotect(saved.secret) };
+    return { clientId: saved.clientId, clientSecret: await decrypt(saved.secret) };
   }
   async function requestToken({ clientId, clientSecret }) {
     const params = new URLSearchParams({
@@ -76,8 +238,9 @@ export function createIgdb(dataDir) {
       client_secret: clientSecret,
       grant_type: 'client_credentials'
     });
-    const response = await fetch(`https://id.twitch.tv/oauth2/token?${params}`, {
+    const response = await fetchImpl('https://id.twitch.tv/oauth2/token', {
       method: 'POST',
+      body: params,
       signal: AbortSignal.timeout(10000)
     });
     if (response.status === 400 || response.status === 403)
@@ -92,10 +255,10 @@ export function createIgdb(dataDir) {
       if (!saved) throw new Error('Conectá IGDB en Configuración para obtener información de los juegos.');
       token = await requestToken(saved);
     }
-    const wait = lastRequest + REQUEST_GAP_MS - Date.now();
+    const wait = lastRequest + requestGapMs - Date.now();
     if (wait > 0) await sleep(wait);
     lastRequest = Date.now();
-    const response = await fetch(`${API}/${endpoint}`, {
+    const response = await fetchImpl(`${API}/${endpoint}`, {
       method: 'POST',
       headers: { 'Client-ID': token.clientId, Authorization: `Bearer ${token.value}`, Accept: 'application/json' },
       body,
@@ -146,7 +309,10 @@ export function createIgdb(dataDir) {
     const ids = new Map();
     status.total = games.length;
     for (const game of games) {
-      const id = (game.platform === 'Steam' ? steam.get(game.id) : null) ?? (await searchByName(game.name));
+      const previousId = saved.games[game.key]?.igdbId;
+      const id =
+        (game.platform === 'Steam' ? steam.get(game.id) : null) ??
+        (Number.isSafeInteger(previousId) && previousId > 0 ? previousId : await searchByName(game.name));
       if (id) ids.set(game.key, id);
       status.done += 1;
     }
@@ -159,13 +325,29 @@ export function createIgdb(dataDir) {
       );
       for (const row of rows) details.set(row.id, toMetadata(row));
     }
+    for (let index = 0; index < unique.length; index += 200) {
+      const rows = await query(
+        'game_time_to_beats',
+        `fields game_id,hastily,normally,completely,count; where game_id = (${unique.slice(index, index + 200).join(',')}); limit 500;`
+      );
+      for (const row of rows) {
+        const detail = details.get(row.game_id);
+        if (detail)
+          detail.timeToBeat = {
+            hastily: row.hastily ?? null,
+            normally: row.normally ?? null,
+            completely: row.completely ?? null,
+            count: row.count ?? 0
+          };
+      }
+    }
     const fetchedAt = new Date().toISOString();
     for (const game of games) {
       const detail = details.get(ids.get(game.key));
       saved.games[game.key] = detail ? { ...detail, fetchedAt } : { igdbId: null, fetchedAt };
       if (detail) status.matched += 1;
     }
-    await writeJson(metadataPath, { updatedAt: fetchedAt, games: saved.games });
+    await writeJson(metadataPath, { schemaVersion: 2, updatedAt: fetchedAt, games: saved.games });
   }
 
   return {

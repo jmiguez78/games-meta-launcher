@@ -82,7 +82,31 @@
 - Avisos apilados con Deshacer, Reintentar y progreso de las operaciones largas.
 - Errores de formulario junto al campo que los causa en la ficha y en Configuración.
 
-## 0.11.1 — Validación de IGDB
+## 0.12.0 — Metadatos ampliados · Completada
 
-- Conectar credenciales reales de Twitch y revisar la coincidencia de cada juego.
+- Fichas ampliadas con historia, idiomas, clasificaciones, compañías, modos, plataformas, lanzamientos, duración estimada y valoraciones desglosadas.
+- Capturas, ilustraciones, videos, sitios web, ediciones y juegos relacionados.
+- Descarga real verificada para 50 juegos, caché local y compatibilidad con fichas anteriores.
+
+## 0.13.0 — Fichas y multimedia · Completada
+
+- Pestañas Resumen, Información y Multimedia con navegación por teclado.
+- Galería ampliable integrada y desplazamiento independiente de lista/ficha.
+- Contexto visual del proyecto y revisión local de 21st.
+
+## Próximo — Validación de coincidencias de IGDB
+
+- Revisar manualmente la coincidencia de cada juego; la autenticación y las consultas reales ya están verificadas.
 - Quitar la etiqueta beta cuando los juegos de todas las plataformas se emparejen correctamente.
+
+## 0.14.0 — Integración Steam · Completada
+
+Biblioteca de cuenta, instalación, actividad, logros, tienda, deseados, seguidos, recomendaciones y consultas sociales. Las fases del [plan de Steam](plan-integracion-steam.md) se consolidaron en esta entrega.
+
+## 0.14.1 — Integraciones al servicio de la biblioteca · Completada
+
+Retirado el destino Steam de la navegación y su panel independiente. Se conserva el enriquecimiento de la colección y se ubica la sincronización en Configuración. Las nuevas integraciones deberán seguir el mismo criterio.
+
+## 0.14.2 — Claridad de Inicio y Biblioteca · Completada
+
+Inicio pasa a resumir la colección sin una presentación genérica. Portadas, Lista, Ficha y Tabla tienen roles y transiciones definidos para descubrir, escanear, profundizar y comparar.

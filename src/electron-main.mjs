@@ -5,6 +5,12 @@ async function runScan() {
   process.env.GML_DATA_DIR = app.getPath('userData');
   const { scanLibrary } = await import('./indexer.mjs');
   await scanLibrary();
+  const { createSteam } = await import('./steam.mjs');
+  const steam = createSteam(app.getPath('userData'));
+  try {
+    if ((await steam.settings()).configured) await steam.sync();
+  } catch {}
+  steam.close();
   app.quit();
 }
 async function openWindow() {

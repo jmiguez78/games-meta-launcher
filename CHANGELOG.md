@@ -1,5 +1,47 @@
 # Registro de cambios
 
+## 0.14.2 — 23 de octubre de 2026
+
+- Inicio rediseñado como un resumen breve y visual de la colección, con indicadores de juegos disponibles, favoritos y partidas en curso.
+- Las vistas de Biblioteca ahora tienen una intención explícita: Portadas para descubrir, Lista para escanear, Ficha para profundizar y Tabla para comparar.
+- Un clic o Enter sobre un juego en Lista o Tabla abre su Ficha. Las acciones de jugar, instalar, favorito y editar conservan su comportamiento directo.
+
+## 0.14.1 — 23 de octubre de 2026
+
+- Retirada la sección Steam del menú y su panel independiente de actividad, deseados, seguidos, recomendaciones y amigos. La navegación vuelve a Inicio, Biblioteca, Diagnóstico y Configuración.
+- Sincronización de la biblioteca de Steam trasladada a Configuración, junto a la conexión de cuenta.
+- Se conservan la biblioteca fusionada, los filtros de instalación, las cuatro vistas y los datos de actividad, logros, compatibilidad y tienda en las fichas.
+
+
+## 0.14.0 — 23 de octubre de 2026
+
+- Steam autónomo en el portable: MCP incluido, credenciales DPAPI, conexión manual o importación local y sincronización en segundo plano.
+- Biblioteca de cuenta fusionada por App ID con instalaciones locales: filtros de instalación y acción para instalar mediante Steam.
+- Horas totales y recientes, última actividad de Steam y colecciones por tiempo registrado.
+- Logros completos con progreso, pendientes, fechas y rareza global; privacidad explícita y progreso personal independiente.
+- Tienda, requisitos, idiomas, mando, compatibilidad, reseñas agregadas, evolución y noticias. Reseñas individuales cuando Steam las permite.
+- Deseados con moneda verificada, descuentos, seguidos y recomendaciones; amigos, comparación de bibliotecas y amigos que poseen cada juego. Listas parciales identificadas.
+- Caché por cuenta, conservación ante fallas de red, validación de biblioteca completa y carga diferida de portadas.
+
+## 0.13.0 — 23 de octubre de 2026
+
+- Ficha reorganizada en **Resumen**, **Información** y **Multimedia**, con navegación por flechas, Inicio y Fin. La pestaña elegida se conserva al cambiar de juego.
+- Más espacio para la ficha en la vista Detalle y desplazamiento independiente de la lista y el panel en escritorio; en pantallas pequeñas vuelven a apilarse.
+- Galería integrada para ampliar capturas e ilustraciones, recorrerlas con botones o flechas y cerrar con Escape, devolviendo el foco a la miniatura. Incluye estados de carga, error y reintento.
+- Las fichas sin metadatos muestran mensajes claros. Los videos y enlaces siguen abriéndose externamente.
+- Corregida la ubicación de las etiquetas personales y un cruce de selectores que podía sobrescribir datos de IGDB con detalles técnicos locales.
+- Contexto visual registrado en `.21st/`; referencia pública de pestañas de 21st adaptada al HTML/CSS del proyecto. Revisión local de 21st sin errores ni advertencias.
+
+## 0.12.0 — 23 de octubre de 2026
+
+- Fichas de IGDB ampliadas: descripción completa, historia (plegada por posibles spoilers), temáticas, palabras clave, modos, perspectivas, plataformas, motores, colecciones, franquicias y nombres alternativos.
+- Compañías con sus roles, idiomas separados por audio/subtítulos/interfaz, multijugador por plataforma, clasificaciones de edad y fechas por plataforma/región.
+- Valoraciones de crítica y comunidad con cantidad de votos y duración estimada de IGDB cuando existe, con su cantidad de muestras.
+- Galería de capturas e ilustraciones, videos, sitios web, DLC, expansiones, ediciones y juegos relacionados.
+- Información organizada en secciones desplegables; se conservan las fichas anteriores hasta actualizar. La caché guarda la respuesta original de IGDB para futuras mejoras y la fecha de descarga.
+- Autenticación real y descarga ampliada verificadas con los 50 juegos de la biblioteca local. El emparejamiento sigue en beta hasta revisar manualmente cada coincidencia.
+- Las actualizaciones reutilizan los ID de IGDB conocidos (con prioridad al App ID exacto de Steam) y conservan la caché anterior si falla la consulta. Las credenciales de Twitch viajan en el cuerpo de la solicitud.
+
 ## 0.11.0 — 23 de octubre de 2026
 
 - Paleta de comandos: **Control+K** o el botón **Buscar o ir a…** permiten abrir un juego por nombre, ir a cualquier sección o cambiar el tema, actualizar el inventario y otras acciones sin usar el mouse. **Mayús+Enter** abre la ficha del juego. La barra diagonal sigue enfocando la búsqueda de la Biblioteca.

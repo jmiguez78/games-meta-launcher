@@ -9,3 +9,6 @@ dist/
 release*/
 data/integrations.json
 data/metadata.json
+data/steam-credentials.json
+data/steam-account.json
+data/steam-cache/

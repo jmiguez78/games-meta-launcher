@@ -38,8 +38,10 @@ Todos los colores de superficies, textos y bordes salen de tokens; los elementos
 | Control segmentado | Con ícono y texto | Cambiar la vista de la biblioteca y el tema. Estado con `aria-pressed`. |
 | Chip | Filtro, filtro activo removible | Plataformas y filtros aplicados. |
 | Portada | Cuadrícula (Biblioteca, Inicio) | Imagen 2:3, título, plataforma y estado; Jugar aparece con hover o foco. |
-| Fila de juego | Lista, Detalle | Miniatura, título, estado, última partida y acciones. |
-| Ficha | Panel de detalle | Imagen panorámica, datos de IGDB, acciones, progreso, notas y detalles técnicos plegables. |
+| Fila de juego | Lista, Ficha | Miniatura, título, estado, última partida y acciones. |
+| Ficha | Panel de detalle | Imagen panorámica, acciones y pestañas Resumen, Información y Multimedia. La lista y el panel tienen desplazamiento independiente en escritorio. |
+| Pestañas de ficha | Resumen, Información, Multimedia | Roles tablist/tab/tabpanel, foco móvil con flechas e Inicio/Fin, y conservación de la pestaña al seleccionar otro juego. |
+| Visor multimedia | Diálogo nativo | Miniaturas que amplían imágenes; botones y flechas para recorrer, Escape para cerrar, foco devuelto al origen y estados de carga/error/reintento. |
 | Tabla | Biblioteca, Diagnóstico | `<table>` semántica; encabezados ordenables con `aria-sort`. |
 | Estadística | Inicio, Diagnóstico | Rótulo, valor y aclaración. |
 | Estado | Carga, error, vacío, sin resultados | Esqueletos durante la carga; error con Reintentar; vacío con una acción concreta. |
@@ -56,3 +58,16 @@ Todos los colores de superficies, textos y bordes salen de tokens; los elementos
 - Atajos globales: Control más K abre y cierra la paleta de comandos; la barra diagonal abre la Biblioteca y enfoca la búsqueda; Escape oculta los filtros.
 - Al cerrarse un aviso con el foco adentro, el foco vuelve a donde estaba antes de entrar.
 - Todos los campos tienen etiqueta y todos los botones un nombre accesible, aunque sólo muestren un ícono.
+
+## Vistas de la biblioteca
+
+- **Portadas** sirve para descubrir visualmente la colección y conservar una acción directa de juego o instalación.
+- **Lista** prioriza el escaneo de títulos; un clic o Enter abre la Ficha seleccionada.
+- **Ficha** mantiene una lista de contexto junto al detalle para comparar varios juegos sin perder los filtros actuales.
+- **Tabla** reúne campos ordenables para administrar y comparar la colección; un clic o Enter abre la Ficha.
+
+Inicio sintetiza el estado de la colección y ofrece accesos de juego; no repite la exploración completa que corresponde a Biblioteca.
+
+## Integraciones como fuentes de biblioteca
+
+La navegación principal organiza tareas: Inicio, Biblioteca, Diagnóstico y Configuración. Steam e IGDB son fuentes de información; no tienen destinos principales propios. La conexión y sincronización se administran en Configuración. Sus datos se presentan en la biblioteca y en la ficha del juego cuando ayudan a elegir, instalar o conocer un título. Se evita replicar los catálogos y paneles de las tiendas dentro del launcher.

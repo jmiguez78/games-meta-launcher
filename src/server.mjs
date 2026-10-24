@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { CATALOG_SCHEMA, scanLibrary } from './indexer.mjs';
 import { createIgdb, imageUrl } from './igdb.mjs';
+import { createSteam, mergeSteamLibrary } from './steam.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -63,6 +64,7 @@ const steamCdnAssets = { cover: ['library_600x900.jpg', 'header.jpg'], hero: ['l
 const igdbImageSizes = { cover: 't_cover_big', hero: 't_1080p' };
 const pendingDownloads = new Map();
 const igdb = createIgdb(dataDir);
+const steam = createSteam(dataDir);
 function onlineSources(game, meta, kind) {
   const sources = [];
   if (game.platform === 'Steam' && /^\d+$/.test(game.id))
@@ -151,21 +153,27 @@ async function onlineArt(game, meta, kind) {
   return pendingDownloads.get(file);
 }
 async function gameArt(key, kind) {
-  const [catalog, metadata] = await Promise.all([rawLibrary(), igdb.metadata()]);
-  const game = catalog.games.find((item) => item.key === key);
+  const [catalog, metadata, account] = await Promise.all([rawLibrary(), igdb.metadata(), steam.account()]);
+  const game = mergeSteamLibrary(catalog.games, account).find((item) => item.key === key);
   if (!game) return null;
   return (await localArt(game.art, kind)) ?? (await onlineArt(game, metadata[key], kind));
 }
 function publicMeta(meta) {
   if (!meta?.igdbId) return null;
-  const { cover, artwork: igdbArtwork, fetchedAt, ...rest } = meta;
-  return rest;
+  const { cover, artwork: igdbArtwork, source, fetchedAt, ...rest } = meta;
+  return { ...rest, ...(fetchedAt ? { fetchedAt } : {}) };
 }
 async function library() {
-  const [catalog, prefs, metadata] = await Promise.all([rawLibrary(), preferences(), igdb.metadata()]);
+  const [catalog, prefs, metadata, account] = await Promise.all([
+    rawLibrary(),
+    preferences(),
+    igdb.metadata(),
+    steam.account()
+  ]);
   return {
     ...catalog,
-    games: catalog.games.map(({ art, ...game }) => {
+    steamUpdatedAt: account.updatedAt,
+    games: mergeSteamLibrary(catalog.games, account).map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
       return {
         ...game,
@@ -308,10 +316,65 @@ export async function appSettings() {
   return { theme: themes.includes(theme) ? theme : 'system' };
 }
 export function createServer({ onSettingsChange } = {}) {
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     try {
       if (!trustedRequest(req)) return reply(res, 403, JSON.stringify({ error: 'Solicitud no permitida.' }));
       const url = new URL(req.url, `http://${req.headers.host}`);
+      if (url.pathname === '/api/integrations/steam') {
+        if (req.method === 'GET') return reply(res, 200, JSON.stringify(await steam.settings()));
+        if (req.method === 'PUT') {
+          const update = await body(req);
+          await steam.connect(String(update.apiKey || '').trim(), String(update.steamId || '').trim());
+          return reply(res, 200, JSON.stringify(await steam.settings()));
+        }
+        if (req.method === 'DELETE') {
+          await steam.disconnect();
+          return reply(res, 200, JSON.stringify({ configured: false }));
+        }
+      }
+      if (req.method === 'POST' && url.pathname === '/api/steam/import-local') {
+        await steam.importLocal();
+        return reply(res, 200, JSON.stringify(await steam.settings()));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/steam/sync') {
+        if (!(await steam.settings()).configured)
+          return reply(res, 400, JSON.stringify({ error: 'Conectá Steam primero.' }));
+        steam.sync().catch(() => {});
+        return reply(res, 202, JSON.stringify(await steam.settings()));
+      }
+      const steamGameRoute = url.pathname.match(/^\/api\/steam\/games\/(\d+)\/(details|achievements)$/);
+      if (req.method === 'GET' && steamGameRoute) {
+        const [, appid, kind] = steamGameRoute;
+        return reply(res, 200, JSON.stringify(await steam[kind](appid, url.searchParams.get('refresh') === '1')));
+      }
+      const steamCollectionRoute = url.pathname.match(
+        /^\/api\/steam\/(wishlist|followed|recommendations|friends|compare|owners)$/
+      );
+      if (req.method === 'GET' && steamCollectionRoute) {
+        return reply(
+          res,
+          200,
+          JSON.stringify(
+            await steam.collection(steamCollectionRoute[1], {
+              force: url.searchParams.get('refresh') === '1',
+              otherSteamId: url.searchParams.get('steamid'),
+              appid: url.searchParams.get('appid')
+            })
+          )
+        );
+      }
+      if (req.method === 'POST' && url.pathname.startsWith('/api/install/')) {
+        const key = decodeURIComponent(url.pathname.slice('/api/install/'.length));
+        const game = (await library()).games.find((item) => item.key === key);
+        if (!game || game.platform !== 'Steam' || game.ownership !== 'owned' || !/^\d+$/.test(game.id))
+          return reply(
+            res,
+            400,
+            JSON.stringify({ error: 'Este juego no tiene una instalación de Steam disponible desde tu biblioteca.' })
+          );
+        await startDetached('explorer.exe', [`steam://install/${game.id}`]);
+        return reply(res, 200, JSON.stringify({ ok: true }));
+      }
       if (url.pathname === '/api/settings') {
         if (req.method === 'PUT') {
           const update = await body(req);
@@ -332,14 +395,17 @@ export function createServer({ onSettingsChange } = {}) {
         const update = await body(req);
         return reply(res, 200, JSON.stringify(await configureSchedule(String(update.time || ''))));
       }
-      if (req.method === 'POST' && url.pathname === '/api/scan')
-        return reply(res, 200, JSON.stringify(await scanLibrary()));
+      if (req.method === 'POST' && url.pathname === '/api/scan') {
+        const scanned = await scanLibrary();
+        if ((await steam.settings()).configured) steam.sync().catch(() => {});
+        return reply(res, 200, JSON.stringify(scanned));
+      }
       if (url.pathname === '/api/integrations/igdb') {
         if (req.method === 'GET') return reply(res, 200, JSON.stringify(await igdb.settings()));
         if (req.method === 'PUT') {
           const update = await body(req);
           await igdb.connect(String(update.clientId ?? '').trim(), String(update.clientSecret ?? '').trim());
-          igdb.start((await rawLibrary()).games);
+          igdb.start((await library()).games);
           return reply(res, 200, JSON.stringify({ ...(await igdb.settings()), status: igdb.status() }));
         }
         if (req.method === 'DELETE') {
@@ -352,7 +418,7 @@ export function createServer({ onSettingsChange } = {}) {
       if (req.method === 'POST' && url.pathname === '/api/metadata/refresh') {
         if (!(await igdb.settings()).configured)
           return reply(res, 400, JSON.stringify({ error: 'Conectá IGDB en Configuración primero.' }));
-        igdb.start((await rawLibrary()).games);
+        igdb.start((await library()).games);
         return reply(res, 202, JSON.stringify(igdb.status()));
       }
       if (req.method === 'GET' && url.pathname === '/api/preferences/export')
@@ -426,9 +492,18 @@ export function createServer({ onSettingsChange } = {}) {
       return reply(res, 500, JSON.stringify({ error: error.message || 'Error inesperado.' }));
     }
   });
+  server.on('close', () => steam.close());
+  return server;
 }
 export function startServer(port = Number(process.env.PORT || 4321), options = {}) {
   const server = createServer(options);
+  const updateSteam = setTimeout(async () => {
+    try {
+      const settings = await steam.settings();
+      if (settings.configured && settings.stale) await steam.sync();
+    } catch {}
+  }, 1000);
+  updateSteam.unref();
   server.listen(port, '127.0.0.1', () =>
     console.log(`Games Meta Launcher disponible en http://127.0.0.1:${server.address().port}`)
   );

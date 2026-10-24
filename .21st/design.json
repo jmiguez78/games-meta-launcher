@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "project": {
+    "name": "games-meta-launcher",
+    "productType": "Biblioteca y lanzador local de juegos para Windows",
+    "stack": [
+      "Electron",
+      "Node.js",
+      "HTML",
+      "CSS",
+      "JavaScript sin framework"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "public/style.css",
+      "public/ui.css"
+    ],
+    "components": [
+      "public/app.js",
+      "public/index.html"
+    ],
+    "assets": [],
+    "instructions": [
+      "docs/sistema-de-diseno.md"
+    ]
+  },
+  "design": {
+    "colorMode": "light-dark-system",
+    "colors": {},
+    "typography": {},
+    "spacing": {},
+    "radius": {},
+    "shadows": {},
+    "motion": {},
+    "density": "desktop"
+  },
+  "components": {
+    "installed": [],
+    "preferredPrimitives": [
+      "button",
+      "dialog nativo",
+      "details/summary",
+      "ARIA tabs"
+    ],
+    "patterns": [
+      "Resumen / Información / Multimedia",
+      "Galería modal con flechas y restauración de foco"
+    ]
+  },
+  "constraints": {
+    "must": [
+      "Usar tokens de color y espaciado existentes",
+      "Conservar accesibilidad y navegación por teclado",
+      "Mantener el funcionamiento sin metadatos de IGDB"
+    ],
+    "avoid": [
+      "Agregar React o Tailwind sólo por una referencia visual",
+      "Enviar inventario o credenciales a 21st",
+      "Usar generación alojada sin verificar acceso"
+    ]
+  },
+  "decisions": [
+    {
+      "date": "2026-10-23",
+      "description": "Ficha con pestañas compactas, más espacio para el detalle y galería ampliable. Implementación con controles nativos y estilos del proyecto."
+    }
+  ],
+  "evidence": [
+    {
+      "path": "docs/sistema-de-diseno.md",
+      "note": "Tokens, modo claro/oscuro y controles de escritorio."
+    },
+    {
+      "url": "https://21st.dev/@anubra266/components/tabs-component",
+      "note": "Referencia pública de navegación por pestañas. No se incorporó código React del catálogo; búsqueda CLI bloqueada por sesión independiente."
+    }
+  ],
+  "generatedAt": "2026-10-23T22:51:49.551Z"
+}

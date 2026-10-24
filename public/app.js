@@ -8,9 +8,24 @@ const state = {
   sort: 'name',
   direction: 'asc',
   view: 'icons',
+  detailTab: 'summary',
+  installation: '',
   selectedKey: '',
   page: 'home'
 };
+const pendingCoverLoads = new Map();
+const coverObserver = new IntersectionObserver(
+  (entries) => {
+    for (const entry of entries)
+      if (entry.isIntersecting) {
+        const load = pendingCoverLoads.get(entry.target);
+        pendingCoverLoads.delete(entry.target);
+        coverObserver.unobserve(entry.target);
+        load?.();
+      }
+  },
+  { rootMargin: '200px' }
+);
 const library = document.querySelector('#library');
 const quickLibrary = document.querySelector('#quick-library');
 const dialog = document.querySelector('#notice');
@@ -23,7 +38,12 @@ const pageMeta = {
   diagnostics: ['ESTADO DEL SISTEMA', 'Diagnóstico'],
   settings: ['PREFERENCIAS', 'Configuración']
 };
-const viewNames = { explorer: 'Tabla', detail: 'Detalle', list: 'Lista', icons: 'Portadas' };
+const viewInfo = {
+  icons: { name: 'Portadas', description: 'Explorá visualmente tu colección.' },
+  list: { name: 'Lista', description: 'Escaneá rápido; hacé clic en un juego para abrir su ficha.' },
+  detail: { name: 'Ficha', description: 'Compará juegos y revisá una ficha completa sin salir de la biblioteca.' },
+  explorer: { name: 'Tabla', description: 'Ordená y compará los datos esenciales de toda la colección.' }
+};
 // Iconos de trazo (estilo Lucide, licencia ISC) dibujados inline para no sumar dependencias.
 const iconPaths = {
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
@@ -244,6 +264,8 @@ function visibleGames() {
         (!state.drive || game.drive === state.drive) &&
         (!state.tag || tagsOf(game).includes(state.tag)) &&
         (!state.favorite || game.favorite) &&
+        (!state.installation ||
+          (state.installation === 'installed' ? game.installed !== false : game.installed === false)) &&
         (
           game.name +
           ' ' +
@@ -257,7 +279,17 @@ function visibleGames() {
           .toLowerCase()
           .includes(state.query.toLowerCase())
     )
-    .sort((a, b) => String(sortValue(a, state.sort)).localeCompare(String(sortValue(b, state.sort)), 'es') * factor);
+    .sort((a, b) => {
+      if (['hours', 'recent-hours', 'unplayed'].includes(state.sort)) {
+        const key = state.sort === 'recent-hours' ? 'recentHours' : 'playtimeHours';
+        const first = a.steam?.[key],
+          second = b.steam?.[key];
+        if (first == null || second == null)
+          return first == null ? (second == null ? a.name.localeCompare(b.name, 'es') : 1) : -1;
+        return (state.sort === 'unplayed' ? first - second : second - first) || a.name.localeCompare(b.name, 'es');
+      }
+      return String(sortValue(a, state.sort)).localeCompare(String(sortValue(b, state.sort)), 'es') * factor;
+    });
 }
 function coverInfo(game) {
   const palette = {
@@ -279,6 +311,7 @@ function coverInfo(game) {
   };
 }
 function statusText(game) {
+  if (game.installed === false) return 'No instalado';
   return game.status === 'installed'
     ? game.launch && game.launch.available
       ? 'Listo para jugar'
@@ -319,7 +352,13 @@ function applyCover(element, game, cover, preferHero = false) {
     image.onerror = tryNext;
     image.src = source.url;
   };
-  tryNext();
+  for (const target of pendingCoverLoads.keys())
+    if (!target.isConnected) {
+      coverObserver.unobserve(target);
+      pendingCoverLoads.delete(target);
+    }
+  pendingCoverLoads.set(element, tryNext);
+  coverObserver.observe(element);
 }
 // Acciones compartidas por portadas, filas, tabla y ficha. Los botones nacen fuera del orden de Tab;
 // selectTile los habilita sólo en el elemento activo de cada colección.
@@ -329,7 +368,7 @@ function playButtonHtml(game, className) {
     '<button type="button" class="' +
     className +
     '" data-action="play" tabindex="-1">' +
-    icon(available ? 'play' : 'alert', available) +
+    icon(game.installed === false ? 'download' : available ? 'play' : 'alert', available) +
     '<span class="label"></span></button>'
   );
 }
@@ -345,9 +384,13 @@ function iconActionsHtml(game) {
 function decorateActions(root, game) {
   const available = game.launch && game.launch.available;
   root.querySelectorAll('[data-action=play]').forEach((button) => {
-    button.setAttribute('aria-label', (available ? 'Jugar a ' : 'Revisar ') + game.name);
-    button.querySelector('.label').textContent = available ? 'Jugar' : 'Revisar';
-    button.classList.toggle('review', !available);
+    const installable = game.installed === false && game.ownership === 'owned' && game.platform === 'Steam';
+    button.setAttribute(
+      'aria-label',
+      (installable ? 'Instalar en Steam: ' : available ? 'Jugar a ' : 'Revisar ') + game.name
+    );
+    button.querySelector('.label').textContent = installable ? 'Instalar en Steam' : available ? 'Jugar' : 'Revisar';
+    button.classList.toggle('review', !available && !installable);
   });
   root.querySelectorAll('[data-action=favorite]').forEach((button) => {
     button.setAttribute('aria-pressed', String(Boolean(game.favorite)));
@@ -366,15 +409,21 @@ function fillMetaLine(root, game) {
   const available = game.launch && game.launch.available;
   root.querySelector('.platform-name').textContent = game.platform;
   const status = root.querySelector('.status-pill');
-  status.textContent = available ? 'Listo' : 'Requiere revisión';
-  status.classList.toggle('attention', !available);
+  status.textContent = game.installed === false ? 'No instalado' : available ? 'Listo' : 'Requiere revisión';
+  status.classList.toggle('attention', !available && game.installed !== false);
 }
 function lastPlayedText(game) {
   return game.lastLaunchedAt ? new Date(game.lastLaunchedAt).toLocaleDateString('es-AR') : 'Aún no registrado';
 }
 function playOrReview(game) {
+  if (game.installed === false && game.platform === 'Steam' && game.ownership === 'owned')
+    return installSteamGame(game);
   if (game.launch && game.launch.available) playGame(game);
   else say(game.evidence);
+}
+function openGameDetail(game) {
+  state.selectedKey = game.key;
+  document.querySelector('#views [data-view="detail"]').click();
 }
 // Fila para las vistas Lista y Detalle.
 function makeRow(game) {
@@ -455,7 +504,10 @@ function makeTable(games) {
     cells[1].textContent = game.drive || '—';
     cells[2].innerHTML = '<span class="status-pill"></span>';
     cells[2].firstChild.textContent = statusText(game);
-    cells[2].firstChild.classList.toggle('attention', !(game.launch && game.launch.available));
+    cells[2].firstChild.classList.toggle(
+      'attention',
+      game.installed !== false && !(game.launch && game.launch.available)
+    );
     cells[3].textContent = lastPlayedText(game);
     decorateActions(row, game);
     body.append(row);
@@ -503,7 +555,7 @@ function metaSection(meta) {
     };
     section.append(toggle);
   }
-  if (meta.url) {
+  if (metadataUrl(meta.url)) {
     const link = document.createElement('a');
     link.className = 'meta-source';
     link.href = meta.url;
@@ -513,6 +565,342 @@ function metaSection(meta) {
     section.append(link);
   }
   return section;
+}
+function metadataUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+function metadataLink(label, url) {
+  const link = document.createElement(metadataUrl(url) ? 'a' : 'span');
+  link.textContent = label;
+  if (link.tagName === 'A') {
+    link.href = metadataUrl(url);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+  }
+  return link;
+}
+let mediaSession = null;
+function openMediaViewer(pictures, index, title, trigger) {
+  let viewer = document.querySelector('#media-viewer');
+  if (!viewer) {
+    viewer = document.createElement('dialog');
+    viewer.id = 'media-viewer';
+    viewer.className = 'media-viewer';
+    viewer.setAttribute('aria-labelledby', 'media-viewer-title');
+    viewer.innerHTML =
+      '<header class="media-viewer-header"><div><p class="kicker">GALERÍA</p>' +
+      '<h2 id="media-viewer-title"></h2></div><button type="button" class="icon-btn" aria-label="Cerrar galería">' +
+      icon('x') +
+      '</button></header><figure><img alt="Imagen de la galería" referrerpolicy="no-referrer" />' +
+      '<figcaption id="media-viewer-status" role="status"></figcaption></figure>' +
+      '<footer class="media-viewer-footer"><button type="button" class="button" data-gallery="previous">Anterior</button>' +
+      '<span class="media-position" aria-live="polite"></span><button type="button" class="button" data-gallery="next">Siguiente</button>' +
+      '<button type="button" class="button" data-gallery="retry" hidden>Reintentar imagen</button></footer>';
+    viewer.querySelector('.icon-btn').onclick = () => viewer.close();
+    viewer.querySelector('[data-gallery=previous]').onclick = () => showMediaImage(-1);
+    viewer.querySelector('[data-gallery=next]').onclick = () => showMediaImage(1);
+    viewer.querySelector('[data-gallery=retry]').onclick = () => showMediaImage(0);
+    viewer.addEventListener('keydown', (event) => {
+      // La galería conserva el foco y no activa atajos de la biblioteca que queda detrás.
+      event.stopPropagation();
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        showMediaImage(event.key === 'ArrowLeft' ? -1 : 1);
+      }
+    });
+    viewer.addEventListener('close', () => {
+      const opener = mediaSession?.trigger;
+      mediaSession = null;
+      viewer.querySelector('img').removeAttribute('src');
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    });
+    document.body.append(viewer);
+  }
+  mediaSession = { pictures, index, title, trigger };
+  viewer.querySelector('h2').textContent = title;
+  showMediaImage(0);
+  viewer.showModal();
+}
+function showMediaImage(direction) {
+  if (!mediaSession) return;
+  const viewer = document.querySelector('#media-viewer');
+  const session = mediaSession;
+  session.index = (session.index + direction + session.pictures.length) % session.pictures.length;
+  const picture = session.pictures[session.index];
+  const img = viewer.querySelector('img');
+  const status = viewer.querySelector('figcaption');
+  const retry = viewer.querySelector('[data-gallery=retry]');
+  const figure = viewer.querySelector('figure');
+  status.textContent = 'Cargando imagen…';
+  figure.setAttribute('aria-busy', 'true');
+  retry.hidden = true;
+  img.hidden = true;
+  img.alt = picture.label + ' de ' + session.title;
+  viewer.querySelector('.media-position').textContent = session.index + 1 + ' / ' + session.pictures.length;
+  viewer.querySelectorAll('[data-gallery=previous], [data-gallery=next]').forEach((button) => {
+    button.disabled = session.pictures.length < 2;
+  });
+  img.onload = () => {
+    img.hidden = false;
+    figure.setAttribute('aria-busy', 'false');
+    status.textContent = picture.label + ' · Usá las flechas para recorrer o Esc para cerrar.';
+  };
+  img.onerror = () => {
+    figure.setAttribute('aria-busy', 'false');
+    status.textContent = 'No se pudo cargar la imagen. Revisá tu conexión y reintentá.';
+    retry.hidden = false;
+  };
+  img.src = 'https://images.igdb.com/igdb/image/upload/t_1080p/' + picture.id + '.jpg';
+}
+function appendExtendedMetadata(section, meta, mediaSection) {
+  const addSection = (title, populate, target = section) => {
+    const details = document.createElement('details');
+    details.className = 'detail-section metadata-section';
+    const heading = document.createElement('summary');
+    heading.textContent = title;
+    const body = document.createElement('div');
+    body.className = 'metadata-content';
+    populate(body);
+    if (!body.childElementCount) return;
+    details.append(heading, body);
+    details.open = title === 'Acerca del juego' || target === mediaSection;
+    target.append(details);
+  };
+  const factList = (body, rows) => {
+    const dl = document.createElement('dl');
+    dl.className = 'detail-tech';
+    rows.forEach(([label, value]) => {
+      if (!value) return;
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = label;
+      dd.textContent = value;
+      dl.append(dt, dd);
+    });
+    if (dl.childElementCount) body.append(dl);
+  };
+  const list = (body, items) => {
+    if (!items.length) return;
+    const ul = document.createElement('ul');
+    items.forEach((item) => {
+      const li = document.createElement('li');
+      if (typeof item === 'string') li.textContent = item;
+      else li.append(item);
+      ul.append(li);
+    });
+    body.append(ul);
+  };
+  const date = (value) =>
+    value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleDateString('es-AR', { timeZone: 'UTC' }) : '';
+  addSection('Acerca del juego', (body) => {
+    factList(body, [
+      ['Título en IGDB', meta.title],
+      ['Tipo', meta.type],
+      ['Estado', meta.status],
+      ['Edición', meta.versionTitle],
+      ['Primer lanzamiento', date(meta.firstReleaseDate)],
+      ['Géneros', (meta.genres || []).join(', ')],
+      ['Temáticas', (meta.themes || []).join(', ')],
+      ['Modos de juego', (meta.modes || []).join(', ')],
+      ['Perspectiva', (meta.perspectives || []).join(', ')],
+      ['Plataformas', (meta.platforms || []).join(', ')],
+      ['Motor', (meta.engines || []).join(', ')],
+      ['Colecciones', (meta.collections || []).join(', ')],
+      ['Franquicias', (meta.franchises || []).join(', ')],
+      ['Palabras clave', (meta.keywords || []).join(', ')],
+      [
+        'Otros nombres',
+        (meta.alternativeNames || [])
+          .map((item) => item.name + (item.comment ? ' (' + item.comment + ')' : ''))
+          .join('; ')
+      ]
+    ]);
+  });
+  if (meta.storyline)
+    addSection('Historia · puede contener spoilers', (body) => {
+      const p = document.createElement('p');
+      p.textContent = meta.storyline;
+      body.append(p);
+    });
+  addSection('Compañías', (body) => {
+    const roles = {
+      developer: 'Desarrollo',
+      publisher: 'Publicación',
+      porting: 'Adaptación',
+      supporting: 'Colaboración'
+    };
+    list(
+      body,
+      (meta.companies || []).map((item) => item.name + ' · ' + item.roles.map((role) => roles[role] || role).join(', '))
+    );
+  });
+  addSection('Valoraciones y duración', (body) => {
+    const ratings = meta.ratings || {};
+    const duration = (seconds) =>
+      Number.isFinite(seconds) && seconds > 0
+        ? new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(seconds / 3600) + ' h'
+        : '';
+    factList(body, [
+      ...[
+        ['critics', 'Crítica'],
+        ['users', 'Comunidad IGDB'],
+        ['total', 'Combinada']
+      ].map(([key, label]) => [
+        label,
+        ratings[key]?.value != null ? ratings[key].value + '/100 · ' + ratings[key].count + ' valoraciones' : ''
+      ]),
+      ['Duración rápida estimada', duration(meta.timeToBeat?.hastily)],
+      ['Duración habitual estimada', duration(meta.timeToBeat?.normally)],
+      ['Completar al 100 %', duration(meta.timeToBeat?.completely)],
+      ['Muestras de duración', meta.timeToBeat?.count ? String(meta.timeToBeat.count) : '']
+    ]);
+  });
+  addSection('Idiomas', (body) => {
+    const languages = new Map();
+    const supports = { Audio: 'Audio', Subtitles: 'Subtítulos', Interface: 'Interfaz' };
+    (meta.languages || []).forEach((item) => {
+      const label = item.nativeName || item.name;
+      const values = languages.get(label) || new Set();
+      if (item.support) values.add(supports[item.support] || item.support);
+      languages.set(label, values);
+    });
+    list(
+      body,
+      [...languages].map(([name, values]) => name + (values.size ? ' · ' + [...values].join(', ') : ''))
+    );
+  });
+  addSection('Multijugador por plataforma', (body) => {
+    (meta.multiplayer || []).forEach((item) => {
+      const title = document.createElement('h4');
+      title.textContent = item.platform || 'Plataforma sin especificar';
+      body.append(title);
+      const features = [
+        ['campaigncoop', 'Campaña cooperativa'],
+        ['dropin', 'Entrada y salida durante la partida'],
+        ['lancoop', 'Cooperativo por LAN'],
+        ['offlinecoop', 'Cooperativo local'],
+        ['onlinecoop', 'Cooperativo en línea'],
+        ['splitscreen', 'Pantalla dividida local'],
+        ['splitscreenonline', 'Pantalla dividida en línea']
+      ];
+      list(
+        body,
+        features.filter(([key]) => item[key]).map(([, label]) => label)
+      );
+      factList(
+        body,
+        [
+          ['offlinemax', 'Máximo local'],
+          ['onlinemax', 'Máximo en línea'],
+          ['offlinecoopmax', 'Máximo cooperativo local'],
+          ['onlinecoopmax', 'Máximo cooperativo en línea']
+        ].map(([key, label]) => [label, item[key] > 0 ? item[key] + ' jugadores' : ''])
+      );
+    });
+  });
+  addSection('Clasificaciones de edad', (body) => {
+    list(
+      body,
+      (meta.ageRatings || []).map(
+        (item) =>
+          item.organization +
+          ' ' +
+          item.rating +
+          (item.descriptions.length ? ' · ' + item.descriptions.join(', ') : '') +
+          (item.synopsis ? ' — ' + item.synopsis : '')
+      )
+    );
+  });
+  addSection('Lanzamientos por plataforma y región', (body) => {
+    list(
+      body,
+      (meta.releases || []).map((item) =>
+        [item.platform, item.region, item.label || date(item.date), item.status].filter(Boolean).join(' · ')
+      )
+    );
+  });
+  addSection(
+    'Capturas e ilustraciones',
+    (body) => {
+      const gallery = document.createElement('div');
+      gallery.className = 'metadata-gallery';
+      const pictures = [
+        ...(meta.screenshots || []).map((id) => ({ id, label: 'Captura' })),
+        ...(meta.artworks || []).map((id) => ({ id, label: 'Ilustración' }))
+      ].filter(({ id }, index, all) => /^[a-z0-9]+$/i.test(id) && all.findIndex((item) => item.id === id) === index);
+      pictures.forEach(({ id, label }, index) => {
+        const base = 'https://images.igdb.com/igdb/image/upload/';
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'gallery-thumbnail';
+        link.setAttribute('aria-label', 'Ampliar ' + label.toLowerCase() + ' ' + (index + 1) + ' de ' + meta.title);
+        link.setAttribute('aria-haspopup', 'dialog');
+        link.onclick = () => openMediaViewer(pictures, index, meta.title, link);
+        const img = document.createElement('img');
+        img.src = base + 't_screenshot_med/' + id + '.jpg';
+        img.alt = label + ' de ' + meta.title + ' (' + (index + 1) + ')';
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        img.onerror = () => {
+          img.hidden = true;
+          link.textContent = img.alt + ' · Ampliar imagen';
+        };
+        link.replaceChildren(img);
+        gallery.append(link);
+      });
+      if (gallery.childElementCount) body.append(gallery);
+    },
+    mediaSection
+  );
+  addSection(
+    'Videos y enlaces',
+    (body) => {
+      list(body, [
+        ...(meta.videos || []).map((item) => metadataLink(item.name, item.url)),
+        ...(meta.websites || []).map((item) => metadataLink(item.label, item.url))
+      ]);
+    },
+    mediaSection
+  );
+  addSection('Ediciones y juegos relacionados', (body) => {
+    const labels = {
+      parent_game: 'Juego base',
+      version_parent: 'Edición base',
+      dlcs: 'DLC',
+      expansions: 'Expansiones',
+      standalone_expansions: 'Expansiones independientes',
+      remakes: 'Remakes',
+      remasters: 'Remasterizaciones',
+      ports: 'Adaptaciones',
+      expanded_games: 'Versiones ampliadas',
+      bundles: 'Paquetes',
+      similar_games: 'Juegos similares'
+    };
+    Object.entries(meta.related || {}).forEach(([key, games]) => {
+      if (!games.length) return;
+      const heading = document.createElement('h4');
+      heading.textContent = labels[key] || key;
+      body.append(heading);
+      list(
+        body,
+        games.map((game) => metadataLink(game.name, game.url))
+      );
+    });
+  });
+  if (meta.fetchedAt) {
+    const updated = document.createElement('p');
+    updated.className = 'meta-source';
+    updated.textContent =
+      'Información descargada: ' +
+      date(meta.fetchedAt) +
+      (meta.sourceUpdatedAt ? ' · Actualizada en IGDB: ' + date(meta.sourceUpdatedAt) : '');
+    section.append(updated);
+  }
 }
 function detailPanel(game) {
   const panel = document.createElement('aside');
@@ -540,27 +928,114 @@ function detailPanel(game) {
     '<span>Editar</span></button></div>' +
     '<dl class="detail-facts"><div><dt>Progreso</dt><dd></dd></div><div><dt>Tu puntuación</dt><dd></dd></div>' +
     '<div><dt>Última vez jugado</dt><dd></dd></div><div><dt>Unidad</dt><dd></dd></div></dl>' +
-    '<section class="detail-section"><h3>Notas</h3><p class="notes"></p><div class="tag-list"></div></section>' +
-    '<details class="detail-section"><summary>Detalles técnicos</summary><dl class="detail-tech">' +
+    '<section class="detail-section personal-notes"><h3>Notas</h3><p class="notes"></p><div class="tag-list personal-tags"></div></section>' +
+    '<details class="detail-section launch-details"><summary>Detalles técnicos</summary><dl class="detail-tech">' +
     '<dt>Ubicación</dt><dd></dd><dt>Detección</dt><dd></dd></dl></details></div>';
   applyCover(panel.querySelector('.detail-hero'), game, cover, true);
   fillMetaLine(panel, game);
   panel.querySelector('h2').textContent = game.name;
-  if (game.meta) panel.querySelector('.detail-actions').before(metaSection(game.meta));
   const facts = panel.querySelectorAll('.detail-facts dd');
   facts[0].textContent = game.progress || 'Pendiente';
   facts[1].textContent = game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar';
   facts[2].textContent = lastPlayedText(game);
   facts[3].textContent = game.drive || '—';
-  const tech = panel.querySelectorAll('.detail-tech dd');
+  const tech = panel.querySelectorAll('.launch-details dd');
   tech[0].textContent = game.location;
   tech[1].textContent = game.evidence;
   panel.querySelector('.notes').textContent = game.notes || 'Sin notas personales.';
   tagsOf(game).forEach((tag) => {
     const label = document.createElement('span');
     label.textContent = '#' + tag;
-    panel.querySelector('.tag-list').append(label);
+    panel.querySelector('.personal-tags').append(label);
   });
+  const tabs = document.createElement('div');
+  tabs.className = 'detail-tabs';
+  const tablist = document.createElement('div');
+  tablist.className = 'detail-tablist';
+  tablist.setAttribute('role', 'tablist');
+  tablist.setAttribute('aria-label', 'Secciones de la ficha');
+  const content = new Map();
+  tabs.append(tablist);
+  [
+    ['summary', 'Resumen'],
+    ['information', 'Información'],
+    ['media', 'Multimedia'],
+    ...(game.platform === 'Steam'
+      ? [
+          ['steam', 'Steam'],
+          ['achievements', 'Logros']
+        ]
+      : [])
+  ].forEach(([key, label]) => {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.id = 'game-tab-' + key;
+    tab.textContent = label;
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-controls', 'game-panel-' + key);
+    tab.dataset.tab = key;
+    const body = document.createElement('section');
+    body.id = 'game-panel-' + key;
+    body.className = 'detail-tabpanel';
+    body.setAttribute('role', 'tabpanel');
+    body.setAttribute('aria-labelledby', tab.id);
+    body.tabIndex = 0;
+    content.set(key, body);
+    tab.onclick = () => selectDetailTab(key);
+    tablist.append(tab);
+    tabs.append(body);
+  });
+  const selectDetailTab = (key, focus = false) => {
+    state.detailTab = key;
+    tablist.querySelectorAll('[role=tab]').forEach((tab) => {
+      const active = tab.dataset.tab === key;
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+      content.get(tab.dataset.tab).hidden = !active;
+      if (active && focus) tab.focus({ preventScroll: true });
+    });
+    if (key === 'steam' || key === 'achievements') loadSteamGameTab(content.get(key), game, key);
+  };
+  tablist.addEventListener('keydown', (event) => {
+    const keys = [...content.keys()];
+    const index = keys.indexOf(event.target.dataset.tab);
+    if (index < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? keys.length - 1
+          : (index + (event.key === 'ArrowRight' ? 1 : -1) + keys.length) % keys.length;
+    selectDetailTab(keys[next], true);
+  });
+  const overview = content.get('summary');
+  const information = content.get('information');
+  const media = content.get('media');
+  if (game.meta) overview.append(metaSection(game.meta));
+  if (game.steam) overview.append(steamActivityFacts(game));
+  overview.append(
+    panel.querySelector('.detail-facts'),
+    panel.querySelector('.personal-notes'),
+    panel.querySelector('.launch-details')
+  );
+  if (game.meta) appendExtendedMetadata(information, game.meta, media);
+  [
+    [
+      information,
+      'Todavía no hay información ampliada de este juego. Actualizá la información de IGDB en Configuración.'
+    ],
+    [media, 'IGDB todavía no tiene imágenes, videos ni enlaces disponibles para este juego.']
+  ].forEach(([body, message]) => {
+    if (body.childElementCount) return;
+    const empty = document.createElement('p');
+    empty.className = 'detail-empty';
+    empty.textContent = message;
+    body.append(empty);
+  });
+  panel.querySelector('.detail-body').append(tabs);
+  selectDetailTab(content.has(state.detailTab) ? state.detailTab : 'summary');
   decorateActions(panel, game);
   panel.querySelectorAll('[data-action=favorite], [data-action=edit]').forEach((button) => (button.tabIndex = 0));
   panel.querySelector('[data-action=play]').tabIndex = 0;
@@ -655,6 +1130,10 @@ function bindTiles(container) {
     if (!host || !container.contains(host)) return;
     const action = event.target.closest('[data-action]');
     if (host.classList.contains('tile')) {
+      if (!action && container === library && ['list', 'explorer'].includes(state.view)) {
+        openGameDetail(gameFor(host));
+        return;
+      }
       selectTile(host, !action);
       tileSelected(container, host);
     }
@@ -662,7 +1141,10 @@ function bindTiles(container) {
   });
   container.addEventListener('dblclick', (event) => {
     const tile = event.target.closest('.tile');
-    if (tile && !event.target.closest('button')) playOrReview(gameFor(tile));
+    if (tile && !event.target.closest('button')) {
+      if (container === library && ['list', 'explorer'].includes(state.view)) openGameDetail(gameFor(tile));
+      else playOrReview(gameFor(tile));
+    }
   });
   container.addEventListener('keydown', (event) => {
     const tile = event.target.closest('.tile');
@@ -672,8 +1154,10 @@ function bindTiles(container) {
       const next = tileNeighbor(tile, event.key);
       selectTile(next, true);
       tileSelected(container, next);
-    } else if (event.key === 'Enter') posterAction(gameFor(tile), 'play');
-    else if (event.key.toLowerCase() === 'f') posterAction(gameFor(tile), 'favorite');
+    } else if (event.key === 'Enter') {
+      if (container === library && ['list', 'explorer'].includes(state.view)) openGameDetail(gameFor(tile));
+      else posterAction(gameFor(tile), 'play');
+    } else if (event.key.toLowerCase() === 'f') posterAction(gameFor(tile), 'favorite');
     else if (event.key.toLowerCase() === 'e') posterAction(gameFor(tile), 'edit');
   });
 }
@@ -749,7 +1233,7 @@ function renderLibrary() {
     games.length === state.games.length
       ? games.length + ' juegos'
       : games.length + ' de ' + state.games.length + ' juegos';
-  document.querySelector('#view-label').textContent = viewNames[state.view];
+  document.querySelector('#view-label').textContent = viewInfo[state.view].description;
   document.querySelector('#empty-state').classList.toggle('hidden', games.length > 0);
   renderActiveFilters();
 }
@@ -773,14 +1257,23 @@ function renderHome() {
   document.querySelector('#quick-subtitle').textContent = favorites.length
     ? favorites.length + ' favorito' + (favorites.length === 1 ? '' : 's') + ' para volver a jugar.'
     : 'Marcá favoritos para encontrarlos siempre acá.';
-  document.querySelector('#stat-total').textContent = state.games.length;
-  document.querySelector('#stat-ready').textContent = state.games.filter(
-    (game) => game.launch && game.launch.available
-  ).length;
+  const total = state.games.length;
+  const ready = state.games.filter((game) => game.launch && game.launch.available).length;
+  const inProgress = state.games.filter((game) => game.progress === 'Jugando').length;
+  document.querySelector('#stat-total').textContent = total;
+  document.querySelector('#stat-ready').textContent = ready;
   document.querySelector('#stat-favorites').textContent = favorites.length;
-  document.querySelector('#stat-progress').textContent = state.games.filter(
-    (game) => game.progress === 'Jugando'
-  ).length;
+  document.querySelector('#stat-progress').textContent = inProgress;
+  document.querySelector('#home-summary').textContent = total + ' juegos reunidos · ' + ready + ' listos para iniciar.';
+  [
+    ['#metric-ready', ready],
+    ['#metric-favorites', favorites.length],
+    ['#metric-progress', inProgress]
+  ].forEach(([selector, value]) =>
+    document
+      .querySelector(selector)
+      .style.setProperty('--metric-progress', total ? Math.max(4, (value / total) * 100) + '%' : '0%')
+  );
 }
 function chips(holder, options, selected, allLabel, choose) {
   holder.innerHTML = '';
@@ -793,6 +1286,11 @@ function chips(holder, options, selected, allLabel, choose) {
   });
 }
 function renderFilters() {
+  document.querySelectorAll('[data-installation]').forEach((button) => {
+    const active = button.dataset.installation === state.installation;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
   chips(
     document.querySelector('#platforms'),
     [...new Set(state.games.map((game) => game.platform))].sort(),
@@ -817,7 +1315,7 @@ function renderFilters() {
   select(
     '#drive',
     'Todas las unidades',
-    [...new Set(state.games.map((game) => game.drive))].sort(),
+    [...new Set(state.games.map((game) => game.drive).filter(Boolean))].sort(),
     state.drive,
     (value) => (state.drive = value)
   );
@@ -831,6 +1329,8 @@ function renderFilters() {
 }
 function renderActiveFilters() {
   const labels = [];
+  if (state.installation)
+    labels.push([state.installation === 'installed' ? 'Instalados' : 'No instalados', () => (state.installation = '')]);
   if (state.query)
     labels.push(['“' + state.query + '”', () => (document.querySelector('#search').value = state.query = '')]);
   if (state.platform) labels.push([state.platform, () => (state.platform = '')]);
@@ -861,6 +1361,7 @@ function renderActiveFilters() {
 }
 function clearFilters() {
   Object.assign(state, {
+    installation: '',
     platform: '',
     drive: '',
     tag: '',
@@ -959,6 +1460,7 @@ async function uploadCover(game, file) {
   });
 }
 async function playGame(game) {
+  if (game.installed === false) return installSteamGame(game);
   try {
     await request('/api/launch/' + encodeURIComponent(game.key), { method: 'POST' });
     game.lastLaunchedAt = new Date().toISOString();
@@ -1143,6 +1645,7 @@ function showPage(page) {
   if (page === 'settings') {
     loadSchedule();
     loadIgdb();
+    loadSteamSettings();
   }
   if (page === 'library') document.querySelector('#search').focus();
 }
@@ -1598,5 +2101,6 @@ document.addEventListener('keydown', (event) => {
     setFiltersOpen(false);
 });
 hydrateIcons(document);
+initializeSteamUI();
 loadSettings();
 load();

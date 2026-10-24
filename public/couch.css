@@ -1,0 +1,413 @@
+/* ── Modo sala ─────────────────────────────────────────────────────────────────────────────────
+   Pensado para verse a tres metros: medidas relativas a la pantalla (vh/vw), textos grandes, un foco
+   inconfundible y el arte del juego como protagonista. Siempre oscuro, como una sala de cine. */
+
+body.couch {
+  overflow: hidden;
+}
+body.couch .app-shell {
+  display: none;
+}
+body.couch .toasts {
+  z-index: 60;
+}
+.couch {
+  --couch-pad: 4.2vw;
+  --tile-w: clamp(132px, 10.4vw, 300px);
+  --tile-gap: clamp(14px, 1.3vw, 30px);
+  --couch-ink: #f6f3fb;
+  --couch-soft: #c9c3d8;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  background: #07060c;
+  color: var(--couch-ink);
+  font-family: var(--font-ui);
+}
+.couch[hidden] {
+  display: none;
+}
+.couch.couch-idle,
+.couch.couch-idle * {
+  cursor: none;
+}
+
+/* Fondo: el arte del juego enfocado, con sombra a la izquierda y abajo para leer encima. */
+.couch-backdrop {
+  position: absolute;
+  inset: 0;
+}
+.couch-backdrop .hero-layer {
+  background-position: center 30%;
+}
+.couch-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(7 6 12 / 0.92) 0%, rgb(7 6 12 / 0.55) 42%, rgb(7 6 12 / 0.05) 75%),
+    linear-gradient(0deg, #07060c 0%, rgb(7 6 12 / 0.9) 42%, rgb(7 6 12 / 0) 70%),
+    radial-gradient(80% 60% at 20% 100%, color-mix(in srgb, var(--art, #8e7dff) 26%, transparent), transparent);
+  transition: background var(--dur-slow) var(--ease-out);
+}
+
+/* Barra superior: marca, secciones y hora. */
+.couch-top {
+  position: absolute;
+  top: 3.4vh;
+  right: var(--couch-pad);
+  left: var(--couch-pad);
+  z-index: 2;
+  display: flex;
+  gap: 2vw;
+  align-items: center;
+}
+.couch-mark {
+  width: clamp(36px, 2.6vw, 64px);
+  height: auto;
+}
+.couch-tabs {
+  display: flex;
+  gap: 0.6vw;
+}
+.couch-tab {
+  padding: 0.7vh 1.2vw;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--couch-soft);
+  font: 650 clamp(15px, 1.25vw, 30px) / 1.2 var(--font-ui);
+  cursor: pointer;
+}
+.couch-tab.active {
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+}
+.couch-clock {
+  margin-left: auto;
+  color: var(--couch-soft);
+  font: 600 clamp(15px, 1.25vw, 30px) / 1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Datos del juego enfocado. */
+.couch-info {
+  position: absolute;
+  top: 13vh;
+  left: var(--couch-pad);
+  z-index: 2;
+  max-width: 46vw;
+}
+.couch-reason {
+  min-height: 1.4em;
+  margin: 0 0 1.4vh;
+  color: var(--couch-soft);
+  font: 650 clamp(14px, 1.15vw, 28px) / 1.3 var(--font-ui);
+  letter-spacing: 0.01em;
+}
+.couch-logo {
+  display: block;
+  max-width: 34vw;
+  max-height: 17vh;
+  object-fit: contain;
+  object-position: left bottom;
+  filter: drop-shadow(0 6px 24px rgb(0 0 0 / 0.6));
+}
+.couch-title {
+  margin: 0;
+  font: 800 clamp(34px, 4vw, 96px) / 0.95 var(--font-display);
+  font-stretch: 78%;
+  text-wrap: balance;
+  text-shadow: 0 4px 30px rgb(0 0 0 / 0.5);
+}
+.couch-facts {
+  margin: 2vh 0 0;
+  color: var(--couch-soft);
+  font: 500 clamp(15px, 1.25vw, 30px) / 1.4 var(--font-ui);
+  white-space: pre-wrap;
+}
+
+/* Filas: la fila enfocada sube a un lugar fijo y su riel se corre para que el juego quede a la vista. */
+.couch-viewport {
+  position: absolute;
+  top: 47vh;
+  right: 0;
+  bottom: 9vh;
+  left: 0;
+  z-index: 2;
+  overflow: hidden;
+  mask-image: linear-gradient(180deg, #000 0%, #000 82%, transparent 100%);
+}
+.couch-rows {
+  position: relative;
+  transition: transform 320ms var(--ease-out);
+}
+.couch-row {
+  padding: 0 var(--couch-pad) 3.2vh;
+  opacity: 0.55;
+  transition: opacity var(--dur) var(--ease-out);
+}
+.couch-row.current {
+  opacity: 1;
+}
+.couch-row.continued {
+  padding-top: 0;
+}
+.couch-row-title {
+  margin: 0 0 1.4vh;
+  font: 700 clamp(17px, 1.45vw, 34px) / 1.2 var(--font-display);
+  font-stretch: 84%;
+}
+.couch-track {
+  display: flex;
+  gap: var(--tile-gap);
+  transition: transform 260ms var(--ease-out);
+}
+.couch-tile {
+  flex: none;
+  width: var(--tile-w);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.couch-art {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 2 / 3;
+  border-radius: clamp(8px, 0.6vw, 16px);
+  background: linear-gradient(145deg, #40557e, #283a61) center / cover;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  transition:
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+.couch-art .cover-initial {
+  position: absolute;
+  bottom: 8%;
+  left: 9%;
+  font: 800 clamp(22px, 2vw, 48px) / 1 var(--font-display);
+}
+.couch-art.has-image .cover-initial {
+  display: none;
+}
+.couch-star {
+  position: absolute;
+  top: 6%;
+  right: 7%;
+  color: var(--favorite, #ffe27a);
+  font-size: clamp(14px, 1.2vw, 28px);
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.7);
+}
+.couch-tile-name {
+  display: block;
+  overflow: hidden;
+  margin-top: 1.2vh;
+  font: 650 clamp(13px, 1vw, 24px) / 1.25 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out);
+}
+/* Foco: más grande, borde blanco y el brillo del color del juego. Se ve desde el sillón. */
+.couch-tile:focus {
+  outline: none;
+}
+.couch-tile:focus .couch-art {
+  box-shadow:
+    0 0 0 clamp(3px, 0.22vw, 6px) #fff,
+    0 0 clamp(24px, 2.4vw, 60px) color-mix(in srgb, var(--art, #8e7dff) 70%, transparent),
+    0 18px 40px rgb(0 0 0 / 0.6);
+  transform: scale(1.1);
+}
+.couch-tile:focus .couch-tile-name {
+  opacity: 1;
+}
+.couch-empty {
+  padding: 0 var(--couch-pad);
+  color: var(--couch-soft);
+  font-size: clamp(16px, 1.3vw, 32px);
+}
+
+/* Ayuda de botones, con los colores de un mando Xbox. */
+.couch-hints {
+  position: absolute;
+  right: var(--couch-pad);
+  bottom: 3.2vh;
+  left: var(--couch-pad);
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2vh 2.2vw;
+  justify-content: flex-end;
+  color: var(--couch-soft);
+  font: 600 clamp(13px, 1vw, 24px) / 1 var(--font-ui);
+}
+.couch-hint {
+  display: inline-flex;
+  gap: 0.6vw;
+  align-items: center;
+}
+.pad-glyph {
+  display: inline-grid;
+  place-items: center;
+  min-width: clamp(22px, 1.6vw, 38px);
+  height: clamp(22px, 1.6vw, 38px);
+  padding: 0 0.4vw;
+  border-radius: 999px;
+  background: #3a3646;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.85em;
+}
+.pad-glyph.a {
+  background: #4f9e1d;
+}
+.pad-glyph.b {
+  background: #d23a35;
+}
+.pad-glyph.x {
+  background: #2f74c8;
+}
+.pad-glyph.y {
+  background: #d8a800;
+  color: #1d1600;
+}
+.pad-glyph.bumper {
+  border-radius: 8px;
+}
+
+/* Ficha y menú: una capa encima, con el resto atenuado. */
+.couch.layer-open .couch-viewport,
+.couch.layer-open .couch-info,
+.couch.layer-open .couch-top {
+  opacity: 0.18;
+  transition: opacity var(--dur) var(--ease-out);
+}
+.couch-sheet {
+  position: absolute;
+  inset: 12vh var(--couch-pad) 12vh;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3.4vw;
+  align-items: center;
+}
+.couch-sheet[hidden],
+.couch-menu[hidden] {
+  display: none;
+}
+.couch-sheet-art {
+  position: relative;
+  overflow: hidden;
+  height: 66vh;
+  aspect-ratio: 2 / 3;
+  border-radius: clamp(10px, 0.8vw, 20px);
+  background: linear-gradient(145deg, #40557e, #283a61) center / cover;
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.6);
+}
+.couch-sheet-art .cover-initial {
+  position: absolute;
+  bottom: 6%;
+  left: 7%;
+  font: 800 clamp(40px, 4vw, 96px) / 1 var(--font-display);
+}
+.couch-sheet-art.has-image .cover-initial {
+  display: none;
+}
+.couch-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 52vw;
+  margin: 2.4vh 0 0;
+  color: var(--couch-soft);
+  font: 400 clamp(15px, 1.2vw, 28px) / 1.55 var(--font-ui);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+.couch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2vw;
+  margin-top: 4vh;
+}
+.couch-action {
+  min-height: clamp(48px, 6.4vh, 92px);
+  padding: 0 2.2vw;
+  border: 2px solid rgb(255 255 255 / 0.22);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+  font: 700 clamp(16px, 1.3vw, 32px) / 1 var(--font-ui);
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+.couch-action.primary {
+  border-color: transparent;
+  background: var(--play, #ff6b7e);
+  color: var(--play-ink, #26070d);
+}
+.couch-action:focus {
+  outline: clamp(3px, 0.22vw, 6px) solid #fff;
+  outline-offset: 4px;
+  transform: scale(1.06);
+}
+.couch-menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 6;
+  display: grid;
+  gap: 1.6vh;
+  min-width: 30vw;
+  padding: 4vh 2.6vw;
+  border-radius: clamp(14px, 1vw, 24px);
+  background: rgb(22 20 32 / 0.96);
+  box-shadow: 0 30px 90px rgb(0 0 0 / 0.7);
+  transform: translate(-50%, -50%);
+}
+.couch-menu h2 {
+  margin: 0 0 1vh;
+  font: 800 clamp(22px, 2vw, 48px) / 1 var(--font-display);
+  font-stretch: 80%;
+}
+.couch-menu .couch-action {
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .couch-rows,
+  .couch-track,
+  .couch-art,
+  .couch-action {
+    transition: none;
+  }
+  .couch-tile:focus .couch-art,
+  .couch-action:focus {
+    transform: none;
+  }
+}
+
+/* El foco del escritorio (anillo y halo del mando) no aplica acá: el modo sala tiene el suyo. */
+body.gamepad-active .couch .couch-tile:focus-visible,
+.couch .couch-tile:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+body.gamepad-active .couch .couch-action:focus-visible {
+  box-shadow: none;
+}
+.couch.layer-open .couch-viewport,
+.couch.layer-open .couch-info {
+  opacity: 0.04;
+}
+.couch.layer-open .couch-shade {
+  background:
+    linear-gradient(90deg, rgb(7 6 12 / 0.95) 0%, rgb(7 6 12 / 0.75) 55%, rgb(7 6 12 / 0.45) 100%),
+    linear-gradient(0deg, #07060c 0%, rgb(7 6 12 / 0) 60%);
+}

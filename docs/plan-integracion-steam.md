@@ -17,13 +17,13 @@ Ampliar la biblioteca unificada con juegos de la cuenta de Steam, estén instala
 
 ## Entregas propuestas
 
-| Entrega | Información y acciones | Resultado verificable |
-| --- | --- | --- |
-| 0.14.0 — Biblioteca de cuenta | Juegos reportados por Steam, App ID, pertenencia a la cuenta, instalación local y filtros Todos / Instalados / No instalados. Botón para abrir la instalación en Steam. | La sincronización completa coincide con el total remoto, identifica las instalaciones por App ID y no duplica juegos ni pierde favoritos o notas. Los no instalados no se muestran como errores de diagnóstico. |
-| 0.15.0 — Actividad | Horas totales, horas de las últimas dos semanas, juegos recientes, orden por tiempo y colección sin tiempo registrado. | Coinciden con los datos devueltos por Steam, incluidos los juegos iniciados fuera del launcher. Los valores desconocidos no se convierten en cero. |
-| 0.16.0 — Logros | Porcentaje y cantidad desbloqueada, pendientes, descripción y rareza global cuando hay datos. | Se validan juegos con logros, sin logros y con información no accesible. El porcentaje no cambia automáticamente el progreso personal a «Completado». |
-| 0.17.0 — Tienda y lista de deseados | Reseñas de usuarios, tendencias, idiomas, mando, sistemas operativos, requisitos, compatibilidad Deck/SteamOS, lista de deseados, precio y descuento actuales por región. | Cada dato indica su fuente y fecha. Los precios muestran la moneda real recibida y los DLC publicados se distinguen de los poseídos. |
-| Posterior — Descubrimiento y funciones sociales | Noticias y notas de parche, juegos seguidos, recomendaciones sobre el catálogo propio, amigos que poseen un juego, biblioteca compartida entre dos perfiles y opciones cooperativas. | Funciones opcionales; información social sólo cuando Steam permite consultarla. Sin publicaciones ni compras automáticas. |
+| Entrega                                         | Información y acciones                                                                                                                                                               | Resultado verificable                                                                                                                                                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.14.0 — Biblioteca de cuenta                   | Juegos reportados por Steam, App ID, pertenencia a la cuenta, instalación local y filtros Todos / Instalados / No instalados. Botón para abrir la instalación en Steam.              | La sincronización completa coincide con el total remoto, identifica las instalaciones por App ID y no duplica juegos ni pierde favoritos o notas. Los no instalados no se muestran como errores de diagnóstico. |
+| 0.15.0 — Actividad                              | Horas totales, horas de las últimas dos semanas, juegos recientes, orden por tiempo y colección sin tiempo registrado.                                                               | Coinciden con los datos devueltos por Steam, incluidos los juegos iniciados fuera del launcher. Los valores desconocidos no se convierten en cero.                                                              |
+| 0.16.0 — Logros                                 | Porcentaje y cantidad desbloqueada, pendientes, descripción y rareza global cuando hay datos.                                                                                        | Se validan juegos con logros, sin logros y con información no accesible. El porcentaje no cambia automáticamente el progreso personal a «Completado».                                                           |
+| 0.17.0 — Tienda y lista de deseados             | Reseñas de usuarios, tendencias, idiomas, mando, sistemas operativos, requisitos, compatibilidad Deck/SteamOS, lista de deseados, precio y descuento actuales por región.            | Cada dato indica su fuente y fecha. Los precios muestran la moneda real recibida y los DLC publicados se distinguen de los poseídos.                                                                            |
+| Posterior — Descubrimiento y funciones sociales | Noticias y notas de parche, juegos seguidos, recomendaciones sobre el catálogo propio, amigos que poseen un juego, biblioteca compartida entre dos perfiles y opciones cooperativas. | Funciones opcionales; información social sólo cuando Steam permite consultarla. Sin publicaciones ni compras automáticas.                                                                                       |
 
 ## Diseño de biblioteca
 
@@ -45,12 +45,12 @@ En la interfaz:
 
 ## Papel de cada fuente
 
-| Fuente | Autoridad principal |
-| --- | --- |
-| Escáner local | Instalación en esta PC, ubicación y lanzamiento. |
-| Steam | Biblioteca de cuenta, tiempo registrado, logros, reseñas y características específicas de la versión de Steam. |
-| IGDB | Historia, colecciones, franquicias, relaciones entre juegos, ficha editorial y recursos multimedia disponibles. |
-| Usuario | Favoritos, notas, etiquetas, puntuación y progreso personal. |
+| Fuente        | Autoridad principal                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| Escáner local | Instalación en esta PC, ubicación y lanzamiento.                                                                |
+| Steam         | Biblioteca de cuenta, tiempo registrado, logros, reseñas y características específicas de la versión de Steam.  |
+| IGDB          | Historia, colecciones, franquicias, relaciones entre juegos, ficha editorial y recursos multimedia disponibles. |
+| Usuario       | Favoritos, notas, etiquetas, puntuación y progreso personal.                                                    |
 
 No sobrescribir preferencias personales con datos externos. Mantener origen y fecha de actualización para resolver discrepancias entre IGDB y Steam.
 

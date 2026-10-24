@@ -168,5 +168,51 @@
     return new Intl.NumberFormat('es-AR', { maximumFractionDigits: value < 10 ? 1 : 0 }).format(value) + ' h';
   }
 
-  root.GMLShelves = { lastPlayed, heroCandidates, homeShelves, relativeDay, relativeTime, hours, playable };
+  // Modo sala: la biblioteca en filas de hasta `perRow` juegos, agrupadas por letra inicial (los números y
+  // signos van juntos en «#»). Cada fila conoce su letra para saltar de una a otra con el mando.
+  function initialOf(name) {
+    const letter = String(name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/^(the|a|an)\s+/i, '')
+      .charAt(0)
+      .toUpperCase();
+    return /[A-Z]/.test(letter) ? letter : '#';
+  }
+  function libraryRows(games, perRow = 7) {
+    const bare = (name) => String(name || '').replace(/^(the|a|an)\s+/i, '');
+    const sorted = [...games].sort(
+      (a, b) =>
+        (initialOf(a.name) === '#' ? 0 : 1) - (initialOf(b.name) === '#' ? 0 : 1) ||
+        bare(a.name).localeCompare(bare(b.name), 'es')
+    );
+    const groups = new Map();
+    for (const game of sorted) {
+      const letter = initialOf(game.name);
+      if (!groups.has(letter)) groups.set(letter, []);
+      groups.get(letter).push(game);
+    }
+    const rows = [];
+    for (const [letter, list] of groups)
+      for (let index = 0; index < list.length; index += perRow)
+        rows.push({
+          id: 'letter-' + letter + '-' + index,
+          letter,
+          title: index === 0 ? letter : '',
+          games: list.slice(index, index + perRow)
+        });
+    return rows;
+  }
+
+  root.GMLShelves = {
+    lastPlayed,
+    heroCandidates,
+    homeShelves,
+    relativeDay,
+    relativeTime,
+    hours,
+    playable,
+    libraryRows,
+    initialOf
+  };
 })(globalThis);

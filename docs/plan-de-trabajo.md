@@ -46,31 +46,31 @@ Autenticación y consultas reales de IGDB validadas el 23 de octubre de 2026. La
 
 ## Validaciones funcionales de base
 
-| Iniciativa | Resultado | Criterio de aceptación |
-| --- | --- | --- |
-| Validar lanzadores | Confirmar las rutas de inicio de Steam, Epic, Ubisoft y Xbox/Microsoft Store. | Se inicia al menos un juego de cada plataforma compatible desde la biblioteca. |
-| Validar vistas y filtros | Comprobar los cuatro modos de presentación, búsquedas y filtros combinados. | No aparecen errores y el mismo conjunto de juegos se refleja en todas las vistas. |
-| Validar la tarea nocturna | Confirmar que la tarea se ejecuta sin abrir ventanas ni alterar preferencias. | La fecha de escaneo cambia y favoritos/etiquetas permanecen intactos. |
-| Ajustar detección | Resolver los juegos marcados como “Requiere revisión”. | Cada caso muestra una explicación correcta o queda excluido por decisión explícita. |
-| Validar escritorio | Abrir la aplicación portable y confirmar que conserva los datos entre ejecuciones. | Se abre sin navegador ni terminal y los cambios personales persisten. |
-| Validar personalización | Cargar una portada, editar la ficha y restaurar un respaldo. | Todos los datos se muestran tras reindexar o reiniciar. |
+| Iniciativa                | Resultado                                                                          | Criterio de aceptación                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Validar lanzadores        | Confirmar las rutas de inicio de Steam, Epic, Ubisoft y Xbox/Microsoft Store.      | Se inicia al menos un juego de cada plataforma compatible desde la biblioteca.      |
+| Validar vistas y filtros  | Comprobar los cuatro modos de presentación, búsquedas y filtros combinados.        | No aparecen errores y el mismo conjunto de juegos se refleja en todas las vistas.   |
+| Validar la tarea nocturna | Confirmar que la tarea se ejecuta sin abrir ventanas ni alterar preferencias.      | La fecha de escaneo cambia y favoritos/etiquetas permanecen intactos.               |
+| Ajustar detección         | Resolver los juegos marcados como “Requiere revisión”.                             | Cada caso muestra una explicación correcta o queda excluido por decisión explícita. |
+| Validar escritorio        | Abrir la aplicación portable y confirmar que conserva los datos entre ejecuciones. | Se abre sin navegador ni terminal y los cambios personales persisten.               |
+| Validar personalización   | Cargar una portada, editar la ficha y restaurar un respaldo.                       | Todos los datos se muestran tras reindexar o reiniciar.                             |
 
 ## Versiones 0.6, 0.7 y 0.7.1 — completadas
 
-| Iniciativa | Dependencia | Criterio de aceptación |
-| --- | --- | --- |
-| Experiencia de biblioteca | Navegación lateral, inicio con accesos rápidos, filtros reorganizados y cuatro vistas refinadas. | Disponible. |
-| Estados e interacción | Retroalimentación de éxito, biblioteca vacía, mensajes claros y atajos de teclado. | Disponible. |
-| Diagnóstico y horario | Panel de salud por plataforma y configuración visual de indexación nocturna. | Disponible. |
-| Fecha de juego y Explorador | Registro local del último inicio y tabla de Explorador ordenable. | Disponible. |
+| Iniciativa                  | Dependencia                                                                                      | Criterio de aceptación |
+| --------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------- |
+| Experiencia de biblioteca   | Navegación lateral, inicio con accesos rápidos, filtros reorganizados y cuatro vistas refinadas. | Disponible.            |
+| Estados e interacción       | Retroalimentación de éxito, biblioteca vacía, mensajes claros y atajos de teclado.               | Disponible.            |
+| Diagnóstico y horario       | Panel de salud por plataforma y configuración visual de indexación nocturna.                     | Disponible.            |
+| Fecha de juego y Explorador | Registro local del último inicio y tabla de Explorador ordenable.                                | Disponible.            |
 
 ## Siguiente — validación de coincidencias de IGDB
 
-| Iniciativa | Dependencia | Criterio de aceptación |
-| --- | --- | --- |
-| Validar coincidencias de IGDB | Credenciales y conexión ya verificadas; revisar las fichas descargadas. | Los juegos de cada plataforma muestran la ficha correcta; se quita la etiqueta beta. |
-| Ajustar detección | Corregir juegos en revisión a partir de los diagnósticos. Tiny Lands (Epic) ya explica que su carpeta no existe. | Cada caso se resuelve o explica de forma útil. |
-| Pulido de UX | Incorporar correcciones surgidas del uso real. | La interfaz mantiene claridad y coherencia en los flujos frecuentes. |
+| Iniciativa                    | Dependencia                                                                                                      | Criterio de aceptación                                                               |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Validar coincidencias de IGDB | Credenciales y conexión ya verificadas; revisar las fichas descargadas.                                          | Los juegos de cada plataforma muestran la ficha correcta; se quita la etiqueta beta. |
+| Ajustar detección             | Corregir juegos en revisión a partir de los diagnósticos. Tiny Lands (Epic) ya explica que su carpeta no existe. | Cada caso se resuelve o explica de forma útil.                                       |
+| Pulido de UX                  | Incorporar correcciones surgidas del uso real.                                                                   | La interfaz mantiene claridad y coherencia en los flujos frecuentes.                 |
 
 ## Más adelante — versión 1.0: bibliotecas compradas
 

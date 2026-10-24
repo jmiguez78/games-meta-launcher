@@ -95,3 +95,25 @@ test('Clásicos del arcade: sólo los mejor rankeados, en un orden que cambia ca
     false
   );
 });
+
+test('Modo sala: la biblioteca en filas por letra, sin artículos y con números en «#»', () => {
+  const { libraryRows, initialOf } = globalThis.GMLShelves;
+  assert.equal(initialOf('The Witcher 3'), 'W');
+  assert.equal(initialOf('Éxodo'), 'E');
+  assert.equal(initialOf('1942'), '#');
+  const names = ['Zaxxon', '1942', 'Bubble Bobble', 'The Binding of Isaac', 'Bagman', 'Burger Time', 'Asteroids'];
+  const rows = libraryRows(
+    names.map((name) => game(name)),
+    2
+  );
+  assert.deepEqual(
+    rows.map((row) => [row.letter, row.title, row.games.map((item) => item.name)]),
+    [
+      ['#', '#', ['1942']],
+      ['A', 'A', ['Asteroids']],
+      ['B', 'B', ['Bagman', 'The Binding of Isaac']],
+      ['B', '', ['Bubble Bobble', 'Burger Time']],
+      ['Z', 'Z', ['Zaxxon']]
+    ]
+  );
+});

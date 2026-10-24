@@ -97,11 +97,15 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 - **Portadas** para explorar y **Tabla** para ordenar y comparar. Un clic en un juego abre su página.
 - Un juego comprado en varias tiendas aparece una vez, con la copia que se puede jugar adelante.
 
-## Mando y pantalla grande
+## Mando y modo sala
 
-- `public/gamepad.js` traduce el mando a las teclas de la aplicación: cruceta o palanca = flechas, A = elegir (sobre un juego abre su página), B = Escape, X = favorito, Y = paleta, LB/RB = sección, Menú = pantalla grande.
-- Donde las flechas no tienen uso, el foco se mueve al elemento más cercano en esa dirección (`pickNeighbor`, con pruebas).
-- Pantalla grande: `body.big-screen` agranda la interfaz un 30 % y pide pantalla completa. Con el mando activo, el foco se resalta con un borde blanco y un halo.
+- `public/gamepad.js` traduce el mando a teclas. En el escritorio: cruceta o palanca = flechas, A = elegir (sobre un juego abre su página), B = Escape, X = favorito, Y = paleta, LB/RB = sección, Menú = modo sala. Donde las flechas no tienen uso, el foco va al elemento más cercano en esa dirección (`pickNeighbor`, con pruebas).
+- **Modo sala** (`public/js/couch.js`, `public/couch.css`): una pantalla propia para la TV, no la interfaz agrandada. Se entra con F11, el botón Menú, la paleta o Configuración, y se recuerda entre sesiones.
+  - Fondo: el arte del juego enfocado, con sombra a la izquierda y abajo; datos arriba a la izquierda (motivo, logo o título, fabricante o tienda, última sesión, horas, crítica).
+  - Inicio: «Destacados» y las filas de Inicio sin repetir juegos. Biblioteca: todos los juegos en filas de siete por letra inicial (`libraryRows`, con pruebas).
+  - Navegación: la fila enfocada sube a un lugar fijo y su riel se corre para que el juego quede a la vista. Foco: escala 1,1, borde blanco y brillo con el color del juego.
+  - Botones: A abre la ficha (Jugar adelante, favorito, volver), B vuelve, X favorito, Y salta a la letra siguiente, LB/RB cambian de sección y Menú abre las opciones. En el modo sala cada botón es una tecla fija (`couchKeys`); el teclado y el mouse también funcionan, y el puntero se esconde a los 2,5 s sin moverse.
+  - Medidas relativas a la pantalla (`vw`, `vh`) para verse igual en un monitor y en una TV 4K. Respeta «reducir movimiento».
 
 ## Integraciones como fuentes de biblioteca
 

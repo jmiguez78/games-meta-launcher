@@ -77,9 +77,9 @@ export function paletteCommands() {
     },
     {
       group: 'Acciones',
-      label: 'Pantalla grande',
+      label: 'Modo sala',
       icon: 'monitor',
-      keywords: 'tv televisor sillón mando completa',
+      keywords: 'sala tv televisor sillón mando completa pantalla grande',
       hint: 'F11',
       run: () => GMLGamepad.toggleBigScreen()
     },

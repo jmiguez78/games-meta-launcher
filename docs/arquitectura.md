@@ -32,6 +32,7 @@ flowchart LR
 | `art.js`, `cards.js`                                  | Portadas, imagen principal, color ambiental; tarjetas y navegación por teclado |
 | `home.js`, `library.js`, `game-page.js`, `details.js` | Inicio, Biblioteca, página del juego y contenido de la ficha                   |
 | `launch.js`, `editor.js`, `palette.js`                | Jugar, editar un juego y paleta de comandos                                    |
+| `couch.js`                                            | Modo sala para TV y mando (con `couch.css`)                                    |
 | `settings.js`, `diagnostics.js`, `steam.js`           | Configuración, Para revisar y todo lo de Steam                                 |
 
 `npm run check` comprueba la sintaxis de cada módulo y que cada `import` exista en su módulo de origen (`tools/check-modules.mjs`). `window.GML` expone el estado y la navegación para depurar desde la consola.

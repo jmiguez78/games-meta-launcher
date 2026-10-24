@@ -7,6 +7,7 @@ import { setup as setupLaunch } from './launch.js';
 import { setup as setupSettings } from './settings.js';
 import { setup as setupPalette } from './palette.js';
 import { setup as setupEditor } from './editor.js';
+import { setup as setupCouch } from './couch.js';
 import { request } from './api.js';
 import { setAmbient } from './art.js';
 import { posterCache } from './cards.js';
@@ -48,7 +49,7 @@ export function showPage(page, { focus = true } = {}) {
   if (page === 'home') setAmbient(heroGame()?.game);
   if (page === 'diagnostics') loadHealth();
   if (page === 'settings') {
-    document.querySelector('#big-screen').checked = document.body.classList.contains('big-screen');
+    document.querySelector('#big-screen').checked = document.body.classList.contains('couch');
     loadSchedule();
     loadIgdb();
     loadMame();
@@ -74,6 +75,7 @@ export async function load() {
   renderHome();
   renderFilters();
   renderLibrary();
+  window.dispatchEvent(new Event('gml-library'));
 }
 
 // Estado de la última búsqueda de juegos, en palabras relativas y al pie de la barra lateral.
@@ -96,6 +98,7 @@ setupLaunch();
 setupSettings();
 setupPalette();
 setupEditor();
+setupCouch();
 document
   .querySelectorAll('.nav-item[data-page]')
   .forEach((button) => (button.onclick = () => showPage(button.dataset.page)));

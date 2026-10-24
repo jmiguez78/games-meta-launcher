@@ -1,6 +1,6 @@
 // Mando y pantalla grande. El mando se traduce a las mismas teclas que ya entiende la aplicación:
 // cruceta o palanca = flechas, A = elegir (sobre un juego abre su página), B = Escape, X = F (favorito),
-// Y = buscar (Control+K),
+// Y = buscar (Control+K). En el modo sala los botones pasan a ser teclas fijas (ver couchKeys).
 // LB / RB = sección anterior o siguiente, Menú = pantalla grande.
 // Donde ninguna pantalla usa las flechas, el foco se mueve al elemento más cercano en esa dirección.
 (function (root) {
@@ -84,7 +84,25 @@
     target.focus();
     target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
+  // En el modo sala cada botón es una tecla fija; el modo sala decide qué hace en cada momento.
+  const couchKeys = {
+    a: 'Enter',
+    b: 'Escape',
+    x: 'f',
+    y: 'y',
+    lb: 'PageUp',
+    rb: 'PageDown',
+    menu: 'ContextMenu',
+    up: 'ArrowUp',
+    down: 'ArrowDown',
+    left: 'ArrowLeft',
+    right: 'ArrowRight'
+  };
   function press(button) {
+    if (document.body.classList.contains('couch')) {
+      key(couchKeys[button]);
+      return;
+    }
     if (button === 'a') {
       if (!ensureFocus()) return;
       const active = document.activeElement;
@@ -153,15 +171,15 @@
     startPolling();
     if (!announced && typeof notify === 'function') {
       announced = true;
-      notify('Mando conectado. A elige, B vuelve, Y busca y Menú cambia a pantalla grande.', { type: 'info' });
+      notify('Mando conectado. Apretá Menú para pasar al modo sala.', { type: 'info' });
     }
   });
   // El puntero o el teclado vuelven a la presentación normal del foco.
   window.addEventListener('pointermove', () => document.body.classList.remove('gamepad-active'), { passive: true });
 
-  // Pantalla grande: todo más grande y la ventana a pantalla completa, para jugar desde el sillón.
+  // Modo sala: experiencia para la TV y el mando a pantalla completa (public/js/couch.js la dibuja).
   function setBigScreen(on) {
-    document.body.classList.toggle('big-screen', on);
+    document.body.classList.toggle('couch', on);
     try {
       localStorage.setItem('gml-big-screen', on ? 'yes' : 'no');
     } catch {
@@ -173,9 +191,10 @@
       control.setAttribute('aria-pressed', String(on));
       if (control.type === 'checkbox') control.checked = on;
     });
+    window.dispatchEvent(new CustomEvent('gml-couch', { detail: { on } }));
   }
   function toggleBigScreen() {
-    setBigScreen(!document.body.classList.contains('big-screen'));
+    setBigScreen(!document.body.classList.contains('couch'));
   }
   document.addEventListener('keydown', (event) => {
     if (event.key === 'F11') {
@@ -183,14 +202,11 @@
       toggleBigScreen();
     }
   });
-  document.addEventListener('fullscreenchange', () => {
-    // Si se sale de la pantalla completa con Escape o desde Windows, se vuelve al tamaño normal.
-    if (!document.fullscreenElement && document.body.classList.contains('big-screen')) setBigScreen(false);
-  });
+  // Salir de la pantalla completa (Escape del teclado, Windows) no cierra el modo sala: sigue en una ventana.
   root.GMLGamepad.setBigScreen = setBigScreen;
   root.GMLGamepad.toggleBigScreen = toggleBigScreen;
   try {
-    if (localStorage.getItem('gml-big-screen') === 'yes') document.body.classList.add('big-screen');
+    if (localStorage.getItem('gml-big-screen') === 'yes') document.body.classList.add('couch');
   } catch {
     /* sin almacenamiento local se empieza en tamaño normal */
   }

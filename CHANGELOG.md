@@ -1,5 +1,16 @@
 # Registro de cambios
 
+## 0.26.0 — 24 de octubre de 2026
+
+Modo sala (mejora F7 del plan): la pantalla grande pasa a ser una experiencia propia para la TV y el mando.
+
+- Pantalla completa con el arte del juego enfocado de fondo, sus datos arriba (motivo, logo, fabricante o tienda, última sesión, horas, crítica) y filas grandes abajo. La fila enfocada sube a un lugar fijo y el riel se corre solo, así el juego elegido siempre queda a la vista.
+- Inicio con «Destacados» y las filas de siempre, sin repetir juegos. Biblioteca con todos los juegos en filas por letra; Y salta a la letra siguiente.
+- A abre una ficha grande con Jugar adelante, favorito y volver; B vuelve; X marca favorito; LB/RB cambian entre Inicio y Biblioteca; Menú abre las opciones, incluida «Salir del modo sala». Ayuda de botones abajo, con los colores del mando.
+- También con teclado (flechas, Enter, Escape, F11) y mouse; el puntero se esconde si no se mueve. Medidas relativas a la pantalla para verse bien en una TV 4K. Hora en la esquina.
+- Se entra con F11, el botón Menú, la paleta o Configuración → «Modo sala», y se recuerda entre sesiones. Salir de la pantalla completa ya no cierra el modo sala.
+- Reemplaza al modo «Pantalla grande» anterior, que agrandaba la interfaz de escritorio un 30 %.
+
 ## 0.25.0 — 24 de octubre de 2026
 
 Interfaz en módulos (mejora F2 del plan). No cambia nada de lo que se ve.

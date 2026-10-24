@@ -1144,6 +1144,44 @@ body:is([data-page='home'], [data-page='game']) .palette-trigger {
 #game-page .gallery-thumbnail {
   scroll-snap-align: start;
 }
+#game-page .gallery-strip {
+  position: relative;
+}
+#game-page .gallery-arrow {
+  position: absolute;
+  top: calc(50% - 4px);
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, #fff 22%, transparent);
+  border-radius: 999px;
+  color: #fff;
+  background: color-mix(in srgb, #000 62%, transparent);
+  backdrop-filter: blur(8px);
+  transform: translateY(-50%);
+}
+#game-page .gallery-arrow:hover {
+  background: color-mix(in srgb, #000 80%, transparent);
+}
+#game-page .gallery-arrow.previous {
+  left: 10px;
+}
+#game-page .gallery-arrow.next {
+  right: 10px;
+}
+#game-page .gallery-arrow[hidden] {
+  display: none;
+}
+/* Las secciones son grillas: con una columna automática, la tira de capturas las ensancha más allá de la
+   columna principal. Una columna de 1fr con mínimo 0 la mantiene dentro y deja que se desplace. */
+#game-page .detail-section,
+#game-page .detail-tabpanel {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* La galería usa todo el ancho de la columna; el texto conserva su medida de lectura. */
+#game-page .detail-section:has(.metadata-gallery) {
+  max-width: none;
+}
 #game-page .detail-section,
 #game-page .game-meta {
   max-width: 76ch;

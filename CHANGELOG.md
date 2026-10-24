@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.22.2 — 24 de octubre de 2026
+
+- Página del juego → Multimedia: la tira de capturas ya no desborda la pantalla hacia la derecha. Queda dentro de la columna principal, se desplaza por dentro y tiene flechas (como las filas de Inicio) que aparecen sólo si hay más capturas de las que entran.
+
 ## 0.22.1 — 24 de octubre de 2026
 
 Correcciones.

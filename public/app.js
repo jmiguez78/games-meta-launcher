@@ -941,7 +941,32 @@ function appendExtendedMetadata(section, meta, mediaSection) {
         link.replaceChildren(img);
         gallery.append(link);
       });
-      if (gallery.childElementCount) body.append(gallery);
+      if (!gallery.childElementCount) return;
+      // Tira desplazable con flechas, como las filas de Inicio: se ven sólo si hay más capturas de las que entran.
+      const strip = document.createElement('div');
+      strip.className = 'gallery-strip';
+      const arrows = [-1, 1].map((direction) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'icon-btn gallery-arrow ' + (direction < 0 ? 'previous' : 'next');
+        button.innerHTML = icon(direction < 0 ? 'chevronLeft' : 'chevronRight');
+        button.setAttribute('aria-label', direction < 0 ? 'Capturas anteriores' : 'Más capturas');
+        button.onclick = () =>
+          gallery.scrollBy({
+            left: direction * gallery.clientWidth * 0.85,
+            behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+          });
+        return button;
+      });
+      const update = () => {
+        const overflow = gallery.scrollWidth > gallery.clientWidth + 4;
+        arrows[0].hidden = !overflow || gallery.scrollLeft <= 4;
+        arrows[1].hidden = !overflow || gallery.scrollLeft + gallery.clientWidth >= gallery.scrollWidth - 4;
+      };
+      gallery.addEventListener('scroll', update, { passive: true });
+      new ResizeObserver(update).observe(gallery);
+      strip.append(arrows[0], gallery, arrows[1]);
+      body.append(strip);
     },
     mediaSection
   );

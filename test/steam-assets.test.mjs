@@ -35,7 +35,11 @@ test('agrupa los pedidos simultáneos en una consulta y la recuerda en disco', a
   };
   const first = createSteamAssets(dir, { fetchImpl });
   const [found, missing] = await Promise.all([first.urls('678950'), first.urls('515220')]);
-  assert.deepEqual(calls, [[678950, 515220]]);
+  // Una sola consulta con los dos juegos (el orden no importa).
+  assert.deepEqual(
+    calls.map((ids) => [...ids].sort()),
+    [[515220, 678950]]
+  );
   assert.match(found.cover, /abc123\/library_600x900_2x\.jpg/);
   assert.equal(missing, null);
 

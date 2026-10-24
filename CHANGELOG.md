@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.29.2
+
+- El arte de Steam lee su caché una sola vez aunque lleguen muchos pedidos juntos. Antes cada pedido simultáneo leía el archivo por su cuenta, y en Windows el orden de las lecturas hacía fallar una prueba de vez en cuando.
+
 ## 0.29.1
 
 - Las direcciones con barras invertidas o «..» codificados se rechazan igual en Windows y en Linux (403). En Windows la prueba esperaba 404 y fallaba, aunque el archivo tampoco se servía.

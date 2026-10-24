@@ -40,15 +40,15 @@ export function createSteamAssets(dataDir, { fetchImpl = globalThis.fetch } = {}
   let queue = new Map();
   let timer = null;
 
-  async function load() {
-    if (!cache) {
-      try {
-        cache = JSON.parse(await fs.readFile(file, 'utf8'))?.apps ?? {};
-      } catch {
-        cache = {};
-      }
-    }
-    return cache;
+  // Una sola lectura del archivo aunque lleguen muchos pedidos juntos (y en el orden en que llegaron).
+  let loading = null;
+  function load() {
+    loading ??= fs
+      .readFile(file, 'utf8')
+      .then((text) => JSON.parse(text)?.apps ?? {})
+      .catch(() => ({}))
+      .then((apps) => (cache = apps));
+    return loading;
   }
   async function save() {
     await fs.mkdir(dataDir, { recursive: true });

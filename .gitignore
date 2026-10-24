@@ -12,3 +12,5 @@ data/metadata.json
 data/steam-credentials.json
 data/steam-account.json
 data/steam-cache/
+releases/
+_to_delete/

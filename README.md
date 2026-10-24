@@ -8,7 +8,7 @@ Versión `0.18.0`. Detecta instalaciones locales y las reúne con tu cuenta de S
 
 ## Uso rápido
 
-1. Generá el portable con `npm run package` y abrí `release-v0180/Games Meta Launcher 0.18.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
+1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.18.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
 2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en cualquier portada abre la página del juego; el botón Jugar lo inicia.
 3. En **Biblioteca**, buscá y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
 4. En **Configuración**, revisá el estado de la biblioteca, conectá Steam e IGDB, elegí el tema y la hora de la indexación nocturna, y respaldá tus preferencias. Si algún juego necesita revisión, la barra lateral lo indica.
@@ -25,7 +25,7 @@ La versión portable incluye su propio runtime. Para desarrollo se requiere `npm
 | `npm test` | Ejecuta las pruebas automáticas de la API y el indexador. |
 | `npm run format` | Formatea el código con Prettier. |
 | `npm run desktop` | Abre la aplicación en una ventana de escritorio. |
-| `npm run package` | Genera el ejecutable portable de Windows en `release-v0180/`. |
+| `npm run package` | Genera el portable de Windows y lo guarda en `releases/`. Conserva sólo la versión actual y la anterior. |
 
 El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC. Tus favoritos, etiquetas, progreso, notas, puntuaciones, portadas y fecha de última vez jugado se guardan localmente en `data/preferences.json` y `data/covers/`, también excluidos del repositorio. La fecha de juego se registra al iniciar un título desde Games Meta Launcher. La aplicación portable guarda esos datos en el perfil local de Windows.
 
@@ -55,5 +55,7 @@ La caché conserva los últimos datos válidos ante fallas de red, con fecha y a
 - [Registro de cambios](CHANGELOG.md)
 
 ## Versionado
+
+Cada versión se marca con una etiqueta de Git (`v0.18.0`). Los ejecutables no se archivan: una versión anterior se reconstruye con `git checkout v0.18.0` y `npm run package`.
 
 Se usa versionado semántico: `MAYOR.MENOR.PARCHE`. Los cambios incompatibles incrementan MAYOR; las funciones nuevas compatibles, MENOR; las correcciones, PARCHE.

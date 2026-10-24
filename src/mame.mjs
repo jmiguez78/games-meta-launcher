@@ -6,6 +6,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import zlib from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 import { readZipEntries } from './zip-index.mjs';
 
 const CACHE_SCHEMA = 1;
@@ -333,7 +335,10 @@ export function buildArcade({ machines, verified, catver = new Map(), bestgames 
         title,
         year: /^\d{4}$/.test(machine.year ?? '') ? Number(machine.year) : null,
         genres: arcadeGenres(category),
-        developers: machine.manufacturer ? [machine.manufacturer.replace(/\s*\(.*\)\s*$/, '')] : []
+        developers:
+          machine.manufacturer && !/^<?unknown>?$/i.test(machine.manufacturer)
+            ? [machine.manufacturer.replace(/\s*\(.*\)\s*$/, '')]
+            : []
       }
     });
   }
@@ -414,25 +419,38 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     for await (const chunk of child.stdout) output += chunk;
     return output.trim().split(/\s/)[0] || null;
   }
+  // Archivos de apoyo: la copia descargada (se renueva cada 30 días); si la descarga falla, la anterior;
+  // si no hay ninguna, la que viene con la aplicación. Se informa de dónde salió cada uno.
+  const looksValid = { catver: /^\[Category\]/m, bestgames: /^\[\d+ to \d+/m, series: /^\[[^\]]+\]/m };
+  async function bundled(name) {
+    const file = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mame-support', `${name}.ini.gz`);
+    return zlib.gunzipSync(await fs.readFile(file)).toString('utf8');
+  }
   async function support(name) {
     const file = path.join(supportDir, `${name}.ini`);
     try {
       const stat = await fs.stat(file);
-      if (Date.now() - stat.mtimeMs < SUPPORT_MAX_AGE) return await fs.readFile(file, 'utf8');
+      if (Date.now() - stat.mtimeMs < SUPPORT_MAX_AGE)
+        return { text: await fs.readFile(file, 'utf8'), source: 'cache' };
     } catch {
       /* todavía no se descargó */
     }
+    let error;
     try {
-      const response = await fetchImpl(SUPPORT_BASE + SUPPORT_FILES[name], { signal: AbortSignal.timeout(30000) });
-      if (!response.ok) throw new Error(String(response.status));
+      const response = await fetchImpl(SUPPORT_BASE + SUPPORT_FILES[name], { signal: AbortSignal.timeout(60000) });
+      if (!response.ok) throw new Error(`GitHub respondió ${response.status}`);
       const text = await response.text();
+      if (!looksValid[name].test(text)) throw new Error('la respuesta no es el archivo esperado');
       await fs.mkdir(supportDir, { recursive: true });
       await fs.writeFile(file, text);
-      return text;
-    } catch {
-      // Sin conexión se usa la copia anterior, aunque sea vieja; sin copia, el juego queda sin género ni ranking.
-      return fs.readFile(file, 'utf8').catch(() => '');
+      return { text, source: 'download' };
+    } catch (failure) {
+      error = failure?.cause?.code || failure?.message || String(failure);
     }
+    const previous = await fs.readFile(file, 'utf8').catch(() => '');
+    if (previous) return { text: previous, source: 'cache', error };
+    const text = await bundled(name).catch(() => '');
+    return { text, source: text ? 'bundled' : 'missing', error };
   }
 
   async function index() {
@@ -498,11 +516,24 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     const built = buildArcade({
       machines,
       verified,
-      catver: parseCatver(catver),
-      bestgames: parseBestGames(bestgames),
-      series: parseSeries(series)
+      catver: parseCatver(catver.text),
+      bestgames: parseBestGames(bestgames.text),
+      series: parseSeries(series.text)
     });
-    catalog = { schema: CACHE_SCHEMA, version, mameDir, indexedAt: new Date().toISOString(), ...built };
+    const supportStatus = Object.fromEntries(
+      Object.entries({ catver, bestgames, series }).map(([name, item]) => [
+        name,
+        { source: item.source, ...(item.error ? { error: item.error } : {}) }
+      ])
+    );
+    catalog = {
+      schema: CACHE_SCHEMA,
+      version,
+      mameDir,
+      indexedAt: new Date().toISOString(),
+      support: supportStatus,
+      ...built
+    };
     await writeJson(catalogPath, catalog);
     return catalog;
   }
@@ -522,6 +553,7 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
         adult: current ? current.games.filter((game) => game.adult).length : 0,
         version: current?.version ?? null,
         indexedAt: current?.indexedAt ?? null,
+        support: current?.support ?? null,
         stats: current?.stats ?? null,
         status: { ...status }
       };

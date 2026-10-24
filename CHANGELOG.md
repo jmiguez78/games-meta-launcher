@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.23.1 — 24 de octubre de 2026
+
+- Biblioteca: la barra de búsqueda, colección, orden, filtros y vista queda fija arriba al bajar, con fondo translúcido. El panel de filtros y el foco de teclado o mando se ubican debajo de ella.
+- Arcade: si no se pueden descargar las categorías, el ranking o las sagas, se usa la copia anterior o una incluida en la aplicación, y Configuración dice cuál falló y por qué. Sin categorías no se podían ocultar los juegos de casino y mahjong ni las utilidades.
+- Arcade: los fabricantes desconocidos ya no se muestran como «<unknown>».
+
 ## 0.23.0 — 24 de octubre de 2026
 
 Arcade: los juegos de MAME como una tienda más.

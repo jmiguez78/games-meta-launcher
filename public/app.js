@@ -2467,9 +2467,28 @@ function describeMame(info) {
           .join(', ') +
         '.'
       : '',
-    stats.unknown ? plural(stats.unknown, 'archivo no es', 'archivos no son') + ' de esta versión de MAME.' : ''
+    stats.unknown ? plural(stats.unknown, 'archivo no es', 'archivos no son') + ' de esta versión de MAME.' : '',
+    supportNote(info.support)
   ];
   return parts.filter(Boolean).join(' ');
+}
+// Categorías, ranking y sagas: si no se pudieron descargar, se dice por qué y qué se usó en su lugar.
+function supportNote(support) {
+  if (!support) return '';
+  const names = { catver: 'categorías', bestgames: 'ranking', series: 'sagas' };
+  const failed = Object.entries(support).filter(([, item]) => item.error);
+  if (!failed.length) return '';
+  const missing = failed.filter(([, item]) => item.source === 'missing');
+  return (
+    'No se pudo descargar ' +
+    failed.map(([name]) => 'la lista de ' + names[name]).join(', ') +
+    ' (' +
+    failed[0][1].error +
+    '). ' +
+    (missing.length
+      ? 'Sin categorías, los juegos de casino y mahjong no se pueden ocultar.'
+      : 'Se usó la copia guardada o la incluida en la aplicación.')
+  );
 }
 async function loadMame() {
   try {
@@ -2584,6 +2603,19 @@ async function load() {
   renderFilters();
   renderLibrary();
 }
+// Barra fija de la Biblioteca: su alto ubica el panel de filtros y el foco; al despegarse toma fondo y borde.
+(() => {
+  const toolbar = document.querySelector('#library-page .library-toolbar');
+  if (!toolbar) return;
+  const measure = () => document.documentElement.style.setProperty('--library-toolbar-h', toolbar.offsetHeight + 'px');
+  new ResizeObserver(measure).observe(toolbar);
+  const update = () =>
+    toolbar.classList.toggle(
+      'stuck',
+      state.page === 'library' && toolbar.getBoundingClientRect().top <= 0.5 && scrollY > 0
+    );
+  addEventListener('scroll', update, { passive: true });
+})();
 function setFiltersOpen(open) {
   document.querySelector('#filter-panel').classList.toggle('hidden', !open);
   document.querySelector('#library-page').classList.toggle('filters-open', open);

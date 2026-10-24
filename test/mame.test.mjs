@@ -274,6 +274,10 @@ test('indexa la carpeta de MAME de punta a punta, recuerda los zips y lanza el s
   assert.equal(calls.filter((args) => args[0] === '-listxml').length, 1);
   const info = await arcade.info();
   assert.equal(info.stats.games, 1);
+  // catver se descargó y la segunda vez sale de la copia guardada; bestgames vino vacío (no válido) y se usó la copia incluida en la aplicación.
+  assert.equal(info.support.catver.source, 'cache');
+  assert.equal(info.support.bestgames.source, 'bundled');
+  assert.match(info.support.bestgames.error, /no es el archivo esperado/);
   // Lanzar: sólo sets conocidos; el tiempo llega al cerrarse MAME.
   await assert.rejects(arcade.launch('mslug'), /no está en tu biblioteca/);
   await assert.rejects(arcade.launch('pac;rm'), /no válido/);

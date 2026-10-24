@@ -1804,3 +1804,30 @@ body.gamepad-active .poster:focus .poster-art {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* La barra de la Biblioteca queda fija al bajar: buscar, cambiar de colección, ordenar y filtrar sin volver arriba. */
+#library-page .library-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin-inline: calc(-1 * clamp(24px, 3.6vw, 56px));
+  padding: 12px clamp(24px, 3.6vw, 56px);
+  margin-top: -12px;
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+#library-page .library-toolbar.stuck {
+  border-bottom-color: var(--line);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(16px);
+}
+/* El panel de filtros y el foco de teclado o mando se ubican por debajo de la barra fija. */
+#library-page .facet-panel {
+  top: calc(var(--library-toolbar-h, 64px) + 12px);
+  max-height: calc(100dvh - var(--library-toolbar-h, 64px) - 24px);
+}
+html:has(body[data-page='library']) {
+  scroll-padding-top: calc(var(--library-toolbar-h, 64px) + 12px);
+}

@@ -21,7 +21,21 @@ flowchart LR
 - `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla.
 - `src/igdb.mjs`: integración opcional con Twitch/IGDB. Descarga fichas ampliadas y tiempos estimados, conserva las coincidencias conocidas y guarda una caché local en `metadata.json` (esquema 2). Cada ficha incluye la respuesta original en `source`; la API local omite ese campo para evitar duplicar el contenido enviado a la interfaz.
 - `src/secrets.mjs`: cifra el secreto de Twitch con DPAPI de Windows para el usuario actual. `integrations.json` no se versiona.
-- `public/`: interfaz HTML, CSS y JavaScript sin dependencias externas de aplicación. `style.css` define tokens y temas; `ui.css`, los componentes; `experience.css`, la identidad 3.0 (barra lateral, color ambiental, Inicio y página de juego); `shelves.js`, las reglas que eligen los juegos de Inicio; `catalog.js`, la búsqueda, los filtros, el orden y la agrupación de duplicados de la Biblioteca; `gamepad.js`, el mando y la pantalla grande. Las tipografías y la marca están en `fonts/` y `brand/` (ver [Sistema de diseño](sistema-de-diseno.md)).
+- `public/`: interfaz HTML, CSS y JavaScript sin dependencias ni compilación. `index.html` carga tres scripts clásicos con lógica pura y pruebas (`catalog.js`: búsqueda, filtros, orden y duplicados; `shelves.js`: filas de Inicio; `gamepad.js`: mando y pantalla grande) y el punto de entrada `js/main.js` como módulo ES. `style.css` define tokens y temas; `ui.css`, los componentes; `experience.css`, la identidad 3.0. Tipografías y marca en `fonts/` y `brand/` (ver [Sistema de diseño](sistema-de-diseno.md)).
+- `public/js/`: la interfaz en módulos ES, uno por responsabilidad. Cada módulo exporta sus funciones y, si tiene enlaces de eventos, una función `setup()` que `main.js` llama una sola vez, después de que todos los módulos se cargaron (así ningún módulo usa a otro antes de tiempo).
+
+| Módulo                                                | Responsabilidad                                                                |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `main.js`                                             | Navegación entre páginas, carga de la biblioteca, atajos globales y arranque   |
+| `state.js`                                            | Estado de la interfaz y preferencias de este equipo                            |
+| `api.js`, `icons.js`, `feedback.js`                   | Pedidos a la API, íconos, avisos y errores de formulario                       |
+| `art.js`, `cards.js`                                  | Portadas, imagen principal, color ambiental; tarjetas y navegación por teclado |
+| `home.js`, `library.js`, `game-page.js`, `details.js` | Inicio, Biblioteca, página del juego y contenido de la ficha                   |
+| `launch.js`, `editor.js`, `palette.js`                | Jugar, editar un juego y paleta de comandos                                    |
+| `settings.js`, `diagnostics.js`, `steam.js`           | Configuración, Para revisar y todo lo de Steam                                 |
+
+`npm run check` comprueba la sintaxis de cada módulo y que cada `import` exista en su módulo de origen (`tools/check-modules.mjs`). `window.GML` expone el estado y la navegación para depurar desde la consola.
+
 - `src/mame.mjs`: Arcade. Lee `-listxml` en flujo, verifica sets por CRC, aplica filtros y agrupa versiones (funciones puras con pruebas en `test/mame.test.mjs`); `createArcade` orquesta la indexación en segundo plano, el arte y el lanzamiento con medición de la sesión. Rutas: `GET/PUT /api/integrations/mame`, `POST /api/mame/scan`. Los juegos llegan a `/api/library` con `platform: 'Arcade'`, `key: 'arcade:<set>'`, `launch.type: 'mame'` y un objeto `arcade` (fabricante, jugadores, controles, orientación, saga, ranking, versiones).
 - `src/wiki.mjs`: Wikipedia en inglés → Wikidata (videojuego, año, IGDB P5794, artículo en español) → introducción en español. Rutas de datos: `arcade-info.json`.
 - `src/mame-commands.mjs`: lee `command.dat` y convierte sus códigos en flechas y botones legibles. `GET /api/arcade/:set/commands`.

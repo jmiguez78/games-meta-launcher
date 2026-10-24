@@ -19,44 +19,44 @@ Identidad 3.0, «sala de proyección» (desde 0.16.0). La interfaz es tinta oscu
 - `public/shelves.js`: reglas que eligen los juegos de Inicio. Son funciones puras y tienen pruebas (`test/shelves.test.mjs`).
 - `public/fonts/`: Bricolage Grotesque e Inter, con sus licencias OFL.
 - `public/brand/`: marca en SVG y PNG. `build/icon.ico` es el ícono del ejecutable.
-- Los íconos son SVG de trazo (estilo Lucide, licencia ISC) definidos en `public/app.js` (`iconPaths`). En el HTML se insertan con `data-icon="nombre"`.
+- Los íconos son SVG de trazo (estilo Lucide, licencia ISC) definidos en `public/js/icons.js` (`iconPaths`). En el HTML se insertan con `data-icon="nombre"`.
 
 ## Color
 
 El tema oscuro es la base. El tema claro redefine los mismos tokens, y «Sistema» sigue a Windows.
 
-| Token | Oscuro | Claro | Uso |
-| --- | --- | --- | --- |
-| `--bg` | `#0e0d15` | `#f4f2f8` | Fondo de la aplicación. |
-| `--surface` / `--surface-soft` / `--surface-raised` | `#17151f` / `#1e1b29` / `#24212f` | `#fff` / `#f7f5fb` / `#fff` | Superficies por elevación. |
-| `--ink` / `--ink-soft` / `--muted` | `#f2eff8` / `#cbc5d8` / `#9890ab` | `#18151f` / `#4a4558` / `#6a6479` | Texto principal, secundario y de apoyo (≥ 4,5:1). |
-| `--accent` / `--accent-text` | `#8e7dff` / `#b9aeff` | `#5b47e0` / `#4b38c9` | Violeta de marca: selección y enlaces. |
-| `--play` / `--play-ink` | `#ff6b7e` / `#26070d` | igual | Exclusivo de Jugar. Siempre con texto oscuro (7:1). |
-| `--favorite` | `#ffe27a` | `#a86f00` | Estrella de favoritos. |
-| `--success` / `--warning` / `--danger` | verde / ámbar / rojo | versiones oscuras | Listo, requiere revisión, error. |
-| `--ambient` | calculado | calculado | Color del juego en foco; tiñe el fondo y el brillo de las portadas. |
+| Token                                               | Oscuro                            | Claro                             | Uso                                                                 |
+| --------------------------------------------------- | --------------------------------- | --------------------------------- | ------------------------------------------------------------------- |
+| `--bg`                                              | `#0e0d15`                         | `#f4f2f8`                         | Fondo de la aplicación.                                             |
+| `--surface` / `--surface-soft` / `--surface-raised` | `#17151f` / `#1e1b29` / `#24212f` | `#fff` / `#f7f5fb` / `#fff`       | Superficies por elevación.                                          |
+| `--ink` / `--ink-soft` / `--muted`                  | `#f2eff8` / `#cbc5d8` / `#9890ab` | `#18151f` / `#4a4558` / `#6a6479` | Texto principal, secundario y de apoyo (≥ 4,5:1).                   |
+| `--accent` / `--accent-text`                        | `#8e7dff` / `#b9aeff`             | `#5b47e0` / `#4b38c9`             | Violeta de marca: selección y enlaces.                              |
+| `--play` / `--play-ink`                             | `#ff6b7e` / `#26070d`             | igual                             | Exclusivo de Jugar. Siempre con texto oscuro (7:1).                 |
+| `--favorite`                                        | `#ffe27a`                         | `#a86f00`                         | Estrella de favoritos.                                              |
+| `--success` / `--warning` / `--danger`              | verde / ámbar / rojo              | versiones oscuras                 | Listo, requiere revisión, error.                                    |
+| `--ambient`                                         | calculado                         | calculado                         | Color del juego en foco; tiñe el fondo y el brillo de las portadas. |
 
 - Los botones primarios que no son Jugar usan tinta invertida (`--ink` de fondo).
-- **Color ambiental.** `app.js` extrae el color dominante de cada portada sobre una miniatura de 24×36 px y lo guarda en el almacenamiento local. Lo aplica como `--art` en la portada y como `--ambient` en el fondo, con una transición de 420 ms.
+- **Color ambiental.** `public/js/art.js` extrae el color dominante de cada portada sobre una miniatura de 24×36 px y lo guarda en el almacenamiento local. Lo aplica como `--art` en la portada y como `--ambient` en el fondo, con una transición de 420 ms.
 - Las cabeceras de Inicio y de la página de juego son oscuras por diseño en ambos temas, porque los logos de los juegos suelen ser claros.
 
 ## Tipografía
 
-| Familia | Uso | Detalles |
-| --- | --- | --- |
+| Familia                      | Uso                                      | Detalles                                                                   |
+| ---------------------------- | ---------------------------------------- | -------------------------------------------------------------------------- |
 | Bricolage Grotesque Variable | Títulos de página, de sección y de juego | Ancho 78–84 %, peso 650–800. Los títulos de juego grandes usan 78 % y 800. |
-| Inter Variable | Interfaz y texto | 14 px de base, cifras tabulares en contadores, horas y valoraciones. |
+| Inter Variable               | Interfaz y texto                         | 14 px de base, cifras tabulares en contadores, horas y valoraciones.       |
 
 Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los títulos van en oración; no se usan rótulos en mayúsculas.
 
 ## Movimiento
 
-| Token | Valor | Uso |
-| --- | --- | --- |
-| `--dur-fast` | 120 ms | Botones, colores. |
-| `--dur` | 200 ms | Portadas, barra lateral. |
-| `--dur-slow` | 420 ms | Color ambiental, entrada de página, transición a la página del juego. |
-| `--ease-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | Curva general. |
+| Token        | Valor                            | Uso                                                                   |
+| ------------ | -------------------------------- | --------------------------------------------------------------------- |
+| `--dur-fast` | 120 ms                           | Botones, colores.                                                     |
+| `--dur`      | 200 ms                           | Portadas, barra lateral.                                              |
+| `--dur-slow` | 420 ms                           | Color ambiental, entrada de página, transición a la página del juego. |
+| `--ease-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | Curva general.                                                        |
 
 - Al abrir un juego desde una portada, la portada se expande hasta la cabecera (API de transiciones entre vistas).
 - La imagen principal cambia con un fundido entre juegos.
@@ -64,24 +64,24 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 
 ## Componentes
 
-| Componente | Uso |
-| --- | --- |
-| Barra lateral | 76 px con íconos; se expande a 256 px con el puntero o con foco de teclado. Al pie: «Buscar juegos nuevos» y antigüedad del inventario. «Para revisar» aparece sólo con juegos que necesitan atención, con su cantidad. |
-| Portada | Imagen 2:3 sin marco, título en una línea y plataforma o un dato de contexto. Al pasar el mouse se eleva, toma el brillo del juego y muestra Jugar. «Listo» no se muestra; «No instalado» va en gris con un aro y «Requiere revisión» en ámbar. |
-| Imagen principal (Inicio) | Arte panorámico a todo el ancho, logo del juego o título, motivo («Seguí donde lo dejaste»), datos, Jugar, Ver ficha y Favorito. Las miniaturas eligen entre cinco destacados. |
-| Fila de Inicio | Título, explicación breve y desplazamiento horizontal con botones. Flechas izquierda y derecha dentro de la fila; arriba y abajo entre filas. |
-| Página del juego | Cabecera con arte y logo, pestañas subrayadas y una columna fija con Jugar o Instalar, Favorito, Editar, tiempo jugado, última sesión, duración, valoración, progreso y anillo de logros. Volver o Escape regresan al punto de partida. |
-| Barra de Biblioteca | Búsqueda, alcance (Instalados / Toda la cuenta), orden, Filtros y vista (Portadas / Tabla). |
-| Panel de filtros | Columna lateral plegable: «Sólo favoritos» y facetas (tienda, género, duración, tiempo jugado, valoración, etiquetas) con conteos. Las opciones de un grupo se suman; los grupos se combinan. Lógica en `public/catalog.js`. |
-| Tabla | Portada, nombre (con «También en» si está en otra tienda), tienda, estado, horas, última sesión, valoración y duración. Columnas ordenables; Jugar e Instalar como botones de ícono. |
-| Pantalla «Iniciando…» | Arte y logo del juego a pantalla completa con el estado del lanzamiento. Se cierra sola, con un clic o con Escape. |
-| Interruptor | `input[type=checkbox][role=switch]` dentro de `.switch`. Minimizar al jugar y pantalla grande. |
-| Pestañas | Resumen, Información, Multimedia y, en Steam, Steam y Logros. Roles tablist/tab/tabpanel, flechas, Inicio y Fin. |
-| Descripción | En español desde la tienda de Steam cuando existe; si no, la de IGDB con una nota de que está en inglés. Mientras carga se muestra un esqueleto. |
-| Arcade | Portada = flyer de la máquina; imagen principal = captura en pixel art (`.hero-layer.pixel-art`, `image-rendering: pixelated`); bajo la portada, fabricante y año. En la página del juego, «Acerca de la máquina», «Versiones» (cada una con Jugar) e imágenes de título y juego. |
-| Paleta de comandos | Control+K. Los juegos muestran su portada. Enter juega; Mayús+Enter abre la página del juego. |
-| Aviso | `notify(mensaje, { type, action })`, apilados abajo a la derecha, con Deshacer o Reintentar. |
-| Campo con error | `showFormErrors(form, [[campo, mensaje]])`, el error junto al campo. |
+| Componente                | Uso                                                                                                                                                                                                                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Barra lateral             | 76 px con íconos; se expande a 256 px con el puntero o con foco de teclado. Al pie: «Buscar juegos nuevos» y antigüedad del inventario. «Para revisar» aparece sólo con juegos que necesitan atención, con su cantidad.                                                           |
+| Portada                   | Imagen 2:3 sin marco, título en una línea y plataforma o un dato de contexto. Al pasar el mouse se eleva, toma el brillo del juego y muestra Jugar. «Listo» no se muestra; «No instalado» va en gris con un aro y «Requiere revisión» en ámbar.                                   |
+| Imagen principal (Inicio) | Arte panorámico a todo el ancho, logo del juego o título, motivo («Seguí donde lo dejaste»), datos, Jugar, Ver ficha y Favorito. Las miniaturas eligen entre cinco destacados.                                                                                                    |
+| Fila de Inicio            | Título, explicación breve y desplazamiento horizontal con botones. Flechas izquierda y derecha dentro de la fila; arriba y abajo entre filas.                                                                                                                                     |
+| Página del juego          | Cabecera con arte y logo, pestañas subrayadas y una columna fija con Jugar o Instalar, Favorito, Editar, tiempo jugado, última sesión, duración, valoración, progreso y anillo de logros. Volver o Escape regresan al punto de partida.                                           |
+| Barra de Biblioteca       | Búsqueda, alcance (Instalados / Toda la cuenta), orden, Filtros y vista (Portadas / Tabla).                                                                                                                                                                                       |
+| Panel de filtros          | Columna lateral plegable: «Sólo favoritos» y facetas (tienda, género, duración, tiempo jugado, valoración, etiquetas) con conteos. Las opciones de un grupo se suman; los grupos se combinan. Lógica en `public/catalog.js`.                                                      |
+| Tabla                     | Portada, nombre (con «También en» si está en otra tienda), tienda, estado, horas, última sesión, valoración y duración. Columnas ordenables; Jugar e Instalar como botones de ícono.                                                                                              |
+| Pantalla «Iniciando…»     | Arte y logo del juego a pantalla completa con el estado del lanzamiento. Se cierra sola, con un clic o con Escape.                                                                                                                                                                |
+| Interruptor               | `input[type=checkbox][role=switch]` dentro de `.switch`. Minimizar al jugar y pantalla grande.                                                                                                                                                                                    |
+| Pestañas                  | Resumen, Información, Multimedia y, en Steam, Steam y Logros. Roles tablist/tab/tabpanel, flechas, Inicio y Fin.                                                                                                                                                                  |
+| Descripción               | En español desde la tienda de Steam cuando existe; si no, la de IGDB con una nota de que está en inglés. Mientras carga se muestra un esqueleto.                                                                                                                                  |
+| Arcade                    | Portada = flyer de la máquina; imagen principal = captura en pixel art (`.hero-layer.pixel-art`, `image-rendering: pixelated`); bajo la portada, fabricante y año. En la página del juego, «Acerca de la máquina», «Versiones» (cada una con Jugar) e imágenes de título y juego. |
+| Paleta de comandos        | Control+K. Los juegos muestran su portada. Enter juega; Mayús+Enter abre la página del juego.                                                                                                                                                                                     |
+| Aviso                     | `notify(mensaje, { type, action })`, apilados abajo a la derecha, con Deshacer o Reintentar.                                                                                                                                                                                      |
+| Campo con error           | `showFormErrors(form, [[campo, mensaje]])`, el error junto al campo.                                                                                                                                                                                                              |
 
 ## Accesibilidad e interacción (WCAG 2.2 AA)
 

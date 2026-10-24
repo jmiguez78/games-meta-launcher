@@ -1,18 +1,29 @@
+// Steam: ficha de Steam, logros, colecciones y conexión de la cuenta.
+import { request } from './api.js';
+import { metadataLink } from './details.js';
+import { editing } from './editor.js';
+import { notify, notifyError, showFormErrors } from './feedback.js';
+import { openGamePage } from './game-page.js';
+import { load } from './main.js';
+import { state } from './state.js';
+
 // Interfaz de Steam: las respuestas se presentan como texto; nunca se inserta HTML de la tienda.
-const steamHours = (value) =>
+export const steamHours = (value) =>
   value == null
     ? 'Sin información'
     : value > 0 && value < 0.05
       ? 'Menos de 0,1 h'
       : new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 }).format(value) + ' h';
-function steamText(parent, tag, value, className = '') {
+
+export function steamText(parent, tag, value, className = '') {
   const element = document.createElement(tag);
   element.className = className;
   element.textContent = String(value ?? '');
   parent.append(element);
   return element;
 }
-function steamPlain(value) {
+
+export function steamPlain(value) {
   return String(value ?? '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/\[\/?[^\]]+\]/g, ' ')
@@ -22,7 +33,8 @@ function steamPlain(value) {
     .replace(/&#39;/g, "'")
     .trim();
 }
-function steamFacts(parent, rows) {
+
+export function steamFacts(parent, rows) {
   const list = document.createElement('dl');
   list.className = 'detail-tech';
   for (const [label, value] of rows) {
@@ -32,7 +44,8 @@ function steamFacts(parent, rows) {
   }
   parent.append(list);
 }
-function steamActivityFacts(game) {
+
+export function steamActivityFacts(game) {
   const section = document.createElement('section');
   section.className = 'detail-section';
   steamText(section, 'h3', 'Tu actividad en Steam');
@@ -48,13 +61,15 @@ function steamActivityFacts(game) {
   ]);
   return section;
 }
-function steamAction(parent, label, action) {
+
+export function steamAction(parent, label, action) {
   const button = steamText(parent, 'button', label, 'button');
   button.type = 'button';
   button.onclick = action;
   return button;
 }
-function steamEnvelopeNote(parent, envelope) {
+
+export function steamEnvelopeNote(parent, envelope) {
   if (envelope?.error) steamText(parent, 'p', envelope.error, 'helper-text');
   if (envelope?.updatedAt)
     steamText(
@@ -64,7 +79,8 @@ function steamEnvelopeNote(parent, envelope) {
       'helper-text'
     );
 }
-async function installSteamGame(game) {
+
+export async function installSteamGame(game) {
   try {
     await request('/api/install/' + encodeURIComponent(game.key), { method: 'POST' });
     notify('Steam recibió la solicitud de instalación de ' + game.name + '. Actualizá el inventario cuando termine.', {
@@ -74,11 +90,13 @@ async function installSteamGame(game) {
     notifyError(error, () => installSteamGame(game));
   }
 }
-function steamShowGame(appid) {
+
+export function steamShowGame(appid) {
   const game = state.games.find((row) => row.platform === 'Steam' && String(row.id) === String(appid));
   if (game) openGamePage(game);
 }
-function steamGameCard(parent, item) {
+
+export function steamGameCard(parent, item) {
   if (typeof item === 'number' || typeof item === 'string') item = { appid: item };
   const appid = item.appid ?? item.app_id;
   const local = state.games.find((row) => row.platform === 'Steam' && String(row.id) === String(appid));
@@ -143,7 +161,8 @@ function steamGameCard(parent, item) {
   }
   parent.append(card);
 }
-function renderSteamCollection(parent, envelope) {
+
+export function renderSteamCollection(parent, envelope) {
   parent.replaceChildren();
   steamEnvelopeNote(parent, envelope);
   const data = envelope?.data;
@@ -192,7 +211,8 @@ function renderSteamCollection(parent, envelope) {
   rows.forEach((row) => steamGameCard(grid, row));
   parent.append(grid);
 }
-async function syncSteamAccount() {
+
+export async function syncSteamAccount() {
   const notice = notify('Sincronizando tu biblioteca de Steam…', { type: 'loading' });
   const button = document.querySelector('#steam-sync');
   button.disabled = true;
@@ -213,15 +233,17 @@ async function syncSteamAccount() {
     button.disabled = false;
   }
 }
+
 // Con una cuenta conectada, los campos de credenciales quedan ocultos hasta pedir «Cambiar de cuenta».
-function showCredentialFields(prefix, configured) {
+export function showCredentialFields(prefix, configured) {
   const form = document.querySelector('#' + prefix + '-form');
   const editing = !configured || form.dataset.editing === 'true';
   document.querySelector('#' + prefix + '-fields').hidden = !editing;
   document.querySelector('#' + prefix + '-connect').hidden = !editing;
   document.querySelector('#' + prefix + '-change').hidden = editing;
 }
-async function loadSteamSettings() {
+
+export async function loadSteamSettings() {
   try {
     const settings = await request('/api/integrations/steam');
     document.querySelector('#steam-account-id').value = settings.steamId;
@@ -245,7 +267,8 @@ async function loadSteamSettings() {
     document.querySelector('#steam-settings-status').textContent = error.message;
   }
 }
-async function loadSteamGameTab(root, game, kind, force = false) {
+
+export async function loadSteamGameTab(root, game, kind, force = false) {
   if (root.dataset.loaded && !force) return;
   root.dataset.loaded = 'true';
   root.replaceChildren();
@@ -443,7 +466,8 @@ async function loadSteamGameTab(root, game, kind, force = false) {
     root.setAttribute('aria-busy', 'false');
   }
 }
-function steamCompatibility(value) {
+
+export function steamCompatibility(value) {
   if (value == null) return null;
   if (typeof value === 'object') return value.label || value.description || value.status || value.category || null;
   return (
@@ -459,7 +483,8 @@ function steamCompatibility(value) {
     }[value] || String(value)
   );
 }
-function initializeSteamUI() {
+
+export function initializeSteamUI() {
   document.querySelector('#steam-sync').onclick = syncSteamAccount;
   document.querySelector('#steam-change').onclick = () => {
     document.querySelector('#steam-form').dataset.editing = 'true';

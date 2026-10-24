@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.25.0 — 24 de octubre de 2026
+
+Interfaz en módulos (mejora F2 del plan). No cambia nada de lo que se ve.
+
+- `public/app.js` (3.197 líneas) y `public/steam-ui.js` se dividen en 17 módulos ES en `public/js/`, uno por responsabilidad: Inicio, Biblioteca, página del juego, ficha, Configuración, paleta, Steam, portadas, avisos y otros. Sin herramientas de compilación.
+- Cada módulo declara lo que usa de los demás (`import`) y lo que ofrece (`export`). Los enlaces de eventos de cada pantalla viven en su módulo, dentro de `setup()`, y `main.js` los activa en orden al arrancar.
+- `npm run check` verifica la sintaxis de cada módulo y que cada `import` exista en su origen.
+- Verificado con los recorridos de interfaz de las versiones anteriores (Inicio, Biblioteca, página del juego, mando, paleta, edición, Arcade y movimientos) y con la auditoría de accesibilidad: sin errores ni cambios visuales.
+
 ## 0.24.0 — 24 de octubre de 2026
 
 Arcade con información como la de los juegos de PC.

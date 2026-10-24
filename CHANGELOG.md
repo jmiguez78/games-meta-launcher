@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.22.0 — 24 de octubre de 2026
+
+Segunda ronda, etapa D: mando y pantalla grande.
+
+- Navegación con mando: cruceta o palanca para moverse, A para elegir (sobre un juego abre su página), B para volver, X para marcar favorito, Y para buscar, LB y RB para cambiar de sección y Menú para la pantalla grande. Mantener una dirección repite el movimiento.
+- Donde ninguna pantalla usa las flechas, el foco salta al elemento más cercano en esa dirección. Con el mando, el foco se resalta para verse desde lejos.
+- Pantalla grande: todo un 30 % más grande y la ventana a pantalla completa. Se activa con F11, con Menú, desde la paleta o en Configuración → General.
+- Al abrir la página de un juego, el foco queda en Jugar.
+
 ## 0.21.0 — 24 de octubre de 2026
 
 Segunda ronda, etapa C: el momento de jugar.

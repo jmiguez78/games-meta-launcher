@@ -1771,7 +1771,8 @@ async function openGamePage(game, origin) {
     renderGamePage(game);
     showPage('game');
     window.scrollTo(0, 0);
-    document.querySelector('#game-back').focus({ preventScroll: true });
+    // El foco queda en la acción principal (Jugar o Instalar); Volver está a un Escape.
+    document.querySelector('#game-aside [data-action=play]').focus({ preventScroll: true });
   };
   const art = origin?.querySelector('.poster-art, .row-thumb');
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2207,6 +2208,7 @@ async function loadSettings() {
     applyTheme('dark');
   }
 }
+document.querySelector('#big-screen').onchange = (event) => GMLGamepad.setBigScreen(event.currentTarget.checked);
 document.querySelector('#minimize-on-launch').onchange = async (event) => {
   const input = event.currentTarget;
   try {
@@ -2276,6 +2278,7 @@ function showPage(page, { focus = true } = {}) {
   if (page === 'home') setAmbient(heroGame()?.game);
   if (page === 'diagnostics') loadHealth();
   if (page === 'settings') {
+    document.querySelector('#big-screen').checked = document.body.classList.contains('big-screen');
     loadSchedule();
     loadIgdb();
     loadSteamSettings();
@@ -2373,6 +2376,14 @@ function paletteCommands() {
         clearFilters();
         showPage('library');
       }
+    },
+    {
+      group: 'Acciones',
+      label: 'Pantalla grande',
+      icon: 'monitor',
+      keywords: 'tv televisor sillón mando completa',
+      hint: 'F11',
+      run: () => GMLGamepad.toggleBigScreen()
     },
     theme('system', 'Tema: seguir a Windows', 'monitor'),
     theme('light', 'Tema claro', 'sun'),

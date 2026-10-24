@@ -21,9 +21,11 @@ flowchart LR
 - `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla.
 - `src/igdb.mjs`: integración opcional con Twitch/IGDB. Descarga fichas ampliadas y tiempos estimados, conserva las coincidencias conocidas y guarda una caché local en `metadata.json` (esquema 2). Cada ficha incluye la respuesta original en `source`; la API local omite ese campo para evitar duplicar el contenido enviado a la interfaz.
 - `src/secrets.mjs`: cifra el secreto de Twitch con DPAPI de Windows para el usuario actual. `integrations.json` no se versiona.
-- `public/`: interfaz HTML, CSS y JavaScript sin dependencias externas de aplicación. `style.css` define tokens y temas; `ui.css`, los componentes; `experience.css`, la identidad 3.0 (barra lateral, color ambiental, Inicio y página de juego); `shelves.js`, las reglas que eligen los juegos de Inicio. Las tipografías y la marca están en `fonts/` y `brand/` (ver [Sistema de diseño](sistema-de-diseno.md)).
+- `public/`: interfaz HTML, CSS y JavaScript sin dependencias externas de aplicación. `style.css` define tokens y temas; `ui.css`, los componentes; `experience.css`, la identidad 3.0 (barra lateral, color ambiental, Inicio y página de juego); `shelves.js`, las reglas que eligen los juegos de Inicio; `catalog.js`, la búsqueda, los filtros, el orden y la agrupación de duplicados de la Biblioteca; `gamepad.js`, el mando y la pantalla grande. Las tipografías y la marca están en `fonts/` y `brand/` (ver [Sistema de diseño](sistema-de-diseno.md)).
 - `src/names.mjs`: nombres para mostrar sin sufijos de tienda. El servidor entrega `name` limpio y conserva `originalName`.
 - `GET /api/art/wordmark/:key`: logo transparente del juego, desde la caché de Steam o su CDN.
+- `GET/PUT /api/settings`: tema y `minimizeOnLaunch`. Al lanzar un juego con esa opción activa, el servidor avisa a Electron (`onLaunch`) para minimizar la ventana.
+- `tools/package.mjs`: empaquetado que deja sólo los dos últimos ejecutables en `releases/`.
 - `data/library.json`: inventario local generado; se excluye del control de versiones.
 - `test/`: pruebas automáticas con `node:test` de la API y del indexador.
 

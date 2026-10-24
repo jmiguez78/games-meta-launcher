@@ -71,7 +71,11 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 | Imagen principal (Inicio) | Arte panorámico a todo el ancho, logo del juego o título, motivo («Seguí donde lo dejaste»), datos, Jugar, Ver ficha y Favorito. Las miniaturas eligen entre cinco destacados. |
 | Fila de Inicio | Título, explicación breve y desplazamiento horizontal con botones. Flechas izquierda y derecha dentro de la fila; arriba y abajo entre filas. |
 | Página del juego | Cabecera con arte y logo, pestañas subrayadas y una columna fija con Jugar o Instalar, Favorito, Editar, tiempo jugado, última sesión, duración, valoración, progreso y anillo de logros. Volver o Escape regresan al punto de partida. |
-| Ficha (vista de Biblioteca) | Lista a la izquierda y ficha compacta a la derecha para comparar; «Abrir ficha completa» lleva a la página del juego. |
+| Barra de Biblioteca | Búsqueda, alcance (Instalados / Toda la cuenta), orden, Filtros y vista (Portadas / Tabla). |
+| Panel de filtros | Columna lateral plegable: «Sólo favoritos» y facetas (tienda, género, duración, tiempo jugado, valoración, etiquetas) con conteos. Las opciones de un grupo se suman; los grupos se combinan. Lógica en `public/catalog.js`. |
+| Tabla | Portada, nombre (con «También en» si está en otra tienda), tienda, estado, horas, última sesión, valoración y duración. Columnas ordenables; Jugar e Instalar como botones de ícono. |
+| Pantalla «Iniciando…» | Arte y logo del juego a pantalla completa con el estado del lanzamiento. Se cierra sola, con un clic o con Escape. |
+| Interruptor | `input[type=checkbox][role=switch]` dentro de `.switch`. Minimizar al jugar y pantalla grande. |
 | Pestañas | Resumen, Información, Multimedia y, en Steam, Steam y Logros. Roles tablist/tab/tabpanel, flechas, Inicio y Fin. |
 | Descripción | En español desde la tienda de Steam cuando existe; si no, la de IGDB con una nota de que está en inglés. Mientras carga se muestra un esqueleto. |
 | Paleta de comandos | Control+K. Los juegos muestran su portada. Enter juega; Mayús+Enter abre la página del juego. |
@@ -82,14 +86,21 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 
 - Contraste de texto ≥ 4,5:1 y de bordes de controles ≥ 3:1 en ambos temas.
 - Foco visible en todos los controles; la selección de una colección se marca sólo mientras la colección tiene el foco.
-- Colecciones con un único punto de Tab. En portadas, Enter juega y Espacio abre la página; en Lista y Tabla, Enter abre la página. F marca favorito y E edita.
+- Colecciones con un único punto de Tab. En portadas, Enter juega y Espacio abre la página; en la Tabla, Enter abre la página. F marca favorito y E edita.
 - La página del juego devuelve el foco al juego de origen al volver.
 - Los logos de los juegos tienen el título real como texto alternativo accesible.
 
 ## Vistas de la biblioteca
 
-- La Biblioteca abre con los juegos instalados; el selector «Toda la cuenta» suma los juegos de Steam sin instalar.
-- **Portadas** para explorar, **Lista** para escanear, **Ficha** para comparar sin salir de la colección, **Tabla** para ordenar. Un clic en un juego (fuera de la vista Ficha) abre su página.
+- La Biblioteca abre con los juegos instalados; «Toda la cuenta» suma los juegos de Steam sin instalar.
+- **Portadas** para explorar y **Tabla** para ordenar y comparar. Un clic en un juego abre su página.
+- Un juego comprado en varias tiendas aparece una vez, con la copia que se puede jugar adelante.
+
+## Mando y pantalla grande
+
+- `public/gamepad.js` traduce el mando a las teclas de la aplicación: cruceta o palanca = flechas, A = elegir (sobre un juego abre su página), B = Escape, X = favorito, Y = paleta, LB/RB = sección, Menú = pantalla grande.
+- Donde las flechas no tienen uso, el foco se mueve al elemento más cercano en esa dirección (`pickNeighbor`, con pruebas).
+- Pantalla grande: `body.big-screen` agranda la interfaz un 30 % y pide pantalla completa. Con el mando activo, el foco se resalta con un borde blanco y un halo.
 
 ## Integraciones como fuentes de biblioteca
 

@@ -1692,3 +1692,24 @@ dialog :is(input, select, textarea) {
     animation: none;
   }
 }
+
+/* ── Pantalla grande y mando ────────────────────────────────── */
+body.big-screen {
+  zoom: 1.3;
+}
+body.big-screen .sidebar {
+  height: calc(100vh / 1.3);
+}
+body.big-screen .home-hero {
+  min-height: calc(64vh / 1.3);
+}
+/* Con el mando, el foco se ve desde lejos. */
+body.gamepad-active :focus-visible,
+body.gamepad-active .tile:focus {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+body.gamepad-active .poster:focus .poster-art {
+  transform: translateY(-6px) scale(1.05);
+}

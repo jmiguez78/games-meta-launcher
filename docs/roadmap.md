@@ -127,16 +127,24 @@ Fase 2: imagen principal con el último juego jugado y filas por intención. El 
 
 Fase 3: página propia con arte de borde a borde, logo, descripción en español, columna de acción con tiempo jugado y logros, y transición desde la portada.
 
-## Próximo — Fase 4: Biblioteca potente
+## 0.19.0 — Biblioteca potente · Completada
 
-- Dos vistas (Grilla y Tabla) con la página del juego encima de ambas.
-- Panel de facetas: tienda, instalación, género, duración, valoración, tiempo jugado y nunca jugado.
-- Un solo buscador, agrupación, colecciones dinámicas y juegos fusionados entre tiendas.
-- Grilla virtualizada para 1.000 juegos o más.
+Dos vistas, orden visible, filtros por facetas con conteos, tabla con horas, última sesión, valoración y duración, juegos de varias tiendas agrupados y búsqueda unas tres veces más rápida.
 
-## Después — Fases 5 y 6
+## 0.20.0 — Configuración ordenada · Completada
 
-- El momento de jugar: pantalla «Iniciando…», estado en juego y registro de sesiones.
-- Modo TV y mando.
-- Validación de coincidencias de IGDB (pendiente desde 0.12.0).
+Tres secciones con explicación y controles lado a lado; Steam e IGDB muestran su estado y ocultan las credenciales.
 
+## 0.21.0 — El momento de jugar · Completada
+
+Pantalla «Iniciando…» con el arte del juego y ventana que se minimiza al jugar (opcional).
+
+## 0.22.0 — Mando y pantalla grande · Completada
+
+Navegación completa con mando y modo de pantalla grande con F11, Menú o desde Configuración.
+
+## Próximo
+
+- Registro de sesiones con duración: requiere vigilar el proceso de cada juego en Windows y validarlo en la PC.
+- Validación de coincidencias de IGDB, pendiente desde 0.12.0.
+- Grilla virtualizada si la colección supera los 1.000 juegos.

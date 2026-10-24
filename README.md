@@ -4,14 +4,15 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.18.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam. Inicio propone qué jugar con una imagen principal y filas por intención (Continuar, Favoritos, sin estrenar, sesiones cortas, mejor valorados y para instalar). Cada juego tiene su propia página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. La interfaz usa el tema oscuro por defecto, toma el color del juego en foco y tiene paleta de comandos (Control+K), avisos con Deshacer y navegación completa por teclado. La información ampliada de IGDB sigue en beta.
+Versión `0.22.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo de pantalla grande (F11). La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 
-1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.18.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
-2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en cualquier portada abre la página del juego; el botón Jugar lo inicia.
-3. En **Biblioteca**, buscá y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
-4. En **Configuración**, revisá el estado de la biblioteca, conectá Steam e IGDB, elegí el tema y la hora de la indexación nocturna, y respaldá tus preferencias. Si algún juego necesita revisión, la barra lateral lo indica.
+1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.22.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
+2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en una portada abre la página del juego; Jugar lo inicia.
+3. En **Biblioteca**, buscá, ordená y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
+4. En **Configuración**, elegí el tema, si la ventana se minimiza al jugar y la pantalla grande; conectá Steam e IGDB; programá la búsqueda nocturna y respaldá tus preferencias.
+5. Con un mando: A elige, B vuelve, X marca favorito, Y busca, LB/RB cambian de sección y Menú activa la pantalla grande.
 
 La versión portable incluye su propio runtime. Para desarrollo se requiere `npm install`.
 
@@ -37,9 +38,9 @@ En **Configuración → Información de juegos**, conectá IGDB y elegí **Actua
 
 En **Configuración → Steam**, ingresá tu SteamID64 y clave de Steam Web API, o usá la conexión guardada en esta PC. Las credenciales se cifran con Windows DPAPI para tu usuario. El portable incluye `steam-games-mcp` 0.17.0 y su runtime; funciona sin Codex ni Node instalados.
 
-La biblioteca cruza cuenta e instalaciones por App ID. Filtrá **Instalados / No instalados**; **Instalar en Steam** abre el cliente para administrar la descarga. Steam funciona como fuente de datos de la biblioteca, sin una sección propia en el menú. La sincronización está en Configuración. Las fichas agregan **Steam** y **Logros**, con requisitos, idiomas, mando, compatibilidad, reseñas agregadas, novedades y rareza global. Las reseñas individuales pueden no estar disponibles en Steam.
+La biblioteca cruza cuenta e instalaciones por App ID. Elegí **Instalados** o **Toda la cuenta** junto a la búsqueda; **Instalar en Steam** abre el cliente para administrar la descarga. Steam funciona como fuente de datos de la biblioteca, sin una sección propia en el menú. La sincronización está en Configuración. Las fichas agregan **Steam** y **Logros**, con requisitos, idiomas, mando, compatibilidad, reseñas agregadas, novedades y rareza global. Las reseñas individuales pueden no estar disponibles en Steam.
 
-Las cuatro vistas de Biblioteca tienen roles distintos: **Portadas** para explorar, **Lista** para escanear rápidamente y abrir una ficha al elegir un juego, **Ficha** para comparar juegos y ver el detalle sin salir de la colección, y **Tabla** para ordenar y contrastar los datos esenciales.
+La Biblioteca tiene dos vistas: **Portadas** para explorar y **Tabla** para ordenar y comparar horas, última sesión, valoración y duración. Un clic en un juego abre su página.
 
 Los precios muestran la moneda recibida (la región AR puede devolver USD). Biblioteca y logros completos usan APIs oficiales para evitar recortes del MCP. Las consultas sociales parciales indican cuántos resultados se muestran. Los perfiles privados se presentan como información no disponible. El progreso personal del launcher permanece independiente.
 

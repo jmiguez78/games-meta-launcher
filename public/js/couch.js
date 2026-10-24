@@ -10,7 +10,11 @@ import { uniqueGames } from './library.js';
 
 const HIDE_CURSOR_MS = 2500;
 const ROW_SIZE = 7;
+const SCOPE_KEY = 'gml-couch-scope';
 let root = null;
+// «ready»: solo lo que se puede lanzar ya (instalado y con lanzador). «all»: toda la colección, con lo listo
+// primero. El modo sala arranca en «ready» porque su idea es elegir y jugar.
+let scope = readScope();
 let section = 'home';
 let rows = [];
 let focus = { row: 0, col: 0 };
@@ -22,6 +26,15 @@ let infoTimer;
 let backdropTimer;
 let cursorTimer;
 let clockTimer;
+
+function readScope() {
+  try {
+    return localStorage.getItem(SCOPE_KEY) === 'all' ? 'all' : 'ready';
+  } catch {
+    return 'ready';
+  }
+}
+const ready = (game) => GMLShelves.playable(game);
 
 export const isCouch = () => document.body.classList.contains('couch');
 
@@ -40,7 +53,9 @@ function build() {
   root.innerHTML =
     '<div class="hero-backdrop couch-backdrop" aria-hidden="true"></div><div class="couch-shade" aria-hidden="true"></div>' +
     '<header class="couch-top"><img class="couch-mark" src="/brand/mark.svg" alt="" />' +
-    '<div class="couch-tabs" role="tablist" aria-label="Secciones"></div><span class="couch-clock" aria-hidden="true"></span></header>' +
+    '<div class="couch-tabs" role="tablist" aria-label="Secciones"></div>' +
+    '<button type="button" class="couch-scope" tabindex="-1"><span class="pad-glyph view">⧉</span><span class="couch-scope-label"></span></button>' +
+    '<span class="couch-clock" aria-hidden="true"></span></header>' +
     '<section class="couch-info" aria-live="polite"><p class="couch-reason"></p><img class="couch-logo" alt="" hidden />' +
     '<h2 class="couch-title"></h2><p class="couch-facts"></p></section>' +
     '<div class="couch-viewport"><div class="couch-rows"></div></div>' +
@@ -60,12 +75,14 @@ function build() {
     tab.onclick = () => showSection(id);
     tabs.append(tab);
   });
+  root.querySelector('.couch-scope').onclick = toggleScope;
   root.querySelector('.couch-hints').innerHTML = [
     ['a', 'A', 'Elegir'],
     ['b', 'B', 'Volver'],
     ['x', 'X', 'Favorito'],
     ['y', 'Y', 'Saltar de letra'],
     ['bumper', 'LB RB', 'Sección'],
+    ['view', '⧉', 'Instalados / Todos'],
     ['menu', '≡', 'Menú']
   ]
     .map(
@@ -92,8 +109,22 @@ function build() {
 
 // ---------- Filas ----------
 function buildRows() {
-  const games = uniqueGames();
-  if (section === 'library') return GMLShelves.libraryRows(games, ROW_SIZE);
+  const all = uniqueGames();
+  const games = all.filter(ready);
+  if (section === 'library') {
+    const rows = GMLShelves.libraryRows(games, ROW_SIZE);
+    if (scope === 'ready') return rows;
+    // Toda la colección: primero lo que se lanza ya, después lo que falta instalar, también por letra.
+    const pending = GMLShelves.libraryRows(
+      all.filter((game) => !ready(game)),
+      ROW_SIZE
+    ).map((row) => ({ ...row, letter: 'pend-' + row.letter, title: row.title && 'Sin instalar · ' + row.title }));
+    return rows.concat(pending);
+  }
+  if (scope === 'all') return homeRows(all);
+  return homeRows(games);
+}
+function homeRows(games) {
   const picks = GMLShelves.heroCandidates(games);
   // Lo que ya está en Destacados no se repite en las filas de abajo.
   const shelves = GMLShelves.homeShelves(games, { exclude: picks.map((pick) => pick.game.key) }).filter(
@@ -114,17 +145,33 @@ function renderRows() {
     tab.setAttribute('aria-selected', String(active));
     tab.classList.toggle('active', active);
   });
+  const all = uniqueGames();
+  const readyCount = all.filter(ready).length;
+  const format = (value) => new Intl.NumberFormat('es-AR').format(value);
+  root.querySelector('.couch-scope-label').textContent =
+    scope === 'ready' ? 'Listos para jugar · ' + format(readyCount) : 'Toda la colección · ' + format(all.length);
+  root.querySelector('.couch-scope').classList.toggle('all', scope === 'all');
   if (!rows.length) {
-    host.append(element('p', 'couch-empty', 'Todavía no hay juegos. Salí del modo sala y buscá juegos nuevos.'));
+    host.append(
+      element(
+        'p',
+        'couch-empty',
+        all.length
+          ? 'No hay juegos instalados listos para lanzar. Pulsá ⧉ (o la tecla V) para ver toda la colección.'
+          : 'Todavía no hay juegos. Salí del modo sala y buscá juegos nuevos.'
+      )
+    );
+    root.querySelector('.couch-info').hidden = true;
     return;
   }
+  root.querySelector('.couch-info').hidden = false;
   rows.forEach((row, rowIndex) => {
     const block = element('section', 'couch-row' + (row.title ? '' : ' continued'));
     block.dataset.row = rowIndex;
     if (row.title) block.append(element('h3', 'couch-row-title', row.title));
     const track = element('div', 'couch-track');
     row.games.forEach((game, colIndex) => {
-      const tile = element('button', 'couch-tile');
+      const tile = element('button', 'couch-tile' + (ready(game) ? '' : ' not-ready'));
       tile.type = 'button';
       tile.tabIndex = -1;
       tile.dataset.row = rowIndex;
@@ -134,6 +181,8 @@ function renderRows() {
       const art = element('span', 'couch-art ' + coverInfo(game).palette);
       art.append(element('span', 'cover-initial'));
       if (game.favorite) art.append(element('span', 'couch-star', '★'));
+      if (!ready(game))
+        art.append(element('span', 'couch-badge', game.installed === false ? 'Sin instalar' : 'No disponible'));
       tile.append(art, element('span', 'couch-tile-name', game.name));
       applyCover(art, game, coverInfo(game));
       track.append(tile);
@@ -202,9 +251,13 @@ function showInfo(game, row) {
   const reason =
     row.id === 'featured'
       ? reasons[GMLShelves.heroCandidates(uniqueGames()).find((pick) => pick.game.key === game.key)?.reason] || ''
-      : row.title || (section === 'library' ? GMLShelves.initialOf(game.name) : '');
+      : row.title ||
+        (section === 'library' ? (ready(game) ? '' : 'Sin instalar · ') + GMLShelves.initialOf(game.name) : '');
   info.querySelector('.couch-reason').textContent = reason;
   showWordmark(info.querySelector('.couch-logo'), info.querySelector('.couch-title'), game, info);
+  const title = info.querySelector('.couch-title');
+  title.classList.toggle('long', game.name.length > 14 && game.name.length <= 28);
+  title.classList.toggle('longer', game.name.length > 28);
   info.querySelector('.couch-facts').textContent = facts(game);
 }
 
@@ -263,6 +316,7 @@ function openMenu() {
   [
     ['Inicio', () => showSection('home')],
     ['Biblioteca', () => showSection('library')],
+    [scope === 'ready' ? 'Mostrar toda la colección' : 'Mostrar solo los listos para jugar', toggleScope],
     ['Salir del modo sala', () => GMLGamepad.setBigScreen(false)]
   ].forEach(([label, run]) => {
     const button = element('button', 'couch-action', label);
@@ -302,6 +356,22 @@ function showSection(id) {
     columns.clear();
   }
   renderRows();
+}
+function toggleScope() {
+  scope = scope === 'ready' ? 'all' : 'ready';
+  try {
+    localStorage.setItem(SCOPE_KEY, scope);
+  } catch {
+    /* sin almacenamiento: vale para esta sesión */
+  }
+  // Se conserva el juego enfocado si sigue en pantalla; si no, se vuelve al principio.
+  const key = gameAt(focus.row, focus.col)?.key;
+  rows = buildRows();
+  const row = rows.findIndex((item) => item.games.some((game) => game.key === key));
+  focus = row >= 0 ? { row, col: rows[row].games.findIndex((game) => game.key === key) } : { row: 0, col: 0 };
+  columns.clear();
+  renderRows();
+  window.notify?.(scope === 'ready' ? 'Solo los juegos listos para jugar' : 'Toda la colección, lo instalado primero');
 }
 function jumpLetter() {
   if (section !== 'library') return showSection('library');
@@ -343,6 +413,7 @@ function handleKey(event) {
     ((event.ctrlKey || event.metaKey) && key.toLowerCase() === 'k')
   )
     jumpLetter();
+  else if (key.toLowerCase() === 'v' || key.toLowerCase() === 'i') toggleScope();
   else if (key === 'PageUp' || key === 'PageDown') showSection(section === 'home' ? 'library' : 'home');
   else if (key === 'Escape' || key === 'ContextMenu' || key === 'Backspace') openMenu();
   else if (key === 'Home') moveTo(focus.row, 0);

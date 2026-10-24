@@ -103,8 +103,9 @@ Escala: 12, 13, 14, 16, 22, 28–40 y 44–76 px (títulos de juego). Todos los 
 - **Modo sala** (`public/js/couch.js`, `public/couch.css`): una pantalla propia para la TV, no la interfaz agrandada. Se entra con F11, el botón Menú, la paleta o Configuración, y se recuerda entre sesiones.
   - Fondo: el arte del juego enfocado, con sombra a la izquierda y abajo; datos arriba a la izquierda (motivo, logo o título, fabricante o tienda, última sesión, horas, crítica).
   - Inicio: «Destacados» y las filas de Inicio sin repetir juegos. Biblioteca: todos los juegos en filas de siete por letra inicial (`libraryRows`, con pruebas).
+  - Alcance: arranca en «Listos para jugar» (instalados y con lanzador, `GMLShelves.playable`), porque el modo sala es para elegir y jugar ya. El botón Vista (⧉), la tecla V, el chip de arriba o el menú pasan a «Toda la colección»: la Biblioteca suma después un bloque «Sin instalar · letra» con las portadas atenuadas y una etiqueta, e Inicio suma «Para instalar». Se recuerda en `gml-couch-scope`.
   - Navegación: la fila enfocada sube a un lugar fijo y su riel se corre para que el juego quede a la vista. Foco: escala 1,1, borde blanco y brillo con el color del juego.
-  - Botones: A abre la ficha (Jugar adelante, favorito, volver), B vuelve, X favorito, Y salta a la letra siguiente, LB/RB cambian de sección y Menú abre las opciones. En el modo sala cada botón es una tecla fija (`couchKeys`); el teclado y el mouse también funcionan, y el puntero se esconde a los 2,5 s sin moverse.
+  - Botones: A abre la ficha (Jugar adelante, favorito, volver), B vuelve, X favorito, Y salta a la letra siguiente, LB/RB cambian de sección, Vista alterna listos o todos y Menú abre las opciones. En el modo sala cada botón es una tecla fija (`couchKeys`); el teclado y el mouse también funcionan, y el puntero se esconde a los 2,5 s sin moverse.
   - Medidas relativas a la pantalla (`vw`, `vh`) para verse igual en un monitor y en una TV 4K. Respeta «reducir movimiento».
 
 ## Integraciones como fuentes de biblioteca

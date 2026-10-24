@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.26.1
+
+- Modo sala: arranca mostrando solo los juegos **listos para jugar** (instalados y con lanzador). El botón Vista del mando (⧉), la tecla V o el chip de arriba a la derecha cambian a **toda la colección**; la elección se recuerda.
+- Con toda la colección, la Biblioteca muestra primero lo instalado y después un bloque «Sin instalar», atenuado y con etiqueta; Inicio suma la fila «Para instalar».
+- Los nombres largos ya no se cortan en el título del modo sala.
+
 ## 0.26.0 — 24 de octubre de 2026
 
 Modo sala (mejora F7 del plan): la pantalla grande pasa a ser una experiencia propia para la TV y el mando.

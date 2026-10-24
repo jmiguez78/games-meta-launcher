@@ -29,7 +29,7 @@
   root.GMLGamepad = { pickNeighbor };
   if (typeof document === 'undefined') return;
 
-  const BUTTONS = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, menu: 9, up: 12, down: 13, left: 14, right: 15 };
+  const BUTTONS = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, view: 8, menu: 9, up: 12, down: 13, left: 14, right: 15 };
   const FIRST_REPEAT = 380;
   const REPEAT = 130;
   const held = new Map();
@@ -92,6 +92,7 @@
     y: 'y',
     lb: 'PageUp',
     rb: 'PageDown',
+    view: 'v',
     menu: 'ContextMenu',
     up: 'ArrowUp',
     down: 'ArrowDown',

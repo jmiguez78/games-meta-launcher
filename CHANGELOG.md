@@ -1,5 +1,18 @@
 # Registro de cambios
 
+## 0.15.0 — 24 de octubre de 2026
+
+Fase 0 del plan de experiencia: correcciones visibles.
+
+- La Biblioteca abre con los juegos instalados. Un selector junto a la búsqueda cambia a toda la cuenta de Steam y muestra cuántos juegos hay en cada caso.
+- «No instalado» se muestra en gris con un aro, en lugar del verde de «Listo». «Requiere revisión» sigue en ámbar.
+- La lista de la vista Ficha muestra la portada de cada juego; antes quedaban las iniciales. La paleta de comandos también muestra portadas.
+- Nombres limpios: se quitan sufijos de tienda como «- Windows» o «PC Edition» y las marcas ® y ™. El nombre original sigue sirviendo para buscar.
+- La barra lateral queda fija al desplazar el contenido.
+- La ventana se abre recién cuando la interfaz está lista, sin destello blanco, y con un ícono propio.
+- El tema oscuro pasa a ser el predeterminado cuando no hay una elección guardada.
+- La prueba de logos de Xbox funciona en cualquier sistema operativo.
+
 ## 0.14.2 — 23 de octubre de 2026
 
 - Inicio rediseñado como un resumen breve y visual de la colección, con indicadores de juegos disponibles, favoritos y partidas en curso.

@@ -99,6 +99,9 @@ body {
   min-height: 100vh;
 }
 .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
   background: #171b2c;
   color: #dbe2f5;
   padding: 24px 14px;
@@ -746,6 +749,8 @@ legend {
     grid-template-columns: 1fr;
   }
   .sidebar {
+    z-index: 3;
+    height: auto;
     flex-direction: row;
     align-items: center;
     padding: 12px 18px;

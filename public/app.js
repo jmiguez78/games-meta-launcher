@@ -9,7 +9,8 @@ const state = {
   direction: 'asc',
   view: 'icons',
   detailTab: 'summary',
-  installation: '',
+  // Alcance de la Biblioteca: 'installed' (por defecto) o '' para toda la cuenta.
+  installation: 'installed',
   selectedKey: '',
   page: 'home'
 };
@@ -269,6 +270,8 @@ function visibleGames() {
         (
           game.name +
           ' ' +
+          (game.originalName || '') +
+          ' ' +
           game.platform +
           ' ' +
           game.location +
@@ -352,13 +355,17 @@ function applyCover(element, game, cover, preferHero = false) {
     image.onerror = tryNext;
     image.src = source.url;
   };
+  pendingCoverLoads.set(element, tryNext);
+  coverObserver.observe(element);
+}
+// Descarta las cargas de imágenes que quedaron fuera de pantalla después de redibujar. Se llama una vez
+// que todo está insertado: las filas se arman antes de entrar al documento y no deben descartarse antes.
+function pruneCoverLoads() {
   for (const target of pendingCoverLoads.keys())
     if (!target.isConnected) {
       coverObserver.unobserve(target);
       pendingCoverLoads.delete(target);
     }
-  pendingCoverLoads.set(element, tryNext);
-  coverObserver.observe(element);
 }
 // Acciones compartidas por portadas, filas, tabla y ficha. Los botones nacen fuera del orden de Tab;
 // selectTile los habilita sólo en el elemento activo de cada colección.
@@ -410,7 +417,13 @@ function fillMetaLine(root, game) {
   root.querySelector('.platform-name').textContent = game.platform;
   const status = root.querySelector('.status-pill');
   status.textContent = game.installed === false ? 'No instalado' : available ? 'Listo' : 'Requiere revisión';
-  status.classList.toggle('attention', !available && game.installed !== false);
+  setStatusTone(status, game);
+}
+// Verde sólo para lo que se puede jugar ya; ámbar para lo que requiere revisión; neutro para lo no instalado.
+function setStatusTone(element, game) {
+  const available = game.launch && game.launch.available;
+  element.classList.toggle('attention', !available && game.installed !== false);
+  element.classList.toggle('muted', game.installed === false);
 }
 function lastPlayedText(game) {
   return game.lastLaunchedAt ? new Date(game.lastLaunchedAt).toLocaleDateString('es-AR') : 'Aún no registrado';
@@ -504,10 +517,7 @@ function makeTable(games) {
     cells[1].textContent = game.drive || '—';
     cells[2].innerHTML = '<span class="status-pill"></span>';
     cells[2].firstChild.textContent = statusText(game);
-    cells[2].firstChild.classList.toggle(
-      'attention',
-      game.installed !== false && !(game.launch && game.launch.available)
-    );
+    setStatusTone(cells[2].firstChild, game);
     cells[3].textContent = lastPlayedText(game);
     decorateActions(row, game);
     body.append(row);
@@ -1167,6 +1177,7 @@ bindTiles(quickLibrary);
 library.addEventListener('tileselect', (event) => {
   if (state.view !== 'detail') return;
   library.querySelector('.detail-panel').replaceWith(detailPanel(gameFor(event.detail)));
+  pruneCoverLoads();
 });
 function renderLibraryState() {
   const holder = document.querySelector('#library-state');
@@ -1236,6 +1247,7 @@ function renderLibrary() {
   document.querySelector('#view-label').textContent = viewInfo[state.view].description;
   document.querySelector('#empty-state').classList.toggle('hidden', games.length > 0);
   renderActiveFilters();
+  pruneCoverLoads();
 }
 // Favoritos, después los jugados hace poco y después los listos para jugar, sin repetir.
 function quickGames(limit) {
@@ -1254,6 +1266,7 @@ function renderHome() {
   quick.forEach((game) => quickLibrary.append(makePosterCard(game)));
   const first = quickLibrary.querySelector('.tile');
   if (first) selectTile(first, false, false);
+  pruneCoverLoads();
   document.querySelector('#quick-subtitle').textContent = favorites.length
     ? favorites.length + ' favorito' + (favorites.length === 1 ? '' : 's') + ' para volver a jugar.'
     : 'Marcá favoritos para encontrarlos siempre acá.';
@@ -1285,12 +1298,19 @@ function chips(holder, options, selected, allLabel, choose) {
     holder.append(button);
   });
 }
-function renderFilters() {
-  document.querySelectorAll('[data-installation]').forEach((button) => {
-    const active = button.dataset.installation === state.installation;
-    button.classList.toggle('active', active);
+function renderScope() {
+  const installed = state.games.filter((game) => game.installed !== false).length;
+  const scope = document.querySelector('#scope');
+  // Sin juegos de la cuenta fuera de esta PC el selector no aporta nada y se oculta.
+  scope.classList.toggle('hidden', installed === state.games.length);
+  scope.querySelectorAll('[data-scope]').forEach((button) => {
+    const active = button.dataset.scope === state.installation;
     button.setAttribute('aria-pressed', String(active));
+    button.querySelector('.count').textContent = button.dataset.scope ? installed : state.games.length;
   });
+}
+function renderFilters() {
+  renderScope();
   chips(
     document.querySelector('#platforms'),
     [...new Set(state.games.map((game) => game.platform))].sort(),
@@ -1329,8 +1349,6 @@ function renderFilters() {
 }
 function renderActiveFilters() {
   const labels = [];
-  if (state.installation)
-    labels.push([state.installation === 'installed' ? 'Instalados' : 'No instalados', () => (state.installation = '')]);
   if (state.query)
     labels.push(['“' + state.query + '”', () => (document.querySelector('#search').value = state.query = '')]);
   if (state.platform) labels.push([state.platform, () => (state.platform = '')]);
@@ -1359,9 +1377,9 @@ function renderActiveFilters() {
   badge.textContent = labels.length;
   badge.classList.toggle('hidden', labels.length === 0);
 }
+// Restablece los filtros; el alcance (instalados o toda la cuenta) se conserva.
 function clearFilters() {
   Object.assign(state, {
-    installation: '',
     platform: '',
     drive: '',
     tag: '',
@@ -1674,7 +1692,10 @@ function setFiltersOpen(open) {
 // Abre la ficha del juego en la vista Detalle; si los filtros lo ocultan, se limpian.
 function showGame(game) {
   showPage('library');
-  if (!visibleGames().some((item) => item.key === game.key)) clearFilters();
+  if (!visibleGames().some((item) => item.key === game.key)) {
+    if (game.installed === false) state.installation = '';
+    clearFilters();
+  }
   state.selectedKey = game.key;
   document.querySelector('#views [data-view="detail"]').click();
   library.querySelector('.tile.selected')?.focus();
@@ -1762,7 +1783,13 @@ function gameCommand(game, group) {
     label: game.name,
     detail: game.platform + ' · ' + (available ? 'Enter para jugar' : 'Enter para revisar'),
     icon: available ? 'play' : 'alert',
-    keywords: [game.platform, ...tagsOf(game), ...((game.meta && game.meta.genres) || [])].join(' '),
+    game,
+    keywords: [
+      game.platform,
+      game.originalName || '',
+      ...tagsOf(game),
+      ...((game.meta && game.meta.genres) || [])
+    ].join(' '),
     run: () => playOrReview(game),
     alternate: () => showGame(game)
   };
@@ -1813,7 +1840,10 @@ function renderPalette() {
     option.id = 'palette-option-' + index;
     option.className = 'palette-option';
     option.setAttribute('role', 'option');
-    option.innerHTML = icon(item.icon) + '<span class="palette-label"><span></span></span>';
+    option.innerHTML =
+      (item.game ? '<span class="palette-thumb"><span class="cover-initial"></span></span>' : icon(item.icon)) +
+      '<span class="palette-label"><span></span></span>';
+    if (item.game) applyCover(option.querySelector('.palette-thumb'), item.game, coverInfo(item.game));
     option.querySelector('.palette-label span').textContent = item.label;
     if (item.detail) option.querySelector('.palette-label').insertAdjacentHTML('beforeend', '<small></small>');
     if (item.detail) option.querySelector('small').textContent = item.detail;
@@ -1823,6 +1853,7 @@ function renderPalette() {
     option.onclick = (event) => runPaletteItem(index, event.shiftKey);
     group.append(option);
   });
+  pruneCoverLoads();
   const empty = document.querySelector('#palette-empty');
   empty.classList.toggle('hidden', paletteItems.length > 0);
   empty.querySelector('p').textContent = 'No encontramos «' + paletteInput.value.trim() + '».';
@@ -1891,6 +1922,13 @@ document.querySelector('#sort').onchange = (event) => {
   renderLibrary();
 };
 document.querySelector('#clear-filters').onclick = clearFilters;
+document.querySelectorAll('#scope [data-scope]').forEach((button) => {
+  button.onclick = () => {
+    state.installation = button.dataset.scope;
+    renderScope();
+    renderLibrary();
+  };
+});
 document.querySelector('#empty-clear').onclick = clearFilters;
 document.querySelector('#toggle-filters').onclick = () =>
   setFiltersOpen(document.querySelector('#filter-panel').classList.contains('hidden'));

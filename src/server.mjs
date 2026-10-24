@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { CATALOG_SCHEMA, scanLibrary } from './indexer.mjs';
 import { createIgdb, imageUrl } from './igdb.mjs';
 import { createSteam, mergeSteamLibrary } from './steam.mjs';
+import { displayName } from './names.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -175,8 +176,11 @@ async function library() {
     steamUpdatedAt: account.updatedAt,
     games: mergeSteamLibrary(catalog.games, account).map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
+      const name = displayName(game.name);
       return {
         ...game,
+        name,
+        ...(name !== game.name ? { originalName: game.name } : {}),
         artwork: artwork(game, art, metadata[game.key]),
         meta: publicMeta(metadata[game.key]),
         favorite: false,
@@ -313,7 +317,8 @@ function trustedRequest(req) {
 const themes = ['system', 'light', 'dark'];
 export async function appSettings() {
   const theme = (await preferences()).settings?.theme;
-  return { theme: themes.includes(theme) ? theme : 'system' };
+  // Oscuro primero: sin una elección guardada, la aplicación usa el tema oscuro.
+  return { theme: themes.includes(theme) ? theme : 'dark' };
 }
 export function createServer({ onSettingsChange } = {}) {
   const server = http.createServer(async (req, res) => {

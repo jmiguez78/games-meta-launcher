@@ -97,7 +97,8 @@ export async function xboxArtwork(location, config) {
   for (const attribute of ['Square480x480Logo', 'Square150x150Logo', 'StoreLogo']) {
     const relative = config.match(new RegExp(`${attribute}="([^"]+)"`, 'i'))?.[1];
     if (!relative) continue;
-    const target = path.join(location, 'Content', relative);
+    // MicrosoftGame.config usa barras invertidas; se separan para que la ruta funcione en cualquier sistema.
+    const target = path.join(location, 'Content', ...relative.split(/[\\/]+/));
     if (await exists(target)) return { logo: target, background };
   }
   return null;

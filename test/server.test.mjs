@@ -28,7 +28,7 @@ const catalog = {
     {
       key: 'epic games:x',
       id: 'x',
-      name: 'Tiny Lands',
+      name: 'Tiny Lands - Windows',
       platform: 'Epic Games',
       drive: 'E:',
       location: 'E:\\Epic\\tiny',
@@ -109,6 +109,10 @@ test('la biblioteca combina el inventario con valores personales por defecto', a
     },
     { favorite: false, tags: [], progress: 'Pendiente', rating: 0 }
   );
+  const tiny = library.games.find((game) => game.key === 'epic games:x');
+  assert.equal(tiny.name, 'Tiny Lands');
+  assert.equal(tiny.originalName, 'Tiny Lands - Windows');
+  assert.equal(library.games[0].originalName, undefined);
 });
 
 test('el diagnóstico agrupa juegos listos y en revisión por plataforma', async () => {
@@ -228,13 +232,13 @@ test('la integración informa que no está configurada y no expone secretos', as
 });
 
 test('guarda el tema y lo conserva al restaurar un respaldo', async () => {
-  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'system' });
+  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'dark' });
   const invalid = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ theme: 'rosa' }) });
   assert.equal(invalid.status, 400);
-  const saved = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ theme: 'dark' }) });
-  assert.deepEqual(await saved.json(), { theme: 'dark' });
+  const saved = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ theme: 'light' }) });
+  assert.deepEqual(await saved.json(), { theme: 'light' });
   await fetch(`${base}/api/preferences/import`, { method: 'POST', ...json({ games: {} }) });
-  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'dark' });
+  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'light' });
 });
 
 test('Steam sin cuenta no expone secretos ni permite instalar un juego ajeno', async () => {

@@ -1,4 +1,8 @@
 import { app, BrowserWindow, nativeTheme, shell } from 'electron';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 let server;
 async function runScan() {
@@ -30,10 +34,15 @@ async function openWindow() {
     minWidth: 920,
     minHeight: 650,
     title: 'Games Meta Launcher',
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0e121c' : '#f5f7fb',
+    icon: path.join(root, 'public', 'brand', 'icon-256.png'),
+    // La ventana se muestra recién cuando la interfaz pintó su primer cuadro, con el fondo del tema:
+    // así no hay un destello blanco al abrir.
+    show: false,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#07080c' : '#f4f5f8',
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, nodeIntegration: false }
   });
+  window.once('ready-to-show', () => window.show());
   await window.loadURL(`http://127.0.0.1:${port}`);
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https:\/\//i.test(url)) shell.openExternal(url);

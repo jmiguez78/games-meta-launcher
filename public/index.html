@@ -92,11 +92,19 @@
               ><input
                 id="search"
                 type="search"
-                placeholder="Buscar por juego, género, etiqueta o plataforma"
+                placeholder="Buscar por nombre, género o etiqueta"
                 autocomplete="off"
                 aria-keyshortcuts="/"
               /><kbd class="search-hint" aria-hidden="true">/</kbd></label
-            ><button id="toggle-filters" class="button" aria-expanded="false" aria-controls="filter-panel">
+            >
+            <div id="scope" class="segmented scope hidden" role="group" aria-label="Juegos que se muestran">
+              <button type="button" data-scope="installed" aria-pressed="true">
+                Instalados <span class="count"></span></button
+              ><button type="button" data-scope="" aria-pressed="false">
+                Toda la cuenta <span class="count"></span>
+              </button>
+            </div>
+            <button id="toggle-filters" class="button" aria-expanded="false" aria-controls="filter-panel">
               <span data-icon="filter"></span> Filtros <span id="active-filter-count" class="badge hidden">0</span>
             </button>
             <div id="views" class="segmented" role="group" aria-label="Vista de la biblioteca">
@@ -120,11 +128,6 @@
               <button id="clear-filters" class="text-button">Restablecer</button>
             </div>
             <div id="platforms" class="chips"></div>
-            <div id="installation-filter" class="chips" role="group" aria-label="Estado de instalación">
-              <button class="chip active" data-installation="">Todos</button
-              ><button class="chip" data-installation="installed">Instalados</button
-              ><button class="chip" data-installation="not-installed">No instalados</button>
-            </div>
             <div class="filter-grid">
               <div>
                 <label for="tag">Etiqueta</label

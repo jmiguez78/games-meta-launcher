@@ -458,14 +458,6 @@ function steamCompatibility(value) {
   );
 }
 function initializeSteamUI() {
-  document.querySelectorAll('[data-installation]').forEach(
-    (button) =>
-      (button.onclick = () => {
-        state.installation = button.dataset.installation;
-        renderFilters();
-        renderLibrary();
-      })
-  );
   document.querySelector('#steam-sync').onclick = syncSteamAccount;
   document.querySelector('#steam-form').onsubmit = async (event) => {
     event.preventDefault();

@@ -23,7 +23,7 @@ const catalog = {
       launch: { type: 'uri', target: 'steam://run/10', available: true },
       status: 'installed',
       evidence: '',
-      art: { portrait: path.join(dataDir, 'portada-local.jpg') }
+      art: { portrait: path.join(dataDir, 'portada-local.jpg'), wordmark: path.join(dataDir, 'logo-local.png') }
     },
     {
       key: 'epic games:x',
@@ -55,6 +55,10 @@ let base;
 before(async () => {
   await fs.writeFile(path.join(dataDir, 'library.json'), JSON.stringify(catalog));
   await fs.writeFile(path.join(dataDir, 'portada-local.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  await fs.writeFile(
+    path.join(dataDir, 'logo-local.png'),
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  );
   await fs.writeFile(
     path.join(dataDir, 'metadata.json'),
     JSON.stringify({
@@ -190,8 +194,8 @@ test('la biblioteca resume las imágenes disponibles sin exponer rutas locales',
   const steam = library.games.find((game) => game.key === 'steam:10');
   const epic = library.games.find((game) => game.key === 'epic games:x');
   assert.equal(steam.art, undefined);
-  assert.deepEqual(steam.artwork, { cover: 'portrait', hero: true, background: null });
-  assert.deepEqual(epic.artwork, { cover: null, hero: false, background: null });
+  assert.deepEqual(steam.artwork, { cover: 'portrait', hero: true, wordmark: true, background: null });
+  assert.deepEqual(epic.artwork, { cover: null, hero: false, wordmark: false, background: null });
 });
 
 test('sirve la imagen local y responde 404 cuando no hay ninguna fuente', async () => {
@@ -201,6 +205,10 @@ test('sirve la imagen local y responde 404 cuando no hay ninguna fuente', async 
   assert.deepEqual([...new Uint8Array(await local.arrayBuffer())], [0xff, 0xd8, 0xff, 0xd9]);
   assert.equal((await fetch(`${base}/api/art/cover/${encodeURIComponent('epic games:x')}`)).status, 404);
   assert.equal((await fetch(`${base}/api/art/otro/steam%3A10`)).status, 404);
+  const logo = await fetch(`${base}/api/art/wordmark/steam%3A10`);
+  assert.equal(logo.status, 200);
+  assert.equal(logo.headers.get('content-type'), 'image/png');
+  assert.equal((await fetch(`${base}/api/art/wordmark/${encodeURIComponent('epic games:x')}`)).status, 404);
 });
 
 test('agrega los metadatos de IGDB sin exponer identificadores internos de imágenes', async () => {
@@ -215,7 +223,7 @@ test('agrega los metadatos de IGDB sin exponer identificadores internos de imág
     languages: [{ name: 'Spanish', support: 'Subtitles' }]
   });
   assert.equal(roto.meta.source, undefined);
-  assert.deepEqual(roto.artwork, { cover: 'portrait', hero: false, background: null });
+  assert.deepEqual(roto.artwork, { cover: 'portrait', hero: false, wordmark: false, background: null });
   assert.equal(library.games.find((game) => game.key === 'epic games:x').meta, null);
 });
 

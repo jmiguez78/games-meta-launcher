@@ -1,5 +1,17 @@
 # Registro de cambios
 
+## 0.16.0 — 24 de octubre de 2026
+
+Fase 1 del plan de experiencia: identidad visual.
+
+- Tema oscuro como base, con una paleta de tinta violeta que deja el color al arte de cada juego. El tema claro se rediseñó con los mismos tokens.
+- El fondo toma el color del juego que estás mirando: al pasar el mouse o moverte con el teclado, el brillo ambiental cambia suavemente.
+- Tipografías incluidas en la aplicación: Bricolage Grotesque para títulos e Inter para la interfaz. Ya no dependen de lo que tenga instalado Windows.
+- Portadas sin marco: la imagen es la tarjeta. Al pasar el mouse se elevan con un brillo del color del juego y muestran Jugar.
+- Jugar usa un coral propio en toda la aplicación; los demás botones principales usan tinta invertida.
+- Barra lateral angosta con íconos, que se expande al pasar el mouse o al llegar con el teclado. Marca e ícono nuevos.
+- Títulos en oración y sin rótulos en mayúsculas; transición breve al cambiar de página. Todo el movimiento se desactiva si Windows pide reducirlo.
+
 ## 0.15.0 — 24 de octubre de 2026
 
 Fase 0 del plan de experiencia: correcciones visibles.

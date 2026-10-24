@@ -33,11 +33,12 @@ const dialog = document.querySelector('#notice');
 const editor = document.querySelector('#editor');
 const toasts = document.querySelector('#toasts');
 let editing = null;
+// Título de cada página y palabras con las que la paleta de comandos la encuentra.
 const pageMeta = {
-  home: ['TU COLECCIÓN', 'Para jugar ahora'],
-  library: ['BIBLIOTECA', 'Tu colección'],
-  diagnostics: ['ESTADO DEL SISTEMA', 'Diagnóstico'],
-  settings: ['PREFERENCIAS', 'Configuración']
+  home: ['Inicio', 'inicio para jugar ahora'],
+  library: ['Biblioteca', 'biblioteca colección juegos'],
+  diagnostics: ['Diagnóstico', 'diagnóstico estado sistema revisión'],
+  settings: ['Configuración', 'configuración preferencias ajustes']
 };
 const viewInfo = {
   icons: { name: 'Portadas', description: 'Explorá visualmente tu colección.' },
@@ -321,6 +322,88 @@ function statusText(game) {
       : 'Inicio pendiente'
     : 'Requiere revisión';
 }
+// Color dominante del arte de cada juego: tiñe el brillo de la portada y el fondo ambiental.
+// Se calcula una sola vez sobre una miniatura de 24×36 y se recuerda entre sesiones.
+const artColors = new Map(
+  (() => {
+    try {
+      return Object.entries(JSON.parse(localStorage.getItem('gml-art-colors') || '{}'));
+    } catch {
+      return [];
+    }
+  })()
+);
+let saveArtColorsTimer;
+function rememberArtColor(key, color) {
+  artColors.set(key, color);
+  clearTimeout(saveArtColorsTimer);
+  saveArtColorsTimer = setTimeout(() => {
+    try {
+      localStorage.setItem('gml-art-colors', JSON.stringify(Object.fromEntries(artColors)));
+    } catch {
+      /* sin almacenamiento local el color se vuelve a calcular */
+    }
+  }, 500);
+}
+function dominantColor(image) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 24;
+  canvas.height = 36;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(image, 0, 0, 24, 36);
+  const { data } = context.getImageData(0, 0, 24, 36);
+  // Histograma de tonos ponderado por saturación y luminosidad media: gana el color con más presencia.
+  const bins = Array.from({ length: 12 }, () => ({ weight: 0, r: 0, g: 0, b: 0 }));
+  for (let index = 0; index < data.length; index += 4) {
+    const r = data[index] / 255,
+      g = data[index + 1] / 255,
+      b = data[index + 2] / 255;
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    const light = (max + min) / 2;
+    const saturation = max === min ? 0 : (max - min) / (1 - Math.abs(2 * light - 1));
+    const weight = saturation * (1 - Math.abs(light - 0.5) * 1.6);
+    if (weight <= 0.05) continue;
+    let hue = 0;
+    if (max === r) hue = ((g - b) / (max - min) + 6) % 6;
+    else if (max === g) hue = (b - r) / (max - min) + 2;
+    else hue = (r - g) / (max - min) + 4;
+    const bin = bins[Math.floor(hue * 2) % 12];
+    bin.weight += weight;
+    bin.r += r * weight;
+    bin.g += g * weight;
+    bin.b += b * weight;
+  }
+  const best = bins.reduce((top, bin) => (bin.weight > top.weight ? bin : top));
+  if (best.weight < 0.5) return null;
+  const channel = (value) =>
+    Math.round(Math.min(255, (value / best.weight) * 255))
+      .toString(16)
+      .padStart(2, '0');
+  return '#' + channel(best.r) + channel(best.g) + channel(best.b);
+}
+function applyArtColor(element, game, image) {
+  let color = artColors.get(game.key);
+  if (color === undefined) {
+    try {
+      color = dominantColor(image);
+    } catch {
+      color = null;
+    }
+    rememberArtColor(game.key, color);
+  }
+  if (color) element.closest('.tile, .detail-panel, [data-art-host]')?.style.setProperty('--art', color);
+}
+// El fondo de la aplicación toma el color del juego en foco; sin color conocido vuelve al violeta de marca.
+let ambientTimer;
+function setAmbient(game) {
+  clearTimeout(ambientTimer);
+  ambientTimer = setTimeout(() => {
+    const color = game && artColors.get(game.key);
+    if (color) document.body.style.setProperty('--ambient', color);
+    else document.body.style.removeProperty('--ambient');
+  }, 90);
+}
 // La portada manual tiene prioridad; después, la imagen del launcher (hero apaisada si se pide).
 function artSources(game, preferHero) {
   const artwork = game.artwork || {};
@@ -351,6 +434,7 @@ function applyCover(element, game, cover, preferHero = false) {
         element.style.backgroundColor = (game.artwork && game.artwork.background) || '#1d2433';
       }
       element.classList.add('has-image', 'art-' + source.kind);
+      if (!logo) applyArtColor(element, game, image);
     };
     image.onerror = tryNext;
     image.src = source.url;
@@ -410,7 +494,7 @@ function decorateActions(root, game) {
   });
 }
 function metaLineHtml() {
-  return '<p class="poster-meta"><span class="platform-name"></span><span aria-hidden="true">·</span><span class="status-pill"></span></p>';
+  return '<p class="poster-meta"><span class="platform-name"></span><span class="status-pill"></span></p>';
 }
 function fillMetaLine(root, game) {
   const available = game.launch && game.launch.available;
@@ -424,6 +508,7 @@ function setStatusTone(element, game) {
   const available = game.launch && game.launch.available;
   element.classList.toggle('attention', !available && game.installed !== false);
   element.classList.toggle('muted', game.installed === false);
+  element.classList.toggle('ready', Boolean(available) && game.installed !== false);
 }
 function lastPlayedText(game) {
   return game.lastLaunchedAt ? new Date(game.lastLaunchedAt).toLocaleDateString('es-AR') : 'Aún no registrado';
@@ -603,7 +688,7 @@ function openMediaViewer(pictures, index, title, trigger) {
     viewer.className = 'media-viewer';
     viewer.setAttribute('aria-labelledby', 'media-viewer-title');
     viewer.innerHTML =
-      '<header class="media-viewer-header"><div><p class="kicker">GALERÍA</p>' +
+      '<header class="media-viewer-header"><div>' +
       '<h2 id="media-viewer-title"></h2></div><button type="button" class="icon-btn" aria-label="Cerrar galería">' +
       icon('x') +
       '</button></header><figure><img alt="Imagen de la galería" referrerpolicy="no-referrer" />' +
@@ -1049,6 +1134,7 @@ function detailPanel(game) {
   decorateActions(panel, game);
   panel.querySelectorAll('[data-action=favorite], [data-action=edit]').forEach((button) => (button.tabIndex = 0));
   panel.querySelector('[data-action=play]').tabIndex = 0;
+  setAmbient(game);
   return panel;
 }
 // Portada en cuadrícula.
@@ -1111,7 +1197,10 @@ function selectTile(tile, focus, remember = true) {
     item.querySelectorAll('button').forEach((button) => (button.tabIndex = active ? 0 : -1));
   });
   if (remember) state.selectedKey = tile.dataset.key;
-  if (focus) tile.focus();
+  if (focus) {
+    tile.focus();
+    setAmbient(gameFor(tile));
+  }
 }
 function tileNeighbor(tile, key) {
   const tiles = tilesOf(tile.closest('[data-tiles]'));
@@ -1135,6 +1224,10 @@ function tileSelected(container, tile) {
 }
 function bindTiles(container) {
   container.dataset.tiles = '';
+  container.addEventListener('pointerover', (event) => {
+    const tile = event.target.closest('.tile');
+    if (tile && !tile.contains(event.relatedTarget)) setAmbient(gameFor(tile));
+  });
   container.addEventListener('click', (event) => {
     const host = event.target.closest('[data-key]');
     if (!host || !container.contains(host)) return;
@@ -1615,7 +1708,7 @@ async function loadSettings() {
   try {
     applyTheme((await request('/api/settings')).theme);
   } catch {
-    applyTheme('system');
+    applyTheme('dark');
   }
 }
 let igdbPoll;
@@ -1657,8 +1750,8 @@ function showPage(page) {
     if (current) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });
-  document.querySelector('#page-kicker').textContent = pageMeta[page][0];
-  document.querySelector('#page-title').textContent = pageMeta[page][1];
+  document.querySelector('#page-title').textContent = pageMeta[page][0];
+  document.body.dataset.page = page;
   if (page === 'diagnostics') loadHealth();
   if (page === 'settings') {
     loadSchedule();

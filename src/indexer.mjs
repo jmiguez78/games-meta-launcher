@@ -73,7 +73,8 @@ const STEAM_NON_GAMES = new Set(['228980']);
 const steamArtFiles = {
   portrait: ['library_600x900.jpg', 'library_capsule.jpg'],
   landscape: ['library_header.jpg', 'header.jpg'],
-  hero: ['library_hero.jpg']
+  hero: ['library_hero.jpg'],
+  wordmark: ['logo.png']
 };
 // Steam guarda las imágenes en la carpeta del juego o, en versiones recientes, en subcarpetas con hash.
 export async function steamArtwork(id, cacheDir = STEAM_LIBRARY_CACHE) {

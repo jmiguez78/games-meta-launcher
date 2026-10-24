@@ -1,82 +1,97 @@
-:root {
-  --bg: #f5f7fb;
-  --surface: #fff;
-  --surface-soft: #f8faff;
-  --ink: #172033;
-  --muted: #667085;
-  --line: #dce3ee;
-  --accent: #4056c9;
-  --accent-strong: #3146b6;
-  --accent-soft: #edf0ff;
-  --success: #13835f;
-  --warning: #985a06;
-  --danger: #bf3f51;
-  --retro-aqua: #78e7d0;
-  --retro-yellow: #ffd869;
-  --radius: 14px;
-  --shadow: 0 10px 28px rgb(28 39 71 / 8%);
-  --shadow-lg: 0 20px 50px rgb(24 34 66 / 14%);
-  --ink-soft: #536078;
-  --line-soft: #edf0f5;
-  --line-strong: #cbd4e2;
-  --line-accent: #b5c0f3;
-  --row-selected: #f0f3ff;
-  --chip-bg: #f0f3fb;
-  --accent-text: #4056c9;
-  --accent-muted: #6572aa;
-  color-scheme: light;
-}
-/* Paleta oscura: se aplica si el usuario la elige o si Windows usa el tema oscuro y no se forzó el claro. */
+/* Identidad 3.0 «sala de proyección»: tinta oscura que deja el color al arte de cada juego.
+   El tema oscuro es la base; el claro redefine los mismos tokens. Contrastes verificados: texto ≥ 4,5:1. */
+:root,
 :root[data-theme='dark'] {
-  --bg: #0e121c;
-  --surface: #161b29;
-  --surface-soft: #1b2132;
-  --ink: #e7eaf3;
-  --ink-soft: #c2c9d9;
-  --muted: #8f99b0;
-  --line: #283048;
-  --line-soft: #20273a;
-  --line-strong: #36405a;
-  --line-accent: #4a5a92;
-  --row-selected: #222b45;
-  --chip-bg: #232b40;
-  --accent: #5468e0;
-  --accent-strong: #6377ea;
-  --accent-soft: #232c52;
-  --accent-text: #a3b2ff;
-  --accent-muted: #94a3e6;
-  --success: #45d29f;
-  --warning: #eaa94f;
-  --danger: #f2838f;
-  --shadow: 0 10px 28px rgb(0 0 0 / 35%);
-  --shadow-lg: 0 20px 50px rgb(0 0 0 / 55%);
+  --bg: #0e0d15;
+  --surface: #17151f;
+  --surface-soft: #1e1b29;
+  --surface-raised: #24212f;
+  --rail: #0a0910;
+  --ink: #f2eff8;
+  --ink-soft: #cbc5d8;
+  --muted: #9890ab;
+  --line: #2b2738;
+  --line-soft: #221f2d;
+  --line-strong: #3a3549;
+  --line-accent: #5b4fa8;
+  --accent: #8e7dff;
+  --accent-strong: #a396ff;
+  --accent-soft: #262046;
+  --accent-text: #b9aeff;
+  --accent-muted: #a79ddb;
+  --row-selected: #231f38;
+  --chip-bg: #221f2d;
+  --success: #57d9a3;
+  --warning: #f2b661;
+  --danger: #ff8c96;
+  /* Jugar: el único coral de la interfaz, siempre con texto oscuro (contraste 7:1). */
+  --play: #ff6b7e;
+  --play-strong: #ff8796;
+  --play-ink: #26070d;
+  --favorite: #ffe27a;
+  --retro-aqua: #78e7d0;
+  --retro-yellow: #ffe27a;
+  --radius: 14px;
+  --shadow: 0 12px 32px rgb(0 0 0 / 40%);
+  --shadow-lg: 0 28px 60px rgb(0 0 0 / 55%);
   color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #0e121c;
-    --surface: #161b29;
-    --surface-soft: #1b2132;
-    --ink: #e7eaf3;
-    --ink-soft: #c2c9d9;
-    --muted: #8f99b0;
-    --line: #283048;
-    --line-soft: #20273a;
-    --line-strong: #36405a;
-    --line-accent: #4a5a92;
-    --row-selected: #222b45;
-    --chip-bg: #232b40;
-    --accent: #5468e0;
-    --accent-strong: #6377ea;
-    --accent-soft: #232c52;
-    --accent-text: #a3b2ff;
-    --accent-muted: #94a3e6;
-    --success: #45d29f;
-    --warning: #eaa94f;
-    --danger: #f2838f;
-    --shadow: 0 10px 28px rgb(0 0 0 / 35%);
-    --shadow-lg: 0 20px 50px rgb(0 0 0 / 55%);
-    color-scheme: dark;
+:root[data-theme='light'] {
+  --bg: #f4f2f8;
+  --surface: #fff;
+  --surface-soft: #f7f5fb;
+  --surface-raised: #fff;
+  --rail: #15131c;
+  --ink: #18151f;
+  --ink-soft: #4a4558;
+  --muted: #6a6479;
+  --line: #e4e0ec;
+  --line-soft: #eeebf3;
+  --line-strong: #cfc9da;
+  --line-accent: #b7acf0;
+  --accent: #5b47e0;
+  --accent-strong: #4a37cc;
+  --accent-soft: #eeebff;
+  --accent-text: #4b38c9;
+  --accent-muted: #6b5fb0;
+  --row-selected: #f0edff;
+  --chip-bg: #f0eef5;
+  --success: #127a55;
+  --warning: #93560a;
+  --danger: #be3047;
+  --favorite: #a86f00;
+  --shadow: 0 10px 28px rgb(24 21 31 / 8%);
+  --shadow-lg: 0 24px 54px rgb(24 21 31 / 16%);
+  color-scheme: light;
+}
+/* «Sistema»: sin atributo de tema se sigue a Windows; el claro sólo aplica si Windows lo usa. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f4f2f8;
+    --surface: #fff;
+    --surface-soft: #f7f5fb;
+    --surface-raised: #fff;
+    --rail: #15131c;
+    --ink: #18151f;
+    --ink-soft: #4a4558;
+    --muted: #6a6479;
+    --line: #e4e0ec;
+    --line-soft: #eeebf3;
+    --line-strong: #cfc9da;
+    --line-accent: #b7acf0;
+    --accent: #5b47e0;
+    --accent-strong: #4a37cc;
+    --accent-soft: #eeebff;
+    --accent-text: #4b38c9;
+    --accent-muted: #6b5fb0;
+    --row-selected: #f0edff;
+    --chip-bg: #f0eef5;
+    --success: #127a55;
+    --warning: #93560a;
+    --danger: #be3047;
+    --shadow: 0 10px 28px rgb(24 21 31 / 8%);
+    --shadow-lg: 0 24px 54px rgb(24 21 31 / 16%);
+    color-scheme: light;
   }
 }
 * {

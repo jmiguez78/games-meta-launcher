@@ -4,33 +4,42 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Games Meta Launcher</title>
+    <link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="icon" href="/brand/mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/ui.css" />
+    <link rel="stylesheet" href="/experience.css" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true">✦</span><span>Games Meta<br /><strong>Launcher</strong></span>
+          <img class="brand-mark" src="/brand/mark.svg" alt="" width="40" height="40" /><span class="brand-name"
+            >Games Meta <strong>Launcher</strong></span
+          >
         </div>
         <nav class="navigation" aria-label="Navegación principal">
           <button class="nav-item active" data-page="home" aria-current="page">
-            <span data-icon="home"></span> Inicio
+            <span data-icon="home"></span><span class="nav-label">Inicio</span>
           </button>
-          <button class="nav-item" data-page="library"><span data-icon="grid"></span> Biblioteca</button>
-          <button class="nav-item" data-page="diagnostics"><span data-icon="activity"></span> Diagnóstico</button>
-          <button class="nav-item" data-page="settings"><span data-icon="settings"></span> Configuración</button>
+          <button class="nav-item" data-page="library">
+            <span data-icon="grid"></span><span class="nav-label">Biblioteca</span>
+          </button>
+          <button class="nav-item" data-page="diagnostics">
+            <span data-icon="activity"></span><span class="nav-label">Diagnóstico</span>
+          </button>
+          <button class="nav-item" data-page="settings">
+            <span data-icon="settings"></span><span class="nav-label">Configuración</span>
+          </button>
         </nav>
         <div class="sidebar-footer">
-          <span class="status-dot" aria-hidden="true"></span><span>Biblioteca local</span>
+          <span class="status-dot" aria-hidden="true"></span><span class="nav-label">Biblioteca local</span>
         </div>
       </aside>
       <main class="workspace">
         <header class="topbar">
-          <div>
-            <p class="kicker" id="page-kicker">TU COLECCIÓN</p>
-            <h1 id="page-title">Para jugar ahora</h1>
-          </div>
+          <h1 id="page-title">Inicio</h1>
           <div class="top-actions">
             <span id="last-update" class="last-update">Cargando inventario…</span
             ><button id="open-palette" class="button palette-trigger" aria-keyshortcuts="Control+K">
@@ -43,7 +52,6 @@
         <section id="home-page" class="page">
           <section class="home-summary">
             <div>
-              <p class="eyebrow">TU BIBLIOTECA</p>
               <h2>Elegí qué jugar.</h2>
               <p id="home-summary">Tus juegos, tu ritmo y lo que querés volver a jugar.</p>
             </div>
@@ -325,10 +333,7 @@
     <dialog id="editor">
       <form method="dialog">
         <div class="dialog-heading">
-          <div>
-            <p class="kicker">BIBLIOTECA PERSONAL</p>
-            <h2 id="editor-title">Ficha del juego</h2>
-          </div>
+          <h2 id="editor-title">Ficha del juego</h2>
           <button type="button" class="icon-btn dialog-close" data-close aria-label="Cerrar">
             <span data-icon="x"></span>
           </button>

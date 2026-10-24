@@ -1,0 +1,522 @@
+/* Experiencia 3.0: tipografía propia, barra lateral angosta, color ambiental tomado del arte,
+   portadas sin marco y movimiento con propósito. Se carga después de style.css y ui.css. */
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/inter.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  src: url('/fonts/bricolage-grotesque.woff2') format('woff2-variations');
+}
+
+/* El color ambiental se interpola cuando cambia el juego en foco. */
+@property --ambient {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #8e7dff;
+}
+
+:root {
+  --font-ui: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Inter Variable', 'Segoe UI', sans-serif;
+  --rail-width: 76px;
+  --rail-open: 236px;
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --radius-art: 12px;
+  --ambient: #8e7dff;
+}
+
+/* ── Tipografía ─────────────────────────────────────────────── */
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+}
+body {
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: 'cv11', 'ss03';
+  -webkit-font-smoothing: antialiased;
+}
+:is(.button, .text-button, .chip, .nav-item, .segmented button, .poster-play, .active-filter, .toast-action) {
+  font-family: var(--font-ui);
+}
+h1,
+h2,
+.display {
+  font-family: var(--font-display);
+  font-stretch: 84%;
+  font-optical-sizing: auto;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: clamp(30px, 3.2vw, 40px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.section-heading h2,
+.page-intro h2,
+.settings-card h2,
+.filter-heading h2 {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.section-heading h2,
+.page-intro h2 {
+  font-size: 22px;
+}
+:is(.stat strong, .meter-cell, .scope .count, .media-position, #counter) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Fondo y color ambiental ────────────────────────────────── */
+body {
+  background: var(--bg);
+  transition: --ambient var(--dur-slow) var(--ease-out);
+}
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 640px at 18% -12%, color-mix(in srgb, var(--ambient) 26%, transparent), transparent 70%),
+    radial-gradient(700px 520px at 100% 0%, color-mix(in srgb, var(--ambient) 10%, transparent), transparent 70%);
+}
+:root[data-theme='light'] body::before {
+  opacity: 0.55;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) body::before {
+    opacity: 0.55;
+  }
+}
+.app-shell {
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+}
+
+/* ── Barra lateral angosta: íconos que se expanden con el puntero o el foco ── */
+.sidebar {
+  z-index: 20;
+  width: var(--rail-width);
+  gap: 28px;
+  padding: 20px 14px;
+  overflow: hidden;
+  border-right: 1px solid rgb(255 255 255 / 6%);
+  background: var(--rail);
+  color: #d9d4e6;
+  transition:
+    width var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
+}
+.sidebar:hover,
+.sidebar:has(:focus-visible) {
+  width: var(--rail-open);
+  box-shadow: 24px 0 60px rgb(0 0 0 / 45%);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.brand-mark {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.brand-name {
+  color: #b9b2c9;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-stretch: 84%;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.brand-name strong {
+  display: block;
+  color: #fff;
+  font-size: 17px;
+}
+.nav-label,
+.brand-name {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.sidebar:hover :is(.nav-label, .brand-name),
+.sidebar:has(:focus-visible) :is(.nav-label, .brand-name) {
+  opacity: 1;
+  transition-delay: 60ms;
+}
+.navigation {
+  gap: 4px;
+}
+.nav-item {
+  position: relative;
+  gap: 16px;
+  height: 44px;
+  padding: 0 13px;
+  border-radius: 12px;
+  color: #a9a2bb;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.nav-item [data-icon] {
+  color: inherit;
+}
+.nav-item .icon {
+  width: 20px;
+  height: 20px;
+}
+.nav-item:hover {
+  background: rgb(255 255 255 / 6%);
+  color: #fff;
+}
+.nav-item.active {
+  background: rgb(255 255 255 / 9%);
+  color: #fff;
+}
+.nav-item.active::before {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: -14px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--play);
+  content: '';
+}
+.nav-item:focus-visible {
+  outline: 2px solid #c9bfff;
+  outline-offset: -2px;
+}
+.sidebar-footer {
+  gap: 14px;
+  padding: 0 16px;
+  color: #9a93ad;
+  white-space: nowrap;
+}
+.status-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 18%, transparent);
+}
+
+/* ── Área de trabajo ────────────────────────────────────────── */
+.workspace {
+  max-width: 1600px;
+  padding: 34px clamp(24px, 3.6vw, 56px) 72px;
+}
+.topbar {
+  align-items: center;
+  margin-bottom: 26px;
+}
+.page:not(.hidden) {
+  animation: page-in var(--dur-slow) var(--ease-out);
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ── Botones ─────────────────────────────────────────────────── */
+.button {
+  border-radius: var(--control-radius);
+  background: var(--surface-raised);
+  font-weight: 600;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.button:hover {
+  background: var(--surface-soft);
+  border-color: var(--ink-soft);
+}
+.button:active {
+  transform: scale(0.98);
+}
+/* Primario: tinta invertida. Sólo Jugar usa el coral. */
+.button.primary {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+.button.primary:hover {
+  border-color: var(--ink-soft);
+  background: var(--ink-soft);
+}
+.button.primary[data-action='play']:not(.review),
+.button.play {
+  border-color: var(--play);
+  background: var(--play);
+  color: var(--play-ink);
+  font-weight: 700;
+}
+.button.primary[data-action='play']:not(.review):hover,
+.button.play:hover {
+  border-color: var(--play-strong);
+  background: var(--play-strong);
+}
+.button.primary[data-action='play'] .icon {
+  fill: currentColor;
+}
+
+/* ── Portadas sin marco: la imagen es la tarjeta ────────────── */
+.library.posters {
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 28px 20px;
+}
+.poster {
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transition: none;
+}
+.poster:hover {
+  border: 0;
+  box-shadow: none;
+}
+.poster:focus-visible {
+  outline: 0;
+}
+.poster-art {
+  border-radius: var(--radius-art);
+  background-color: var(--surface-soft);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 6%),
+    0 12px 26px -16px rgb(0 0 0 / 80%);
+  transition:
+    transform var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
+}
+.poster:hover .poster-art,
+.poster:focus-within .poster-art {
+  transform: translateY(-4px) scale(1.025);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 16%),
+    0 26px 46px -18px color-mix(in srgb, var(--art, #000) 80%, transparent);
+}
+/* El juego elegido con el teclado se marca sólo mientras la colección tiene el foco. */
+[data-tiles]:focus-within .poster.selected .poster-art {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.poster-overlay {
+  inset: 0 0 auto;
+  place-items: end start;
+  padding: 12px;
+  border-radius: var(--radius-art);
+  background: linear-gradient(180deg, transparent 48%, rgb(8 7 12 / 72%));
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+.poster:hover .poster-overlay,
+.poster:focus-within .poster-overlay {
+  transform: translateY(-4px) scale(1.025);
+}
+.poster-play {
+  height: 36px;
+  padding: 0 16px 0 12px;
+  background: var(--play);
+  color: var(--play-ink);
+  font-size: 13px;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.poster-play:hover {
+  background: var(--play-strong);
+  transform: scale(1.04);
+}
+.poster-play .icon {
+  width: 16px;
+  height: 16px;
+}
+.poster-play.review {
+  background: var(--ink);
+  color: var(--bg);
+}
+.poster-actions {
+  z-index: 1;
+  transition: transform var(--dur) var(--ease-out);
+}
+.poster:hover .poster-actions,
+.poster:focus-within .poster-actions {
+  transform: translate(-4px, -2px);
+}
+.poster-actions .icon-btn {
+  border-radius: 9px;
+  backdrop-filter: blur(8px);
+  background: rgb(8 7 12 / 55%);
+}
+.poster-body {
+  gap: 2px;
+  padding: 0 2px;
+}
+.poster-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  -webkit-line-clamp: 1;
+}
+.poster-art .cover-initial {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-stretch: 80%;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Línea de plataforma y estado: «Listo» se sobreentiende en la portada. */
+.poster-meta {
+  gap: 10px;
+}
+.poster .status-pill.ready {
+  display: none;
+}
+.status-pill {
+  font-weight: 600;
+}
+
+/* Filas, tabla y ficha toman la misma tinta de superficie. */
+.game-row {
+  border-color: transparent;
+  background: var(--surface);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.game-row:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+.game-row.selected {
+  border-color: var(--line-accent);
+}
+.row-thumb {
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%);
+}
+.detail-panel,
+.data-table,
+.surface-card,
+.settings-card,
+.diagnostic-panel,
+.filter-panel,
+.stat-grid .stat {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: none;
+}
+.detail-panel h2 {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.segmented,
+#library-page .search {
+  background: var(--surface);
+}
+.segmented button[aria-pressed='true'] {
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+}
+dialog {
+  border-color: var(--line-strong);
+  border-radius: 18px;
+}
+dialog::backdrop {
+  background: var(--overlay);
+  backdrop-filter: blur(4px);
+}
+.toast {
+  background: #24212f;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 8%),
+    var(--shadow-lg);
+}
+
+/* ── Pantallas medianas y chicas: la barra lateral pasa arriba ── */
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar,
+  .sidebar:hover,
+  .sidebar:has(:focus-visible) {
+    width: auto;
+    padding: 10px 16px;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid rgb(255 255 255 / 6%);
+    box-shadow: none;
+  }
+  .nav-label,
+  .brand-name {
+    opacity: 1;
+  }
+  .nav-item.active::before {
+    display: none;
+  }
+}
+@media (max-width: 740px) {
+  .nav-label,
+  .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .library.posters {
+    gap: 20px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .sidebar,
+  .nav-label,
+  .brand-name,
+  .poster-art,
+  .poster-overlay,
+  .poster-actions,
+  .poster-play,
+  .button,
+  .game-row {
+    transition: none;
+  }
+  .page:not(.hidden) {
+    animation: none;
+  }
+  .poster:hover :is(.poster-art, .poster-overlay),
+  .poster:focus-within :is(.poster-art, .poster-overlay) {
+    transform: none;
+  }
+}

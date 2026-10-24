@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { CATALOG_SCHEMA, scanLibrary } from './indexer.mjs';
+import { CATALOG_SCHEMA, scanLibrary, steamArtwork } from './indexer.mjs';
 import { createIgdb, imageUrl } from './igdb.mjs';
 import { createSteam, mergeSteamLibrary } from './steam.mjs';
 import { displayName } from './names.mjs';
@@ -26,8 +26,17 @@ const types = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp'
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8'
 };
+// El tipo real de una imagen descargada o cacheada se reconoce por sus primeros bytes.
+function imageType(bytes) {
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return types['.png'];
+  if (bytes.subarray(0, 4).toString('latin1') === 'RIFF' && bytes.subarray(8, 12).toString('latin1') === 'WEBP')
+    return types['.webp'];
+  return types['.jpg'];
+}
 const extensionByMime = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
 const execFileAsync = promisify(execFile);
 const scheduleName = 'Games Meta Launcher - Indexación nocturna';
@@ -61,7 +70,12 @@ function safeOverride(value) {
 // Imágenes: primero las que guardan los launchers en esta PC; si faltan, la CDN de Steam y después IGDB.
 const artCacheDir = path.join(dataDir, 'art-cache');
 const ART_RETRY_MS = 7 * 24 * 60 * 60 * 1000;
-const steamCdnAssets = { cover: ['library_600x900.jpg', 'header.jpg'], hero: ['library_hero.jpg'] };
+// wordmark: el logo con fondo transparente que Steam muestra sobre la imagen panorámica.
+const steamCdnAssets = {
+  cover: ['library_600x900.jpg', 'header.jpg'],
+  hero: ['library_hero.jpg'],
+  wordmark: ['logo.png']
+};
 const igdbImageSizes = { cover: 't_cover_big', hero: 't_1080p' };
 const pendingDownloads = new Map();
 const igdb = createIgdb(dataDir);
@@ -72,7 +86,8 @@ function onlineSources(game, meta, kind) {
     sources.push(
       ...steamCdnAssets[kind].map((asset) => `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.id}/${asset}`)
     );
-  const igdbImage = imageUrl(kind === 'hero' ? meta?.artwork : meta?.cover, igdbImageSizes[kind]);
+  const igdbImage =
+    igdbImageSizes[kind] && imageUrl(kind === 'hero' ? meta?.artwork : meta?.cover, igdbImageSizes[kind]);
   if (igdbImage) sources.push(igdbImage);
   return sources;
 }
@@ -87,10 +102,16 @@ function artwork(game, art, meta) {
         : online('cover')
           ? 'portrait'
           : null;
-  return { cover, hero: Boolean(art?.hero || online('hero')), background: art?.background ?? null };
+  return {
+    cover,
+    hero: Boolean(art?.hero || online('hero')),
+    wordmark: Boolean(art?.wordmark || online('wordmark')),
+    background: art?.background ?? null
+  };
 }
 async function localArt(art = {}, kind) {
-  const candidates = kind === 'hero' ? [art?.hero] : [art?.portrait, art?.landscape, art?.logo];
+  const candidates =
+    kind === 'hero' ? [art?.hero] : kind === 'wordmark' ? [art?.wordmark] : [art?.portrait, art?.landscape, art?.logo];
   for (const file of candidates.filter(Boolean)) {
     const type = types[path.extname(file).toLowerCase()];
     if (!type?.startsWith('image/')) continue;
@@ -113,7 +134,7 @@ async function downloadArt(sources, file, missFile) {
       if (bytes.length > 5_000_000) continue;
       await fs.mkdir(artCacheDir, { recursive: true });
       await fs.writeFile(file, bytes);
-      return { bytes, type: types['.jpg'] };
+      return { bytes, type: imageType(bytes) };
     } catch {
       /* sin conexión o recurso inválido: se prueba el siguiente */
     }
@@ -137,7 +158,8 @@ async function onlineArt(game, meta, kind) {
   const file = path.join(artCacheDir, `${name}.jpg`);
   const missFile = path.join(artCacheDir, `${name}.miss`);
   try {
-    return { bytes: await fs.readFile(file), type: types['.jpg'] };
+    const bytes = await fs.readFile(file);
+    return { bytes, type: imageType(bytes) };
   } catch {
     /* todavía no se descargó */
   }
@@ -157,7 +179,12 @@ async function gameArt(key, kind) {
   const [catalog, metadata, account] = await Promise.all([rawLibrary(), igdb.metadata(), steam.account()]);
   const game = mergeSteamLibrary(catalog.games, account).find((item) => item.key === key);
   if (!game) return null;
-  return (await localArt(game.art, kind)) ?? (await onlineArt(game, metadata[key], kind));
+  // Los inventarios anteriores no registraban el logo de Steam: se busca en la caché local al pedirlo.
+  const art =
+    kind === 'wordmark' && !game.art?.wordmark && game.platform === 'Steam' && /^\d+$/.test(game.id)
+      ? { ...game.art, ...(await steamArtwork(game.id)) }
+      : game.art;
+  return (await localArt(art, kind)) ?? (await onlineArt(game, metadata[key], kind));
 }
 function publicMeta(meta) {
   if (!meta?.igdbId) return null;
@@ -468,7 +495,7 @@ export function createServer({ onSettingsChange } = {}) {
         await writePreferences(prefs);
         return reply(res, 200, JSON.stringify({ ok: true }));
       }
-      const artRoute = req.method === 'GET' && url.pathname.match(/^\/api\/art\/(cover|hero)\/([^/]+)$/);
+      const artRoute = req.method === 'GET' && url.pathname.match(/^\/api\/art\/(cover|hero|wordmark)\/([^/]+)$/);
       if (artRoute) {
         const image = await gameArt(decodeURIComponent(artRoute[2]), artRoute[1]);
         if (!image) return reply(res, 404, 'Sin imagen.', 'text/plain');

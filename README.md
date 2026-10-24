@@ -4,15 +4,14 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.14.2`. Detecta instalaciones locales, muestra sus portadas, permite filtrarlas, guardar preferencias y metadatos personales, y lanzar juegos mediante los identificadores locales que se puedan resolver. Incluye una aplicación portable de Windows con modo claro y oscuro, un panel de diagnóstico, la configuración visual de la indexación nocturna, una paleta de comandos (Control+K), avisos con Deshacer y fichas ampliadas desde IGDB: historia, idiomas, modos, compañías, valoraciones, duración estimada, clasificaciones, lanzamientos, capturas, videos y juegos relacionados. El emparejamiento de IGDB sigue en beta. Steam enriquece la biblioteca con juegos de cuenta, instalados o no, actividad, logros y datos de la tienda.
+Versión `0.18.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam. Inicio propone qué jugar con una imagen principal y filas por intención (Continuar, Favoritos, sin estrenar, sesiones cortas, mejor valorados y para instalar). Cada juego tiene su propia página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. La interfaz usa el tema oscuro por defecto, toma el color del juego en foco y tiene paleta de comandos (Control+K), avisos con Deshacer y navegación completa por teclado. La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 
-1. Abrí `release-v0142-final/Games Meta Launcher 0.14.2.exe` cuando esté disponible, o ejecutá `npm run desktop` durante el desarrollo.
-2. En **Inicio**, elegí favoritos o juegos listos para iniciar.
-3. En **Biblioteca**, buscá, filtrá y elegí la vista que mejor se adapte a la tarea. El modo **Explorador** reúne toda la colección en una única tabla: seleccioná cualquier encabezado para ordenar ascendente o descendentemente.
-4. En **Diagnóstico**, revisá las plataformas y juegos que requieren atención.
-5. En **Configuración**, elegí la hora de la indexación nocturna y respaldá tus preferencias.
+1. Generá el portable con `npm run package` y abrí `release-v0180/Games Meta Launcher 0.18.0.exe`, o ejecutá `npm run desktop` durante el desarrollo.
+2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en cualquier portada abre la página del juego; el botón Jugar lo inicia.
+3. En **Biblioteca**, buscá y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
+4. En **Configuración**, revisá el estado de la biblioteca, conectá Steam e IGDB, elegí el tema y la hora de la indexación nocturna, y respaldá tus preferencias. Si algún juego necesita revisión, la barra lateral lo indica.
 
 La versión portable incluye su propio runtime. Para desarrollo se requiere `npm install`.
 
@@ -26,7 +25,7 @@ La versión portable incluye su propio runtime. Para desarrollo se requiere `npm
 | `npm test` | Ejecuta las pruebas automáticas de la API y el indexador. |
 | `npm run format` | Formatea el código con Prettier. |
 | `npm run desktop` | Abre la aplicación en una ventana de escritorio. |
-| `npm run package` | Genera el ejecutable portable de Windows en `release-v0142-final/`. |
+| `npm run package` | Genera el ejecutable portable de Windows en `release-v0180/`. |
 
 El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC. Tus favoritos, etiquetas, progreso, notas, puntuaciones, portadas y fecha de última vez jugado se guardan localmente en `data/preferences.json` y `data/covers/`, también excluidos del repositorio. La fecha de juego se registra al iniciar un título desde Games Meta Launcher. La aplicación portable guarda esos datos en el perfil local de Windows.
 

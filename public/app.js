@@ -39,7 +39,8 @@ const pageMeta = {
   home: ['Inicio', 'inicio para jugar ahora'],
   library: ['Biblioteca', 'biblioteca colección juegos'],
   diagnostics: ['Estado de la biblioteca', 'diagnóstico estado sistema revisión plataformas'],
-  settings: ['Configuración', 'configuración preferencias ajustes']
+  settings: ['Configuración', 'configuración preferencias ajustes'],
+  game: ['Juego', '']
 };
 const viewInfo = {
   icons: { name: 'Portadas', description: 'Explorá visualmente tu colección.' },
@@ -523,10 +524,6 @@ function playOrReview(game) {
   if (game.launch && game.launch.available) playGame(game);
   else say(game.evidence);
 }
-function openGameDetail(game) {
-  state.selectedKey = game.key;
-  document.querySelector('#views [data-view="detail"]').click();
-}
 // Fila para las vistas Lista y Detalle.
 function makeRow(game) {
   const cover = coverInfo(game);
@@ -1001,52 +998,112 @@ function appendExtendedMetadata(section, meta, mediaSection) {
     section.append(updated);
   }
 }
-function detailPanel(game) {
-  const panel = document.createElement('aside');
-  panel.className = 'detail-panel';
-  if (!game) {
-    panel.innerHTML = '<p class="detail-empty">Elegí un juego para ver su ficha.</p>';
-    return panel;
-  }
-  const cover = coverInfo(game);
-  panel.dataset.key = game.key;
-  panel.setAttribute('aria-label', 'Ficha de ' + game.name);
-  panel.innerHTML =
-    '<div class="detail-hero ' +
-    cover.palette +
-    '"><span class="cover-initial"></span></div><div class="detail-body">' +
-    metaLineHtml() +
-    '<h2></h2><div class="detail-actions">' +
-    playButtonHtml(game, 'button primary') +
-    '<button type="button" class="button" data-action="favorite">' +
-    icon('star', game.favorite) +
-    '<span>' +
-    (game.favorite ? 'En favoritos' : 'Favorito') +
-    '</span></button><button type="button" class="button" data-action="edit">' +
-    icon('pencil') +
-    '<span>Editar</span></button></div>' +
-    '<dl class="detail-facts"><div><dt>Progreso</dt><dd></dd></div><div><dt>Tu puntuación</dt><dd></dd></div>' +
-    '<div><dt>Última vez jugado</dt><dd></dd></div><div><dt>Unidad</dt><dd></dd></div></dl>' +
-    '<section class="detail-section personal-notes"><h3>Notas</h3><p class="notes"></p><div class="tag-list personal-tags"></div></section>' +
-    '<details class="detail-section launch-details"><summary>Detalles técnicos</summary><dl class="detail-tech">' +
-    '<dt>Ubicación</dt><dd></dd><dt>Detección</dt><dd></dd></dl></details></div>';
-  applyCover(panel.querySelector('.detail-hero'), game, cover, true);
-  fillMetaLine(panel, game);
-  panel.querySelector('h2').textContent = game.name;
-  const facts = panel.querySelectorAll('.detail-facts dd');
-  facts[0].textContent = game.progress || 'Pendiente';
-  facts[1].textContent = game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar';
-  facts[2].textContent = lastPlayedText(game);
-  facts[3].textContent = game.drive || '—';
-  const tech = panel.querySelectorAll('.launch-details dd');
-  tech[0].textContent = game.location;
-  tech[1].textContent = game.evidence;
-  panel.querySelector('.notes').textContent = game.notes || 'Sin notas personales.';
+// Descripción del juego: en español desde la tienda de Steam cuando existe; si no, la de IGDB (en inglés).
+const steamDescriptions = new Map();
+function steamDescription(game) {
+  if (game.platform !== 'Steam' || !/^\d+$/.test(game.id)) return Promise.resolve('');
+  if (!steamDescriptions.has(game.id))
+    steamDescriptions.set(
+      game.id,
+      request('/api/steam/games/' + encodeURIComponent(game.id) + '/details')
+        .then((envelope) => steamPlain(envelope.store?.data?.short_description || ''))
+        .catch(() => '')
+    );
+  return steamDescriptions.get(game.id);
+}
+function descriptionSection(game) {
+  const section = document.createElement('section');
+  section.className = 'game-description';
+  section.setAttribute('aria-busy', 'true');
+  section.innerHTML =
+    '<span class="skeleton skeleton-line"></span><span class="skeleton skeleton-line"></span>' +
+    '<span class="skeleton skeleton-line short"></span>';
+  const english = game.meta?.summary || '';
+  // Se espera la versión en español un momento; si no llega, se muestra la de IGDB y se reemplaza al llegar.
+  let settled = false;
+  const show = (text, source) => {
+    settled = true;
+    section.setAttribute('aria-busy', 'false');
+    section.replaceChildren();
+    if (!text) {
+      section.remove();
+      return;
+    }
+    const paragraph = document.createElement('p');
+    paragraph.className = 'meta-summary';
+    paragraph.textContent = text;
+    const note = document.createElement('p');
+    note.className = 'meta-source';
+    note.textContent = source;
+    section.append(paragraph);
+    if (text.length > 420) {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'text-button';
+      toggle.textContent = 'Leer más';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.onclick = () => {
+        const expanded = paragraph.classList.toggle('expanded');
+        toggle.textContent = expanded ? 'Leer menos' : 'Leer más';
+        toggle.setAttribute('aria-expanded', String(expanded));
+      };
+      section.append(toggle);
+    }
+    section.append(note);
+  };
+  const fallback = () => show(english, 'Descripción de IGDB, disponible sólo en inglés.');
+  const timer = setTimeout(() => !settled && fallback(), 1500);
+  steamDescription(game).then((spanish) => {
+    clearTimeout(timer);
+    if (spanish) show(spanish, 'Descripción de la tienda de Steam.');
+    else if (!settled) fallback();
+  });
+  return section;
+}
+const launchKinds = {
+  uri: 'Mediante el launcher de la tienda',
+  file: 'Archivo ejecutable',
+  appsFolder: 'Aplicación de Microsoft Store'
+};
+// Datos técnicos de la instalación, aparte del resumen: sólo hacen falta para resolver problemas.
+function installationSection(game) {
+  const details = document.createElement('details');
+  details.className = 'detail-section launch-details';
+  details.innerHTML = '<summary>Instalación</summary><dl class="detail-tech"></dl>';
+  const list = details.querySelector('dl');
+  [
+    ['Estado', statusText(game)],
+    ['Unidad', game.drive],
+    ['Ubicación', game.location],
+    ['Cómo se inicia', game.launch ? launchKinds[game.launch.type] || game.launch.type : ''],
+    ['Nombre en la tienda', game.originalName],
+    ['Detección', game.evidence]
+  ].forEach(([label, value]) => {
+    if (!value) return;
+    const term = document.createElement('dt');
+    const description = document.createElement('dd');
+    term.textContent = label;
+    description.textContent = value;
+    list.append(term, description);
+  });
+  return details;
+}
+function personalSection(game) {
+  const section = document.createElement('section');
+  section.className = 'detail-section personal-notes';
+  section.innerHTML = '<h3>Tus notas</h3><p class="notes"></p><div class="tag-list personal-tags"></div>';
+  section.querySelector('.notes').textContent =
+    game.notes || 'Todavía no escribiste notas. Usá Editar para agregarlas.';
   tagsOf(game).forEach((tag) => {
     const label = document.createElement('span');
     label.textContent = '#' + tag;
-    panel.querySelector('.personal-tags').append(label);
+    section.querySelector('.personal-tags').append(label);
   });
+  return section;
+}
+// Pestañas de la ficha (Resumen, Información, Multimedia y, en Steam, Steam y Logros).
+// Se usan en la vista Ficha de la Biblioteca y en la página de cada juego.
+function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
   const tabs = document.createElement('div');
   tabs.className = 'detail-tabs';
   const tablist = document.createElement('div');
@@ -1068,13 +1125,13 @@ function detailPanel(game) {
   ].forEach(([key, label]) => {
     const tab = document.createElement('button');
     tab.type = 'button';
-    tab.id = 'game-tab-' + key;
+    tab.id = prefix + '-tab-' + key;
     tab.textContent = label;
     tab.setAttribute('role', 'tab');
-    tab.setAttribute('aria-controls', 'game-panel-' + key);
+    tab.setAttribute('aria-controls', prefix + '-panel-' + key);
     tab.dataset.tab = key;
     const body = document.createElement('section');
-    body.id = 'game-panel-' + key;
+    body.id = prefix + '-panel-' + key;
     body.className = 'detail-tabpanel';
     body.setAttribute('role', 'tabpanel');
     body.setAttribute('aria-labelledby', tab.id);
@@ -1112,13 +1169,9 @@ function detailPanel(game) {
   const overview = content.get('summary');
   const information = content.get('information');
   const media = content.get('media');
-  if (game.meta) overview.append(metaSection(game.meta));
-  if (game.steam) overview.append(steamActivityFacts(game));
-  overview.append(
-    panel.querySelector('.detail-facts'),
-    panel.querySelector('.personal-notes'),
-    panel.querySelector('.launch-details')
-  );
+  overview.append(descriptionSection(game));
+  if (game.meta) overview.append(metaSection({ ...game.meta, summary: '' }));
+  overview.append(...summaryExtras, personalSection(game), installationSection(game));
   if (game.meta) appendExtendedMetadata(information, game.meta, media);
   [
     [
@@ -1133,11 +1186,49 @@ function detailPanel(game) {
     empty.textContent = message;
     body.append(empty);
   });
-  panel.querySelector('.detail-body').append(tabs);
   selectDetailTab(content.has(state.detailTab) ? state.detailTab : 'summary');
+  return tabs;
+}
+// Ficha compacta para la vista Ficha de la Biblioteca: lista a la izquierda, ficha a la derecha.
+function detailPanel(game) {
+  const panel = document.createElement('aside');
+  panel.className = 'detail-panel';
+  if (!game) {
+    panel.innerHTML = '<p class="detail-empty">Elegí un juego para ver su ficha.</p>';
+    return panel;
+  }
+  const cover = coverInfo(game);
+  panel.dataset.key = game.key;
+  panel.setAttribute('aria-label', 'Ficha de ' + game.name);
+  panel.innerHTML =
+    '<div class="detail-hero ' +
+    cover.palette +
+    '"><span class="cover-initial"></span></div><div class="detail-body">' +
+    metaLineHtml() +
+    '<h2></h2><div class="detail-actions">' +
+    playButtonHtml(game, 'button primary') +
+    '<button type="button" class="button" data-action="favorite">' +
+    icon('star', game.favorite) +
+    '<span>' +
+    (game.favorite ? 'En favoritos' : 'Favorito') +
+    '</span></button><button type="button" class="button" data-action="edit">' +
+    icon('pencil') +
+    '<span>Editar</span></button><button type="button" class="button" data-action="page">Abrir ficha completa</button></div>' +
+    '<dl class="detail-facts"><div><dt>Progreso</dt><dd></dd></div><div><dt>Tu puntuación</dt><dd></dd></div>' +
+    '<div><dt>Última vez jugado</dt><dd></dd></div></dl></div>';
+  applyCover(panel.querySelector('.detail-hero'), game, cover, true);
+  fillMetaLine(panel, game);
+  panel.querySelector('h2').textContent = game.name;
+  const facts = panel.querySelectorAll('.detail-facts dd');
+  facts[0].textContent = game.progress || 'Pendiente';
+  facts[1].textContent = game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar';
+  const played = GMLShelves.lastPlayed(game);
+  facts[2].textContent = played ? GMLShelves.relativeDay(new Date(played).toISOString()) : 'Aún no registrado';
+  panel
+    .querySelector('.detail-body')
+    .append(gameTabs(game, { summaryExtras: game.steam ? [steamActivityFacts(game)] : [] }));
   decorateActions(panel, game);
-  panel.querySelectorAll('[data-action=favorite], [data-action=edit]').forEach((button) => (button.tabIndex = 0));
-  panel.querySelector('[data-action=play]').tabIndex = 0;
+  panel.querySelectorAll('[data-action]').forEach((button) => (button.tabIndex = 0));
   setAmbient(game);
   return panel;
 }
@@ -1168,6 +1259,7 @@ function makePosterCard(game, options = {}) {
 }
 async function posterAction(game, action) {
   if (action === 'play') return playOrReview(game);
+  if (action === 'page') return openGamePage(game);
   if (action === 'edit') return editGame(game);
   if (action === 'favorite') {
     const previous = Boolean(game.favorite);
@@ -1239,8 +1331,10 @@ function bindTiles(container) {
     if (!host || !container.contains(host)) return;
     const action = event.target.closest('[data-action]');
     if (host.classList.contains('tile')) {
-      if (!action && container === library && ['list', 'explorer'].includes(state.view)) {
-        openGameDetail(gameFor(host));
+      // Fuera de la vista Ficha, un clic en el juego (no en sus botones) abre su página.
+      if (!action && !(container === library && state.view === 'detail')) {
+        selectTile(host, false);
+        openGamePage(gameFor(host), host);
         return;
       }
       selectTile(host, !action);
@@ -1250,10 +1344,9 @@ function bindTiles(container) {
   });
   container.addEventListener('dblclick', (event) => {
     const tile = event.target.closest('.tile');
-    if (tile && !event.target.closest('button')) {
-      if (container === library && ['list', 'explorer'].includes(state.view)) openGameDetail(gameFor(tile));
-      else playOrReview(gameFor(tile));
-    }
+    // En la vista Ficha, el doble clic juega; en las demás, el primer clic ya abrió la página.
+    if (tile && !event.target.closest('button') && container === library && state.view === 'detail')
+      playOrReview(gameFor(tile));
   });
   container.addEventListener('keydown', (event) => {
     const tile = event.target.closest('.tile');
@@ -1276,8 +1369,11 @@ function bindTiles(container) {
       selectTile(next, true);
       tileSelected(container, next);
     } else if (event.key === 'Enter') {
-      if (container === library && ['list', 'explorer'].includes(state.view)) openGameDetail(gameFor(tile));
+      if (container === library && ['list', 'explorer'].includes(state.view)) openGamePage(gameFor(tile), tile);
       else posterAction(gameFor(tile), 'play');
+    } else if (event.key === ' ' && !(container === library && state.view === 'detail')) {
+      event.preventDefault();
+      openGamePage(gameFor(tile), tile);
     } else if (event.key.toLowerCase() === 'f') posterAction(gameFor(tile), 'favorite');
     else if (event.key.toLowerCase() === 'e') posterAction(gameFor(tile), 'edit');
   });
@@ -1381,10 +1477,14 @@ let heroKey = '';
 function heroGame() {
   return heroPicks.find((pick) => pick.game.key === heroKey) || heroPicks[0];
 }
-function setHeroBackdrop(game) {
-  const backdrop = homeHero.querySelector('.hero-backdrop');
+// Pinta el arte panorámico (o la portada desenfocada) detrás de una cabecera, con un fundido entre juegos.
+function heroArtUrl(game) {
   const sources = artSources(game, true);
-  const url = (sources.find((source) => source.kind === 'hero') || sources[0])?.url;
+  return (sources.find((source) => source.kind === 'hero') || sources[0])?.url || '';
+}
+function paintBackdrop(host, game) {
+  const backdrop = host.querySelector('.hero-backdrop');
+  const url = heroArtUrl(game);
   backdrop.dataset.key = game.key;
   if (!url) {
     backdrop.replaceChildren();
@@ -1400,10 +1500,25 @@ function setHeroBackdrop(game) {
     backdrop.append(layer);
     requestAnimationFrame(() => layer.classList.add('show'));
     setTimeout(() => [...backdrop.children].slice(0, -1).forEach((old) => old.remove()), 600);
-    applyArtColor(homeHero, game, image);
-    if (state.page === 'home') setAmbient(game);
+    applyArtColor(host, game, image);
+    if (host.contains(document.querySelector('.page:not(.hidden) .hero-backdrop'))) setAmbient(game);
   };
   image.src = url;
+}
+// El logo del juego reemplaza al título escrito sólo si carga; el título queda para lectores de pantalla.
+function showWordmark(image, title, game, host) {
+  title.textContent = game.name;
+  title.classList.remove('visually-hidden');
+  image.hidden = true;
+  image.onload = null;
+  image.removeAttribute('src');
+  if (!(game.artwork && game.artwork.wordmark)) return;
+  image.onload = () => {
+    if (host.dataset.key !== game.key) return;
+    image.hidden = false;
+    title.classList.add('visually-hidden');
+  };
+  image.src = '/api/art/wordmark/' + encodeURIComponent(game.key);
 }
 function renderHero() {
   const pick = heroGame();
@@ -1416,22 +1531,7 @@ function renderHero() {
   const known = artColors.get(game.key);
   if (known) homeHero.style.setProperty('--art', known);
   document.querySelector('#hero-reason').textContent = heroReasons[reason];
-  const title = document.querySelector('#hero-title');
-  title.textContent = game.name;
-  title.classList.remove('visually-hidden');
-  const wordmark = document.querySelector('#hero-wordmark');
-  wordmark.hidden = true;
-  wordmark.onload = null;
-  wordmark.removeAttribute('src');
-  if (game.artwork && game.artwork.wordmark) {
-    // El logo del juego reemplaza al título escrito sólo si carga; el título queda para lectores de pantalla.
-    wordmark.onload = () => {
-      if (homeHero.dataset.key !== game.key) return;
-      wordmark.hidden = false;
-      title.classList.add('visually-hidden');
-    };
-    wordmark.src = '/api/art/wordmark/' + encodeURIComponent(game.key);
-  }
+  showWordmark(document.querySelector('#hero-wordmark'), document.querySelector('#hero-title'), game, homeHero);
   const facts = document.querySelector('#hero-facts');
   facts.replaceChildren();
   const played = GMLShelves.lastPlayed(game);
@@ -1481,7 +1581,7 @@ function renderHero() {
     };
     picker.append(button);
   });
-  setHeroBackdrop(game);
+  paintBackdrop(homeHero, game);
 }
 homeHero.addEventListener('click', (event) => {
   const action = event.target.closest('[data-hero-action]')?.dataset.heroAction;
@@ -1599,6 +1699,142 @@ function renderHome() {
   renderHealthSignals();
   pruneCoverLoads();
 }
+// ── Página de cada juego ────────────────────────────────────────
+const gamePage = document.querySelector('#game-page');
+let gameReturn = null;
+function gameFacts(game) {
+  const facts = [game.platform];
+  if (statusText(game) !== 'Listo para jugar') facts.push(statusText(game));
+  if (game.meta?.year) facts.push(String(game.meta.year));
+  (game.meta?.genres || []).slice(0, 2).forEach((genre) => facts.push(genre));
+  if (game.meta?.developers?.[0]) facts.push(game.meta.developers[0]);
+  return facts;
+}
+function statRow(list, label, value) {
+  if (!value) return;
+  const row = document.createElement('div');
+  row.innerHTML = '<dt></dt><dd></dd>';
+  row.querySelector('dt').textContent = label;
+  row.querySelector('dd').textContent = value;
+  list.append(row);
+}
+// Columna de acción: jugar o instalar, favorito y edición, y la relación del jugador con el juego.
+function renderGameAside(game) {
+  const aside = document.querySelector('#game-aside');
+  aside.dataset.key = game.key;
+  aside.innerHTML =
+    '<div class="game-actions">' +
+    playButtonHtml(game, 'button primary game-play') +
+    '<div class="game-secondary"><button type="button" class="button" data-action="favorite">' +
+    icon('star', game.favorite) +
+    '<span></span></button><button type="button" class="button" data-action="edit">' +
+    icon('pencil') +
+    '<span>Editar</span></button></div></div><dl class="game-stats"></dl>' +
+    '<div class="achievement-ring" hidden><svg viewBox="0 0 36 36" aria-hidden="true"><circle class="ring-track" cx="18" cy="18" r="15.5"/>' +
+    '<circle class="ring-value" cx="18" cy="18" r="15.5" pathLength="100"/></svg><p><strong></strong><span></span></p></div>';
+  aside.querySelector('[data-action=favorite] span').textContent = game.favorite ? 'En favoritos' : 'Favorito';
+  decorateActions(aside, game);
+  aside.querySelectorAll('[data-action]').forEach((button) => (button.tabIndex = 0));
+  const stats = aside.querySelector('.game-stats');
+  const played = GMLShelves.lastPlayed(game);
+  const length = game.meta?.timeToBeat?.normally;
+  statRow(stats, 'Tiempo jugado', game.steam ? GMLShelves.hours(game.steam.playtimeHours) || 'Sin horas en Steam' : '');
+  statRow(stats, 'Últimas dos semanas', GMLShelves.hours(game.steam?.recentHours));
+  statRow(stats, 'Última sesión', played ? GMLShelves.relativeDay(new Date(played).toISOString()) : 'Sin registro');
+  statRow(stats, 'Duración estimada', length ? 'Unas ' + GMLShelves.hours(length / 3600) : '');
+  statRow(stats, 'Valoración de la crítica', game.meta?.rating ? game.meta.rating + ' de 100' : '');
+  statRow(stats, 'Tu progreso', game.progress || 'Pendiente');
+  statRow(stats, 'Tu puntuación', game.rating ? '★'.repeat(Math.min(Number(game.rating) || 0, 5)) : 'Sin puntuar');
+  if (game.platform === 'Steam' && game.ownership === 'owned') loadAchievementRing(aside, game);
+}
+async function loadAchievementRing(aside, game) {
+  try {
+    const { data } = await request('/api/steam/games/' + encodeURIComponent(game.id) + '/achievements');
+    if (aside.dataset.key !== game.key || !data?.accessible || !data.total) return;
+    const ring = aside.querySelector('.achievement-ring');
+    const percent = Math.round((data.unlocked / data.total) * 100);
+    ring.querySelector('.ring-value').style.strokeDasharray = percent + ' 100';
+    ring.querySelector('strong').textContent = percent + ' %';
+    ring.querySelector('span').textContent = data.unlocked + ' de ' + data.total + ' logros';
+    ring.hidden = false;
+  } catch {
+    /* sin cuenta de Steam o sin logros: el anillo no se muestra */
+  }
+}
+function renderGamePage(game) {
+  gamePage.dataset.key = game.key;
+  gamePage.style.removeProperty('--art');
+  if (artColors.get(game.key)) gamePage.style.setProperty('--art', artColors.get(game.key));
+  gamePage.setAttribute('aria-label', game.name);
+  showWordmark(document.querySelector('#game-wordmark'), document.querySelector('#game-title'), game, gamePage);
+  const facts = document.querySelector('#game-facts');
+  facts.replaceChildren();
+  gameFacts(game).forEach((text) => {
+    const fact = document.createElement('span');
+    fact.textContent = text;
+    facts.append(fact);
+  });
+  paintBackdrop(gamePage, game);
+  document.querySelector('#game-main').replaceChildren(gameTabs(game, { prefix: 'page' }));
+  renderGameAside(game);
+}
+// Espera brevemente la imagen de cabecera para que la transición termine sobre el arte y no sobre un color.
+function preloadImage(url, timeout) {
+  return new Promise((resolve) => {
+    if (!url) return resolve();
+    const image = new Image();
+    const done = () => resolve();
+    image.onload = done;
+    image.onerror = done;
+    setTimeout(done, timeout);
+    image.src = url;
+  });
+}
+async function openGamePage(game, origin) {
+  if (!game) return;
+  if (state.page !== 'game')
+    gameReturn = { page: state.page, scroll: window.scrollY, key: game.key, origin: origin || null };
+  const show = () => {
+    renderGamePage(game);
+    showPage('game');
+    window.scrollTo(0, 0);
+    document.querySelector('#game-back').focus({ preventScroll: true });
+  };
+  const art = origin?.querySelector('.poster-art, .row-thumb');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (document.startViewTransition && art && !reduceMotion) {
+    // La portada elegida se expande hasta convertirse en la cabecera de la página.
+    await preloadImage(heroArtUrl(game), 260);
+    art.style.viewTransitionName = 'game-art';
+    const backdrop = gamePage.querySelector('.hero-backdrop');
+    const transition = document.startViewTransition(() => {
+      art.style.viewTransitionName = '';
+      show();
+      backdrop.style.viewTransitionName = 'game-art';
+    });
+    transition.finished.finally(() => (backdrop.style.viewTransitionName = ''));
+  } else show();
+}
+function closeGamePage() {
+  const back = gameReturn || { page: 'library', scroll: 0 };
+  gameReturn = null;
+  showPage(back.page, { focus: false });
+  window.scrollTo(0, back.scroll || 0);
+  // El foco vuelve al juego desde el que se abrió la página.
+  const tile =
+    (back.origin?.isConnected && back.origin) ||
+    document.querySelector('#' + back.page + '-page .tile[data-key="' + CSS.escape(back.key || '') + '"]');
+  if (tile) {
+    selectTile(tile, false);
+    tile.focus({ preventScroll: true });
+  }
+}
+document.querySelector('#game-back').onclick = closeGamePage;
+document.querySelector('#game-aside').addEventListener('click', (event) => {
+  const action = event.target.closest('[data-action]')?.dataset.action;
+  const game = state.games.find((item) => item.key === gamePage.dataset.key);
+  if (action && game) posterAction(game, action);
+});
 function chips(holder, options, selected, allLabel, choose) {
   holder.innerHTML = '';
   [allLabel, ...options].forEach((value) => {
@@ -1715,6 +1951,7 @@ async function updatePreference(game, patch) {
   renderHome();
   renderFilters();
   renderLibrary();
+  if (state.page === 'game' && gamePage.dataset.key === game.key) renderGameAside(game);
   return saved;
 }
 function editGame(game) {
@@ -1957,7 +2194,7 @@ async function loadIgdb() {
     document.querySelector('#igdb-status').textContent = error.message;
   }
 }
-function showPage(page) {
+function showPage(page, { focus = true } = {}) {
   state.page = page;
   Object.keys(pageMeta).forEach((name) =>
     document.querySelector('#' + name + '-page').classList.toggle('hidden', name !== page)
@@ -1978,7 +2215,7 @@ function showPage(page) {
     loadIgdb();
     loadSteamSettings();
   }
-  if (page === 'library') document.querySelector('#search').focus();
+  if (page === 'library' && focus) document.querySelector('#search').focus();
 }
 async function load() {
   Object.assign(state, { loading: !state.games.length, loadError: '' });
@@ -2001,16 +2238,9 @@ function setFiltersOpen(open) {
   document.querySelector('#filter-panel').classList.toggle('hidden', !open);
   document.querySelector('#toggle-filters').setAttribute('aria-expanded', String(open));
 }
-// Abre la ficha del juego en la vista Detalle; si los filtros lo ocultan, se limpian.
+// Abre la página del juego desde cualquier lugar (paleta, imagen principal).
 function showGame(game) {
-  showPage('library');
-  if (!visibleGames().some((item) => item.key === game.key)) {
-    if (game.installed === false) state.installation = '';
-    clearFilters();
-  }
-  state.selectedKey = game.key;
-  document.querySelector('#views [data-view="detail"]').click();
-  library.querySelector('.tile.selected')?.focus();
+  openGamePage(game);
 }
 
 // Paleta de comandos (Control+K): combobox con lista agrupada y aria-activedescendant.
@@ -2462,6 +2692,7 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.key === 'Escape' && state.page === 'library' && !document.querySelector('dialog[open]'))
     setFiltersOpen(false);
+  if (event.key === 'Escape' && state.page === 'game' && !document.querySelector('dialog[open]')) closeGamePage();
 });
 hydrateIcons(document);
 initializeSteamUI();

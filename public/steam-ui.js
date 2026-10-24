@@ -250,7 +250,10 @@ async function loadSteamGameTab(root, game, kind, force = false) {
   if (root.dataset.loaded && !force) return;
   root.dataset.loaded = 'true';
   root.replaceChildren();
-  steamText(root, 'p', 'Consultando Steam…', 'helper-text');
+  // Esqueleto con la forma del contenido mientras responde Steam.
+  steamText(root, 'p', 'Consultando Steam…', 'visually-hidden');
+  for (const width of ['long', 'long', 'short', 'long', 'short'])
+    steamText(root, 'span', '', 'skeleton skeleton-line' + (width === 'short' ? ' short' : ''));
   root.setAttribute('aria-busy', 'true');
   try {
     const envelope = await request(

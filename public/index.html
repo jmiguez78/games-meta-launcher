@@ -147,13 +147,13 @@
           <div class="library-heading">
             <div>
               <p id="counter" role="status"></p>
-              <div id="active-filters" class="active-filters" aria-label="Filtros activos"></div>
+              <div id="active-filters" class="active-filters" role="group" aria-label="Filtros activos"></div>
             </div>
             <p id="view-label" class="view-description">Explorá visualmente tu colección.</p>
           </div>
           <p id="library-help" class="visually-hidden">
-            Usá las flechas para moverte entre los juegos. Enter abre la ficha en Lista y Tabla; en Portadas juega. F
-            marca como favorito y E edita la ficha.
+            Usá las flechas para moverte entre los juegos. En las portadas, Enter juega y Espacio abre la página del
+            juego; en Lista y Tabla, Enter abre la página. F marca como favorito y E edita la ficha.
           </p>
           <section id="library-state" class="library-state hidden" aria-live="polite"></section>
           <section id="library" class="library icons" aria-label="Juegos" aria-describedby="library-help"></section>
@@ -308,6 +308,23 @@
                 <p id="igdb-error" class="form-error" role="alert"></p>
               </form>
             </section>
+          </div>
+        </section>
+        <section id="game-page" class="page hidden" data-art-host>
+          <div class="game-hero">
+            <div class="hero-backdrop" aria-hidden="true"></div>
+            <button type="button" id="game-back" class="button game-back" aria-keyshortcuts="Escape">
+              <span data-icon="back"></span> Volver
+            </button>
+            <div class="game-hero-content">
+              <h2 id="game-title" class="hero-title"></h2>
+              <img id="game-wordmark" class="hero-wordmark" alt="" hidden />
+              <p id="game-facts" class="hero-facts"></p>
+            </div>
+          </div>
+          <div class="game-layout">
+            <div id="game-main" class="game-main"></div>
+            <aside id="game-aside" class="game-aside" aria-label="Jugar y tu actividad"></aside>
           </div>
         </section>
       </main>

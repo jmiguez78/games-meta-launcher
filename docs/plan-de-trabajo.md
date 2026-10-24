@@ -12,7 +12,9 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.14.2 terminada
+## Estado actual — implementación hasta 0.18.0 terminada
+
+De 0.15.0 a 0.18.0 se completaron las fases 0 a 3 del plan de experiencia: correcciones visibles, identidad visual, un Inicio que propone qué jugar y una página propia para cada juego. El detalle está en el [registro de cambios](../CHANGELOG.md) y en el [sistema de diseño](sistema-de-diseno.md).
 
 La base local está terminada:
 

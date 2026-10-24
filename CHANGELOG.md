@@ -1,5 +1,19 @@
 # Registro de cambios
 
+## 0.18.0 — 24 de octubre de 2026
+
+Fase 3 del plan de experiencia: una página propia para cada juego.
+
+- Un clic en una portada, en una fila de Lista o Tabla, en «Ver ficha» de Inicio o Mayús+Enter en la paleta abre la página del juego. La portada se expande hasta convertirse en la cabecera.
+- Cabecera de borde a borde con el arte panorámico y el logo del juego (desde la caché de Steam o su CDN), y los datos principales: plataforma, año, géneros y desarrolladora.
+- Columna fija con Jugar o Instalar, Favorito y Editar, tiempo jugado, últimas dos semanas, última sesión, duración estimada, valoración, tu progreso y un anillo con el avance de logros de Steam.
+- La descripción se muestra en español desde la tienda de Steam cuando existe; si no, la de IGDB, con una nota de que está en inglés.
+- Pestañas subrayadas; las capturas se recorren en una tira horizontal.
+- Los datos técnicos (unidad, ubicación, forma de inicio y detección) pasan a la sección «Instalación».
+- Las pestañas Steam y Logros muestran un esqueleto mientras cargan.
+- Volver o Escape regresan al lugar de origen y devuelven el foco al juego.
+- En las portadas, Enter juega y Espacio abre la página. La vista Ficha de la Biblioteca suma «Abrir ficha completa».
+
 ## 0.17.0 — 24 de octubre de 2026
 
 Fase 2 del plan de experiencia: un Inicio que propone qué jugar.

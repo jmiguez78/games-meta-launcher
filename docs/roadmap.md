@@ -110,3 +110,33 @@ Retirado el destino Steam de la navegación y su panel independiente. Se conserv
 ## 0.14.2 — Claridad de Inicio y Biblioteca · Completada
 
 Inicio pasa a resumir la colección sin una presentación genérica. Portadas, Lista, Ficha y Tabla tienen roles y transiciones definidos para descubrir, escanear, profundizar y comparar.
+
+## 0.15.0 — Correcciones visibles · Completada
+
+Fase 0 del plan de experiencia: instalados primero, estados con su color, portadas en todas las vistas, nombres limpios, barra lateral fija y ventana sin destello.
+
+## 0.16.0 — Identidad visual · Completada
+
+Fase 1: tema oscuro como base, color ambiental tomado del arte, tipografías incluidas, portadas sin marco, barra lateral angosta y marca nueva.
+
+## 0.17.0 — Inicio que propone qué jugar · Completada
+
+Fase 2: imagen principal con el último juego jugado y filas por intención. El estado de la biblioteca pasa a Configuración y la revisión aparece sólo cuando hace falta.
+
+## 0.18.0 — Página de cada juego · Completada
+
+Fase 3: página propia con arte de borde a borde, logo, descripción en español, columna de acción con tiempo jugado y logros, y transición desde la portada.
+
+## Próximo — Fase 4: Biblioteca potente
+
+- Dos vistas (Grilla y Tabla) con la página del juego encima de ambas.
+- Panel de facetas: tienda, instalación, género, duración, valoración, tiempo jugado y nunca jugado.
+- Un solo buscador, agrupación, colecciones dinámicas y juegos fusionados entre tiendas.
+- Grilla virtualizada para 1.000 juegos o más.
+
+## Después — Fases 5 y 6
+
+- El momento de jugar: pantalla «Iniciando…», estado en juego y registro de sesiones.
+- Modo TV y mando.
+- Validación de coincidencias de IGDB (pendiente desde 0.12.0).
+

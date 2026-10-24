@@ -1,6 +1,6 @@
 {
   "name": "games-meta-launcher",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
@@ -39,7 +39,7 @@
       "icon": "build/icon.ico"
     },
     "directories": {
-      "output": "release-v0142-final"
+      "output": "release-v0180"
     }
   },
   "dependencies": {

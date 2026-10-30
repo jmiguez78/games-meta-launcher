@@ -1,5 +1,10 @@
 # Registro de cambios
 
+## 0.30.3
+
+- **Portadas que no aparecían.** Una portada que todavía se está descargando ya no ocupa una de las pocas conexiones del navegador: pasado un segundo y medio el servidor responde «descargando» y la portada se vuelve a pedir cuando está a la vista. Antes, al sumar muchos juegos nuevos (los del MAME alternativo), las portadas ya guardadas quedaban esperando detrás y se veían las iniciales.
+- **Arcade: portadas con nombres cambiados.** libretro-thumbnails nombra las imágenes con la descripción de MAME de cuando se agregaron; si MAME la cambió («Double Dragon (World set 1)»), el nombre exacto no existe. Ahora se consulta la lista de cada carpeta (se guarda 30 días) y se usa el mismo título más parecido.
+
 ## 0.30.2
 
 - La versión de MAME se reconoce también en ejecutables viejos que no responden a `-version` (se lee de `-help`).

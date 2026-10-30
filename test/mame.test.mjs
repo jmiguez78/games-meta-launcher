@@ -325,3 +325,39 @@ test('el MAME alternativo usa sus propios archivos y toma el ajuste de adultos d
   assert.equal((await main.info()).version, '0.289');
   await fs.rm(dataDir, { recursive: true, force: true });
 });
+
+test('si el nombre exacto no está en libretro-thumbnails, elige el mismo título más parecido', async () => {
+  const { matchThumbnails } = await import('../src/mame.mjs');
+  const files = [
+    'Double Dragon (Japan).png',
+    'Double Dragon (Neo-Geo).png',
+    'Double Dragon (US Set 1).png',
+    'Double Dragon II - The Revenge (World).png',
+    'Martial Masters (ver. 104, 102, 102US).png',
+    'Super Sidekicks 3 - The Next Glory _ Tokuten Ou 3 - eikou e no michi.png',
+    'Joe _ Mac Returns (World, Version 1.1, 1994.05.27).png'
+  ];
+  assert.deepEqual(matchThumbnails(files, ['Double Dragon (World set 1)', 'Double Dragon'], 1), [
+    'Double Dragon (US Set 1)'
+  ]);
+  assert.deepEqual(matchThumbnails(files, ['Double Dragon II (World)'], 1), []);
+  assert.deepEqual(matchThumbnails(files, ['Martial Masters / Xing Yi Quan (ver. 104, 102, 102US)'], 1), [
+    'Martial Masters (ver. 104, 102, 102US)'
+  ]);
+  // Un subtítulo puede ser otro juego de la saga: no se adivina.
+  assert.deepEqual(
+    matchThumbnails(['Wonder Boy (set 1, new encryption).png'], ['Wonder Boy: Monster Land (Japan New Ver.)']),
+    []
+  );
+  assert.deepEqual(
+    matchThumbnails(
+      files,
+      ['Super Sidekicks 3 - The Next Glory / Tokuten Ou 3 - Eikou e no Chousen', 'Super Sidekicks 3 - The Next Glory'],
+      1
+    ),
+    ['Super Sidekicks 3 - The Next Glory _ Tokuten Ou 3 - eikou e no michi']
+  );
+  assert.deepEqual(matchThumbnails(files, ['Joe & Mac Returns (World, Master Version 1.1, 1994.05.27)'], 1), [
+    'Joe _ Mac Returns (World, Version 1.1, 1994.05.27)'
+  ]);
+});

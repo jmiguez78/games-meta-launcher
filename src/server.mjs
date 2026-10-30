@@ -283,6 +283,7 @@ async function downloadArt(sources, file, missFile) {
 // la cabecera horizontal como último recurso.
 async function downloadSources(game, meta, kind) {
   const classic = onlineSources(game, meta, kind);
+  if (isArcade(game) && classic.length) return arcadeFor(game).resolveSources(game, kind, classic);
   if (!isSteamApp(game)) return classic;
   const current = (await steamAssets.urls(game.id)) ?? {};
   const header = kind === 'cover' ? classic.filter((url) => url.endsWith('/header.jpg')) : [];

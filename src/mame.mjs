@@ -23,6 +23,9 @@ const SUPPORT_FILES = {
   command: 'command.dat/command.dat'
 };
 const SUPPORT_MAX_AGE = 30 * 86400000;
+const THUMBNAIL_TREE = 'https://api.github.com/repos/libretro-thumbnails/MAME/git/trees/';
+// Lista de archivos de libretro-thumbnails por carpeta: una vez por carpeta de datos (la comparten los dos MAME).
+const thumbnailIndexes = new Map();
 const THUMBNAILS = 'https://raw.githubusercontent.com/libretro-thumbnails/MAME/master/';
 
 // ---------- Funciones puras (con pruebas) ----------
@@ -242,6 +245,40 @@ export function isNotAGame(category) {
 // Nombres de archivo de libretro-thumbnails: la descripción de MAME con &*/:`<>?\|" reemplazados por _.
 export function thumbnailName(description) {
   return String(description).replace(/[&*/:`<>?\\|"]/g, '_');
+}
+
+// libretro-thumbnails nombra las imágenes con la descripción de MAME de cuando se agregaron; si MAME la cambió
+// después («Double Dragon (World set 1)» hoy, «Double Dragon (US Set 1)» allá), el nombre exacto no existe.
+// Se busca entonces en la lista de la carpeta el mismo título: igual, o el mismo con un título alternativo
+// («Martial Masters / Xing Yi Quan» ↔ «Martial Masters»), y entre sus versiones la que más se parece.
+const thumbKey = (name) => thumbnailName(name).toLowerCase().replace(/\s+/g, ' ').trim();
+const thumbBase = (key) => key.replace(/\s*\(.*$/, '').trim();
+const thumbTags = (key) => new Set((key.match(/\(([^)]*)\)/g) ?? []).join(' ').match(/[a-z0-9]+/g) ?? []);
+export function matchThumbnails(files, names, limit = 2) {
+  const wanted = names.map(thumbKey);
+  const bases = wanted.map(thumbBase).filter(Boolean);
+  const tags = new Set(wanted.flatMap((key) => [...thumbTags(key)]));
+  const scored = [];
+  for (const file of files) {
+    const name = file.replace(/\.png$/i, '');
+    const key = name.toLowerCase();
+    const base = thumbBase(key);
+    let score = 0;
+    for (const own of bases) {
+      if (own === base) score = Math.max(score, 100);
+      // Sólo títulos alternativos («A / B»); un subtítulo («Wonder Boy: Monster Land») puede ser otro juego.
+      else if (own.startsWith(base + ' _ ') || base.startsWith(own + ' _ ')) score = Math.max(score, 50);
+    }
+    if (!score) continue;
+    for (const tag of thumbTags(key)) if (tags.has(tag)) score += 3;
+    if (/\b(world|us|usa)\b/.test(key)) score += 1;
+    if (/bootleg|prototype|hack|playchoice|neo-geo|vs\.? system/.test(key)) score -= 5;
+    scored.push({ name, score });
+  }
+  return scored
+    .sort((a, b) => b.score - a.score || a.name.length - b.name.length)
+    .slice(0, limit)
+    .map((item) => item.name);
 }
 
 // Orden de preferencia de una versión para representar al juego.
@@ -517,6 +554,50 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     return { text, source: text ? 'bundled' : 'missing', error };
   }
 
+  // Nombres de las carpetas Named_* de libretro-thumbnails, guardados 30 días en mame-support.
+  function thumbnailIndex() {
+    if (!thumbnailIndexes.has(supportDir)) {
+      const pending = loadThumbnailIndex().catch((error) => {
+        thumbnailIndexes.delete(supportDir);
+        throw error;
+      });
+      thumbnailIndexes.set(supportDir, pending);
+    }
+    return thumbnailIndexes.get(supportDir);
+  }
+  async function loadThumbnailIndex() {
+    const file = path.join(supportDir, 'thumbnails.json');
+    let saved = await readJson(file, null);
+    if (!saved || Date.now() - Date.parse(saved.fetchedAt) > SUPPORT_MAX_AGE) {
+      const get = async (sha) => {
+        const response = await fetchImpl(THUMBNAIL_TREE + sha, {
+          headers: { accept: 'application/vnd.github+json', 'user-agent': 'GamesMetaLauncher' },
+          signal: AbortSignal.timeout(60000)
+        });
+        if (!response.ok) throw new Error(`GitHub respondió ${response.status}`);
+        return (await response.json()).tree ?? [];
+      };
+      try {
+        const folders = {};
+        for (const entry of await get('master'))
+          if (/^Named_(Boxarts|Titles|Snaps|Logos)$/.test(entry.path))
+            folders[entry.path] = (await get(entry.sha))
+              .map((item) => item.path)
+              .filter((name) => name.endsWith('.png'));
+        if (!Object.keys(folders).length) throw new Error('lista vacía');
+        saved = { fetchedAt: new Date().toISOString(), folders };
+        await fs.mkdir(supportDir, { recursive: true });
+        await writeJson(file, saved);
+      } catch (error) {
+        if (!saved) throw error;
+        /* sin conexión: se usa la lista anterior */
+      }
+    }
+    return Object.fromEntries(
+      Object.entries(saved.folders).map(([folder, names]) => [folder, { names, exact: new Set(names) }])
+    );
+  }
+
   async function index() {
     const { exe } = await settings();
     if (!exe) throw conflict('Indicá dónde está mame.exe.');
@@ -732,6 +813,24 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
       const folders =
         { cover: ['flyers', 'titles'], hero: ['snap', 'titles'], wordmark: ['logo', 'marquees'] }[kind] ?? [];
       return folders.map((folder) => path.join(dir, folder, `${game.id}.png`));
+    },
+    // Como onlineSources, pero si ningún nombre exacto existe en libretro-thumbnails suma el más parecido.
+    async resolveSources(game, kind, exact = this.onlineSources(game, kind)) {
+      const index = await thumbnailIndex().catch(() => null);
+      if (!index) return exact;
+      const byFolder = new Map();
+      for (const url of exact) {
+        const [folder, file] = url.slice(THUMBNAILS.length).split('/');
+        if (index[folder]?.exact.has(decodeURIComponent(file))) return exact;
+        byFolder.set(folder, true);
+      }
+      const names = game.arcade?.art ?? [game.name];
+      const extra = [...byFolder.keys()].flatMap((folder) =>
+        matchThumbnails(index[folder]?.names ?? [], names).map(
+          (name) => `${THUMBNAILS}${folder}/${encodeURIComponent(name)}.png`
+        )
+      );
+      return extra.length ? [...exact, ...extra] : exact;
     },
     onlineSources(game, kind) {
       const folders =

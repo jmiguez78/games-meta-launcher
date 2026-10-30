@@ -1,6 +1,9 @@
 // Biblioteca: inventario, estado, búsqueda de juegos, jugar, instalar e imágenes.
 import { HANDLED, badRequest, notFound, send } from '../http.mjs';
 
+const ART_WAIT_MS = 1500;
+const PENDING = Symbol('descargando');
+
 export function libraryRoutes(router, d) {
   router.get('/api/library', async ({ res }) => {
     send(res, 200, d.libraryJson(await d.library()));
@@ -26,8 +29,19 @@ export function libraryRoutes(router, d) {
     await d.startDetached('explorer.exe', [`steam://install/${game.id}`]);
     return { ok: true };
   });
+  // Una imagen que todavía se está descargando no retiene la conexión: el navegador abre pocas a la vez y
+  // las portadas ya guardadas quedarían esperando detrás. Pasado ARTWAIT_MS se responde 503 y la descarga
+  // sigue; la interfaz vuelve a pedirla cuando la portada está a la vista.
   router.get('/api/art/:kind(cover|hero|wordmark)/:key', async ({ res, params }) => {
-    const image = await d.gameArt(params.key, params.kind);
+    let timer;
+    const image = await Promise.race([
+      d.gameArt(params.key, params.kind),
+      new Promise((resolve) => (timer = setTimeout(resolve, ART_WAIT_MS, PENDING)))
+    ]).finally(() => clearTimeout(timer));
+    if (image === PENDING) {
+      send(res, 503, 'Descargando la imagen.', 'text/plain', { 'retry-after': '3' });
+      return HANDLED;
+    }
     if (!image) {
       send(res, 404, 'Sin imagen.', 'text/plain');
       return HANDLED;

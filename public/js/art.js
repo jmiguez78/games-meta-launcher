@@ -3,6 +3,8 @@ import { load } from './main.js';
 import { palette } from './palette.js';
 
 export const pendingCoverLoads = new Map();
+const COVER_RETRIES = 4;
+const COVER_RETRY_MS = 3500;
 
 export const coverObserver = new IntersectionObserver(
   (entries) => {
@@ -150,10 +152,26 @@ export function applyCover(element, game, cover, preferHero = false) {
   const initial = element.querySelector('.cover-initial');
   if (initial) initial.textContent = cover.initials || 'G';
   const sources = artSources(game, preferHero);
-  // Cada imagen se aplica sólo si carga; si todas fallan quedan las iniciales.
+  // Cada imagen se aplica sólo si carga; si todas fallan quedan las iniciales. Las del launcher pueden estar
+  // descargándose todavía (el servidor responde 503): se vuelven a pedir unas veces, sólo cuando la portada
+  // vuelve a estar a la vista.
+  let source;
+  let retries = 0;
+  const retry = () => {
+    if (!source?.url.startsWith('/api/art/') || retries >= COVER_RETRIES) return tryNext();
+    retries += 1;
+    setTimeout(() => {
+      if (!element.isConnected) return;
+      pendingCoverLoads.set(element, attempt);
+      coverObserver.observe(element);
+    }, COVER_RETRY_MS);
+  };
   const tryNext = () => {
-    const source = sources.shift();
-    if (!source) return;
+    source = sources.shift();
+    retries = 0;
+    if (source) attempt();
+  };
+  const attempt = () => {
     const image = new Image();
     image.onload = () => {
       const logo = source.kind === 'logo';
@@ -169,7 +187,8 @@ export function applyCover(element, game, cover, preferHero = false) {
       element.classList.add('has-image', 'art-' + source.kind);
       if (!logo) applyArtColor(element, game, image);
     };
-    image.onerror = tryNext;
+    image.onerror = retry;
+    // El 503 no se guarda en caché: pedir la misma dirección otra vez vuelve al servidor.
     image.src = source.url;
   };
   pendingCoverLoads.set(element, tryNext);

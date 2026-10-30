@@ -4,7 +4,7 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.30.2`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
+Versión `0.30.3`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 

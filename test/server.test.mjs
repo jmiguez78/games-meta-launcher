@@ -415,3 +415,21 @@ test('sin repositorio de publicaciones, el aviso de versión nueva queda apagado
   assert.equal(typeof updates.current, 'string');
   assert.ok('enabled' in updates);
 });
+
+test('una imagen que todavía se descarga responde 503 sin retener la conexión', async () => {
+  const { createRouter } = await import('../src/http.mjs');
+  const { libraryRoutes } = await import('../src/routes/library.mjs');
+  const router = createRouter();
+  let finish;
+  libraryRoutes(router, { gameArt: () => new Promise((resolve) => (finish = resolve)) });
+  const local = http.createServer((req, res) => router.handle(req, res, new URL(req.url, 'http://x')));
+  await new Promise((resolve) => local.listen(0, '127.0.0.1', resolve));
+  const started = Date.now();
+  const response = await fetch(`http://127.0.0.1:${local.address().port}/api/art/cover/arcade%3Axmen`);
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('retry-after'), '3');
+  assert.match(response.headers.get('cache-control'), /no-store/);
+  assert.ok(Date.now() - started < 3000);
+  finish(null);
+  local.close();
+});

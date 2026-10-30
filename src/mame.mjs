@@ -382,11 +382,17 @@ export function romPaths(ini, mameDir) {
 
 // ---------- Integración ----------
 
-export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl = spawn } = {}) {
-  const settingsPath = path.join(dataDir, 'arcade.json');
-  const catalogPath = path.join(dataDir, 'arcade-catalog.json');
-  const zipCachePath = path.join(dataDir, 'arcade-zips.json');
-  const commandsPath = path.join(dataDir, 'arcade-commands.json');
+// slot 'main': el MAME principal. slot 'legacy': un MAME alternativo (más viejo) para los juegos que el principal no
+// puede correr; tiene sus propios archivos (arcade-legacy-*.json), comparte la información de Wikipedia y toma el
+// ajuste de contenido adulto del principal.
+export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl = spawn, slot = 'main' } = {}) {
+  const legacy = slot === 'legacy';
+  const prefix = legacy ? 'arcade-legacy' : 'arcade';
+  const mainSettingsPath = path.join(dataDir, 'arcade.json');
+  const settingsPath = path.join(dataDir, `${prefix}.json`);
+  const catalogPath = path.join(dataDir, `${prefix}-catalog.json`);
+  const zipCachePath = path.join(dataDir, `${prefix}-zips.json`);
+  const commandsPath = path.join(dataDir, `${prefix}-commands.json`);
   const infoPath = path.join(dataDir, 'arcade-info.json');
   let commandsCache = null;
   const supportDir = path.join(dataDir, 'mame-support');
@@ -403,7 +409,8 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
   const writeJson = (file, value) => writeJsonAtomic(file, value, { pretty: false });
   async function settings() {
     const saved = await readJsonCached(settingsPath, {});
-    return { exe: typeof saved.exe === 'string' ? saved.exe : '', showAdult: saved.showAdult === true };
+    const adult = legacy ? await readJsonCached(mainSettingsPath, {}) : saved;
+    return { exe: typeof saved.exe === 'string' ? saved.exe : '', showAdult: adult.showAdult === true };
   }
   async function saveSettings(patch) {
     await writeJson(settingsPath, { ...(await readJsonCached(settingsPath, {})), ...patch });
@@ -439,7 +446,13 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
         return {
           ...game,
           ...(found?.igdbSlug ? { igdbSlug: found.igdbSlug } : {}),
-          arcade: { ...game.arcade, ...(found?.es ? { wiki: found.es } : {}), commands: hasCommands }
+          arcade: {
+            ...game.arcade,
+            ...(found?.es ? { wiki: found.es } : {}),
+            commands: hasCommands,
+            engine: slot,
+            mameVersion: current.version ?? null
+          }
         };
       });
     visibleMemo = { current, showAdult, info, commands, value };
@@ -612,15 +625,18 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
         const exe = String(update.exe ?? '')
           .trim()
           .replace(/^"|"$/g, '');
-        if (exe && !/mame[^\\/]*\.exe$/i.test(exe)) throw badRequest('Indicá la ruta completa de mame.exe.');
+        if (exe && !/mame[^\\/]*\.exe$/i.test(exe))
+          throw badRequest(`Indicá la ruta completa de ${legacy ? 'mame.exe o mame64.exe' : 'mame.exe'}.`);
         patch.exe = exe;
       }
-      if ('showAdult' in update) {
+      if ('showAdult' in update && !legacy) {
         if (typeof update.showAdult !== 'boolean') throw badRequest('Valor no válido.');
         patch.showAdult = update.showAdult;
       }
+      const previousExe = (await readJsonCached(settingsPath, {})).exe ?? '';
       await saveSettings(patch);
-      if (patch.exe === '') {
+      // Sin MAME, o con otro MAME, el catálogo anterior ya no vale.
+      if ('exe' in patch && (patch.exe === '' || patch.exe !== previousExe)) {
         catalog = null;
         await fs.rm(catalogPath, { force: true });
       }

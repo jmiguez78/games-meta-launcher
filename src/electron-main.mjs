@@ -32,8 +32,10 @@ async function runScan() {
   steam.close();
   try {
     const { createArcade } = await import('./mame.mjs');
-    const arcade = createArcade(app.getPath('userData'));
-    if ((await arcade.settings()).exe) await arcade.refresh();
+    for (const slot of ['main', 'legacy']) {
+      const arcade = createArcade(app.getPath('userData'), { slot });
+      if ((await arcade.settings()).exe) await arcade.refresh();
+    }
   } catch (error) {
     log('warn', 'tarea', `Arcade: ${error.message}`);
   }

@@ -218,22 +218,47 @@ export function supportNote(support) {
   );
 }
 
+// MAME alternativo: versión y cuántos juegos suma a la biblioteca.
+export function describeLegacyMame(legacy) {
+  const intro =
+    'Una versión más vieja de MAME, con su propia carpeta de ROMs, para los juegos que la principal no puede correr.';
+  if (!legacy?.configured) return intro + ' Cada juego se abre con el MAME que le corresponde.';
+  const status = legacy.status || {};
+  if (status.running) return 'MAME alternativo: ' + describeMame(legacy);
+  if (status.error) return 'MAME alternativo: ' + status.error;
+  if (!legacy.stats) return 'MAME alternativo configurado. Todavía no se buscaron juegos.';
+  return (
+    'MAME ' +
+    legacy.version +
+    ': ' +
+    plural(legacy.extra || 0, 'juego más', 'juegos más') +
+    ' en tu biblioteca, de ' +
+    plural(legacy.visible, 'juego listo', 'juegos listos') +
+    ' en su carpeta (los que también corren en la principal se abren con ella).'
+  );
+}
+
 export async function loadMame() {
   try {
     const info = await request('/api/integrations/mame');
     const input = document.querySelector('#mame-exe');
     if (document.activeElement !== input) input.value = info.exe || '';
+    const legacyInput = document.querySelector('#mame-legacy-exe');
+    if (document.activeElement !== legacyInput) legacyInput.value = info.legacy?.exe || '';
+    document.querySelector('#mame-legacy-status').textContent = describeLegacyMame(info.legacy);
+    const running = Boolean(info.status?.running || info.legacy?.status?.running);
+    const finishedAt = [info.status?.finishedAt, info.legacy?.status?.finishedAt].filter(Boolean).sort().at(-1);
     document.querySelector('#mame-adult').checked = info.showAdult;
-    document.querySelector('#mame-scan').hidden = !info.configured;
-    document.querySelector('#mame-scan').disabled = Boolean(info.status?.running);
-    document.querySelector('#mame-save').disabled = Boolean(info.status?.running);
+    document.querySelector('#mame-scan').hidden = !info.configured && !info.legacy?.configured;
+    document.querySelector('#mame-scan').disabled = running;
+    document.querySelector('#mame-save').disabled = running;
     const status = document.querySelector('#mame-status');
     status.textContent = describeMame(info);
     status.classList.toggle('connected', Boolean(info.stats?.games));
     clearTimeout(mamePoll);
-    if (info.status?.running) mamePoll = setTimeout(loadMame, 800);
-    else if (info.status?.finishedAt && info.status.finishedAt !== state.mameLoadedAt) {
-      state.mameLoadedAt = info.status.finishedAt;
+    if (running) mamePoll = setTimeout(loadMame, 800);
+    else if (finishedAt && finishedAt !== state.mameLoadedAt) {
+      state.mameLoadedAt = finishedAt;
       await load();
     }
   } catch (error) {
@@ -289,20 +314,19 @@ export function setup() {
     const form = event.currentTarget;
     const input = document.querySelector('#mame-exe');
     const value = input.value.trim().replace(/^"|"$/g, '');
-    if (
-      !showFormErrors(
-        form,
-        /mame[^\\/]*\.exe$/i.test(value)
-          ? []
-          : [[input, 'Pegá la ruta completa de mame.exe, por ejemplo K:\\Juegos\\MAME64\\mame.exe.']]
-      )
-    )
-      return;
+    const legacyInput = document.querySelector('#mame-legacy-exe');
+    const legacyValue = legacyInput.value.trim().replace(/^"|"$/g, '');
+    const errors = [];
+    if (!/mame[^\\/]*\.exe$/i.test(value))
+      errors.push([input, 'Pegá la ruta completa de mame.exe, por ejemplo K:\\Juegos\\MAME64\\mame.exe.']);
+    if (legacyValue && !/mame[^\\/]*\.exe$/i.test(legacyValue))
+      errors.push([legacyInput, 'Pegá la ruta completa del MAME alternativo (mame.exe o mame64.exe), o dejalo vacío.']);
+    if (!showFormErrors(form, errors)) return;
     try {
       await request('/api/integrations/mame', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ exe: value })
+        body: JSON.stringify({ exe: value, legacyExe: legacyValue })
       });
       notify('Buscando tus juegos de Arcade. La primera vez puede tardar unos minutos.', { type: 'success' });
       await loadMame();

@@ -270,6 +270,54 @@ test('Arcade sin MAME configurado no indexa ni rompe la biblioteca', async () =>
   assert.equal((await fetch(`${base}/api/launch/arcade%3Apacman`, { method: 'POST' })).status, 404);
 });
 
+test('el MAME alternativo suma sólo los juegos que el principal no tiene', async () => {
+  const invalid = await fetch(`${base}/api/integrations/mame`, {
+    method: 'PUT',
+    ...json({ legacyExe: 'C:\\juego.exe' })
+  });
+  assert.equal(invalid.status, 400);
+  const machine = (id, name, versions = []) => ({
+    key: `arcade:${id}`,
+    id,
+    name,
+    platform: 'Arcade',
+    status: 'installed',
+    launch: { type: 'mame', target: id, available: true },
+    adult: false,
+    arcade: { description: name, year: '1992', parent: null, versions, art: [name] },
+    meta: { title: name, genres: [], developers: [] }
+  });
+  const write = (name, games, version) =>
+    fs.writeFile(path.join(dataDir, name), JSON.stringify({ schema: 1, version, games, stats: {} }));
+  await write('arcade-catalog.json', [machine('sf2', 'Street Fighter II'), machine('pacman', 'Pac-Man')], '0.289');
+  await write(
+    'arcade-legacy-catalog.json',
+    [
+      machine('sf2', 'Street Fighter II'),
+      machine('puckman', 'Pac-Man (Japón)', [{ id: 'pacman' }]),
+      machine('xmen', 'X-Men'),
+      machine('rastana', 'Rastan')
+    ],
+    '0.170'
+  );
+  const library = await (await fetch(`${base}/api/library`)).json();
+  const arcade = library.games.filter((game) => game.platform === 'Arcade');
+  assert.deepEqual(
+    arcade.map((game) => [game.id, game.arcade.engine, game.arcade.mameVersion]),
+    [
+      ['sf2', 'main', '0.289'],
+      ['pacman', 'main', '0.289'],
+      ['xmen', 'legacy', '0.170'],
+      ['rastana', 'legacy', '0.170']
+    ]
+  );
+  const info = await (await fetch(`${base}/api/integrations/mame`)).json();
+  assert.equal(info.legacy.version, '0.170');
+  assert.equal(info.legacy.extra, 2);
+  await fs.rm(path.join(dataDir, 'arcade-catalog.json'));
+  await fs.rm(path.join(dataDir, 'arcade-legacy-catalog.json'));
+});
+
 test('Steam sin cuenta no expone secretos ni permite instalar un juego ajeno', async () => {
   const settings = await (await fetch(`${base}/api/integrations/steam`)).json();
   assert.equal(settings.configured, false);

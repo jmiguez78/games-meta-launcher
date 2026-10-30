@@ -127,6 +127,39 @@ const igdb = createIgdb(dataDir);
 const steam = createSteam(dataDir);
 const steamAssets = createSteamAssets(dataDir);
 const arcade = createArcade(dataDir);
+// MAME alternativo: un MAME más viejo para los juegos que el principal no puede correr (ver arcadeGames).
+const legacyArcade = createArcade(dataDir, { slot: 'legacy' });
+const arcadeFor = (game) => (game?.arcade?.engine === 'legacy' ? legacyArcade : arcade);
+// Juegos de Arcade de los dos MAME: del alternativo sólo los que el principal no tiene (ni como versión regional
+// ni con el mismo título), para que cada juego aparezca una vez y se abra con el MAME que lo corre.
+const normalizedTitle = (name) =>
+  String(name ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+const combineArcade = memo((main, older) => {
+  if (!older.length) return main;
+  const sets = new Set(main.flatMap((game) => [game.id, game.arcade.parent, ...game.arcade.versions.map((v) => v.id)]));
+  const titles = new Set(main.map((game) => normalizedTitle(game.name)));
+  const extra = older.filter(
+    (game) =>
+      ![game.id, ...game.arcade.versions.map((v) => v.id)].some((id) => sets.has(id)) &&
+      !titles.has(normalizedTitle(game.name))
+  );
+  return extra.length ? [...main, ...extra] : main;
+});
+async function arcadeGames() {
+  const [main, older] = await Promise.all([arcade.games(), legacyArcade.games()]);
+  return combineArcade(main, older);
+}
+// Indexa los MAME configurados (el alternativo después del principal) y sigue con Wikipedia e IGDB.
+async function startArcade() {
+  if ((await arcade.settings()).exe) arcade.start(afterArcadeIndex);
+  if ((await legacyArcade.settings()).exe) legacyArcade.start(afterArcadeIndex);
+}
 const wiki = createWiki();
 // Aviso de versión nueva: el repositorio de publicaciones se indica en package.json (gml.releases).
 const updates = createUpdates({
@@ -156,7 +189,14 @@ async function forIgdb(games) {
 }
 // Después de indexar Arcade: Wikipedia (descripción en español e identificador de IGDB) y, si IGDB está
 // conectado y libre, sus fichas.
-async function afterArcadeIndex() {
+// Las dos indexaciones (MAME principal y alternativo) pueden terminar juntas: se encadenan para no escribir dos
+// veces a la vez la información compartida.
+let arcadeFollowUp = Promise.resolve();
+function afterArcadeIndex() {
+  arcadeFollowUp = arcadeFollowUp.then(enrichArcade, enrichArcade);
+  return arcadeFollowUp;
+}
+async function enrichArcade() {
   const games = (await library()).games;
   await arcade.enrich(await arcadeForInfo(games), wiki);
   if ((await igdb.settings()).configured && !igdb.status().running) {
@@ -280,9 +320,9 @@ async function onlineArt(game, meta, kind) {
 }
 async function gameArt(key, kind) {
   if (key.startsWith('arcade:')) {
-    const game = (await arcade.games()).find((item) => item.key === key);
+    const game = (await arcadeGames()).find((item) => item.key === key);
     if (!game) return null;
-    for (const file of await arcade.localArt(game, kind)) {
+    for (const file of await arcadeFor(game).localArt(game, kind)) {
       const local = await localArt(
         { [kind === 'hero' ? 'hero' : kind === 'wordmark' ? 'wordmark' : 'portrait']: file },
         kind
@@ -306,21 +346,21 @@ function publicMeta(meta) {
   return { ...rest, ...(fetchedAt ? { fetchedAt } : {}) };
 }
 async function library() {
-  const [catalog, prefs, metadata, account, arcadeGames] = await Promise.all([
+  const [catalog, prefs, metadata, account, arcadeList] = await Promise.all([
     rawLibrary(),
     preferences(),
     igdb.metadata(),
     steam.account(),
-    arcade.games()
+    arcadeGames()
   ]);
-  return buildLibrary(catalog, prefs, metadata, account, arcadeGames);
+  return buildLibrary(catalog, prefs, metadata, account, arcadeList);
 }
-const buildLibrary = memo((catalog, prefs, metadata, account, arcadeGames) => {
+const buildLibrary = memo((catalog, prefs, metadata, account, arcadeList) => {
   const merged = mergedLibrary(catalog.games, account).list;
   return {
     ...catalog,
     steamUpdatedAt: account.updatedAt,
-    games: [...merged, ...arcadeGames].map(({ art, ...game }) => {
+    games: [...merged, ...arcadeList].map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
       const name = displayName(game.name);
       return {
@@ -519,10 +559,11 @@ async function diagnostics() {
   const catalog = await library().catch(() => ({ games: [] }));
   const byPlatform = {};
   for (const game of catalog.games) byPlatform[game.platform] = (byPlatform[game.platform] ?? 0) + 1;
-  const [steamSettings, igdbSettings, arcadeInfo, settings] = await Promise.all([
+  const [steamSettings, igdbSettings, arcadeInfo, legacyInfo, settings] = await Promise.all([
     steam.settings().catch((error) => ({ error: error.message })),
     igdb.settings().catch((error) => ({ error: error.message })),
     arcade.info().catch((error) => ({ error: error.message })),
+    legacyArcade.info().catch((error) => ({ error: error.message })),
     appSettings()
   ]);
   return {
@@ -537,7 +578,12 @@ async function diagnostics() {
       arcade: {
         configured: Boolean(arcadeInfo.exe || arcadeInfo.configured),
         version: arcadeInfo.version ?? null,
-        visible: arcadeInfo.visible ?? null
+        visible: arcadeInfo.visible ?? null,
+        legacy: {
+          configured: Boolean(legacyInfo.exe || legacyInfo.configured),
+          version: legacyInfo.version ?? null,
+          visible: legacyInfo.visible ?? null
+        }
       }
     },
     files,
@@ -561,6 +607,9 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
     steam,
     igdb,
     arcade,
+    legacyArcade,
+    arcadeGames,
+    startArcade,
     forIgdb,
     afterArcadeIndex,
     gameArt,
@@ -574,12 +623,12 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
       const scanned = await scanLibrary();
       log('info', 'biblioteca', `Búsqueda de juegos: ${scanned.games.length} encontrados`);
       if ((await steam.settings()).configured) steam.sync().catch(() => {});
-      if ((await arcade.settings()).exe) arcade.start(afterArcadeIndex);
+      await startArcade();
       return scanned;
     },
     async play(game, key) {
       if (game.launch?.type === 'mame')
-        await arcade.launch(key.slice('arcade:'.length), async (seconds) => {
+        await arcadeFor(game).launch(key.slice('arcade:'.length), async (seconds) => {
           await recordSession(game.key, seconds).catch(() => {});
           onGameExit?.(game);
         });

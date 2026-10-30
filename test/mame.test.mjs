@@ -302,3 +302,26 @@ test('indexa la carpeta de MAME de punta a punta, recuerda los zips y lanza el s
   await assert.rejects(arcade.configure({ exe: 'C:\\otro\\programa.exe' }), /mame.exe/);
   await fs.rm(root, { recursive: true, force: true });
 });
+
+test('el MAME alternativo usa sus propios archivos y toma el ajuste de adultos del principal', async () => {
+  const { createArcade } = await import('../src/mame.mjs');
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'gml-mame-legacy-'));
+  const main = createArcade(dataDir);
+  const legacy = createArcade(dataDir, { slot: 'legacy' });
+  await main.configure({ exe: 'K:\\MAME64\\mame.exe', showAdult: true });
+  await legacy.configure({ exe: 'K:\\MAME64 - Legacy 0170\\mame64.exe', showAdult: false });
+  assert.deepEqual(await legacy.settings(), { exe: 'K:\\MAME64 - Legacy 0170\\mame64.exe', showAdult: true });
+  assert.equal((await main.settings()).exe, 'K:\\MAME64\\mame.exe');
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(dataDir, 'arcade-legacy.json'), 'utf8')), {
+    exe: 'K:\\MAME64 - Legacy 0170\\mame64.exe'
+  });
+  await assert.rejects(legacy.configure({ exe: 'C:\\otro.exe' }), /mame64\.exe/);
+  // Cambiar o quitar el ejecutable descarta el catálogo de ese MAME, no el del otro.
+  const catalog = (version) => JSON.stringify({ schema: 1, version, games: [], stats: {} });
+  await fs.writeFile(path.join(dataDir, 'arcade-catalog.json'), catalog('0.289'));
+  await fs.writeFile(path.join(dataDir, 'arcade-legacy-catalog.json'), catalog('0.170'));
+  await legacy.configure({ exe: '' });
+  await assert.rejects(fs.access(path.join(dataDir, 'arcade-legacy-catalog.json')));
+  assert.equal((await main.info()).version, '0.289');
+  await fs.rm(dataDir, { recursive: true, force: true });
+});

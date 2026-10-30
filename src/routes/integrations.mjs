@@ -2,7 +2,7 @@
 import { conflict, notFound, withStatus } from '../http.mjs';
 
 export function integrationRoutes(router, d) {
-  const { steam, igdb, arcade } = d;
+  const { steam, igdb, arcade, legacyArcade } = d;
   // Steam
   router.get('/api/integrations/steam', () => steam.settings());
   router.put('/api/integrations/steam', async ({ body }) => {
@@ -54,20 +54,33 @@ export function integrationRoutes(router, d) {
   });
 
   // Arcade
-  router.get('/api/integrations/mame', () => arcade.info());
+  // MAME principal y, en «legacy», el MAME alternativo (más viejo) para los juegos que el principal no corre.
+  // extra: juegos del alternativo que se suman a la biblioteca (los que el principal no tiene).
+  const mameInfo = async () => {
+    const [main, legacy, games] = await Promise.all([arcade.info(), legacyArcade.info(), d.arcadeGames()]);
+    const extra = games.filter((game) => game.arcade.engine === 'legacy').length;
+    return { ...main, legacy: { ...legacy, extra } };
+  };
+  router.get('/api/integrations/mame', mameInfo);
   router.put('/api/integrations/mame', async ({ body }) => {
     const update = await body();
-    await arcade.configure(update);
-    if ('exe' in update && (await arcade.settings()).exe) arcade.start(d.afterArcadeIndex);
-    return arcade.info();
+    const { legacyExe, ...main } = update;
+    await arcade.configure(main);
+    if ('exe' in main && (await arcade.settings()).exe) arcade.start(d.afterArcadeIndex);
+    if (legacyExe !== undefined) {
+      await legacyArcade.configure({ exe: legacyExe });
+      if ((await legacyArcade.settings()).exe) legacyArcade.start(d.afterArcadeIndex);
+    }
+    return mameInfo();
   });
   router.post('/api/mame/scan', async () => {
-    if (!(await arcade.settings()).exe) throw conflict('Indicá dónde está mame.exe primero.');
-    arcade.start(d.afterArcadeIndex);
-    return withStatus(202, await arcade.info());
+    if (!(await arcade.settings()).exe && !(await legacyArcade.settings()).exe)
+      throw conflict('Indicá dónde está mame.exe primero.');
+    await d.startArcade();
+    return withStatus(202, await mameInfo());
   });
   router.get('/api/arcade/:set([a-z0-9_]+)/commands', async ({ params }) => {
-    const sections = await arcade.commands(params.set);
+    const sections = (await arcade.commands(params.set)) ?? (await legacyArcade.commands(params.set));
     if (!sections) throw notFound('Sin movimientos para este juego.');
     return { sections };
   });

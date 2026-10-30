@@ -687,7 +687,9 @@ export function appendArcadeDetails(game, information, media) {
     ['Jugadores', arcade.players ? String(arcade.players) : ''],
     ['Controles', (arcade.controls || []).map((item) => arcadeControls[item] || item).join(', ')],
     ['Pantalla', arcade.vertical ? 'Vertical' : 'Horizontal'],
-    ['Emulación', emulationText[arcade.emulation] || '']
+    ['Emulación', emulationText[arcade.emulation] || ''],
+    // Sólo se muestra para los juegos que abre el MAME alternativo.
+    ['Emulador', arcade.engine === 'legacy' && arcade.mameVersion ? `MAME ${arcade.mameVersion} (alternativo)` : '']
   ].forEach(([label, value]) => {
     if (!value) return;
     const term = document.createElement('dt');

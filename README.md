@@ -4,7 +4,7 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.29.2`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
+Versión `0.30.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 
@@ -48,6 +48,10 @@ Las portadas son los flyers de la máquina, la imagen principal una captura en p
 Después de indexar, cada juego de Arcade se busca en Wikipedia: el artículo en inglés lleva a Wikidata, que confirma que sea un videojuego del año correcto y aporta el identificador de IGDB y el artículo en español. La introducción en español se muestra como descripción (con enlace al artículo) y, si IGDB está conectado, el juego recibe su ficha (valoración, capturas, videos) como los de PC; sin identificador de Wikidata, IGDB sólo acepta el mismo título en la plataforma Arcade. Se guarda en `arcade-info.json` y se renueva cada 30 días. Con más de 300 juegos, sólo se buscan los favoritos y los jugados. Los juegos de pelea suman **Movimientos** desde `command.dat`.
 
 Jugar abre `mame.exe <set>` desde la carpeta de MAME, así que usa tu configuración. Al cerrar MAME, la ventana vuelve al frente y se suma el tiempo jugado (`playSeconds` en las preferencias). En la Biblioteca, el selector **PC · Arcade · Todo** separa las colecciones; Inicio suma la fila **Clásicos del arcade**.
+
+### MAME alternativo
+
+Algunos sets viejos sólo arrancan con una versión anterior de MAME. En el mismo formulario, **MAME alternativo (opcional)** acepta la ruta de otro MAME (`mame.exe` o `mame64.exe`) con su propia carpeta de ROMs (la de su `mame.ini`, o `roms` junto al ejecutable). Se indexa igual que el principal, con sus archivos `arcade-legacy-*.json`, y a la biblioteca se suman sólo los juegos que el principal no tiene, ni como versión regional ni con el mismo título. Cada juego se abre con el MAME que lo verificó; la ficha muestra «Emulador: MAME 0.170 (alternativo)». Dejá el campo vacío para quitarlo.
 
 ## Información ampliada de IGDB
 

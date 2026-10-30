@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.30.0
+
+- **MAME alternativo.** Configuración → Arcade acepta un segundo MAME, más viejo, con su propia carpeta de ROMs (por ejemplo `K:\Juegos\MAME64 - Legacy 0170\mame64.exe`). El launcher indexa esa carpeta con ese MAME y suma a la biblioteca sólo los juegos que el principal no tiene; los que corren en los dos se abren con el principal. Cada juego se abre automáticamente con el MAME que le corresponde y su ficha lo indica en «Emulador». La búsqueda nocturna y «Verificar de nuevo» revisan las dos carpetas; el ajuste de contenido para adultos es uno solo para ambos.
+
 ## 0.29.2
 
 - El arte de Steam lee su caché una sola vez aunque lleguen muchos pedidos juntos. Antes cada pedido simultáneo leía el archivo por su cuenta, y en Windows el orden de las lecturas hacía fallar una prueba de vez en cuando.

@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.30.2
+
+- La versión de MAME se reconoce también en ejecutables viejos que no responden a `-version` (se lee de `-help`).
+- El resultado de cada búsqueda de Arcade, y su error si falla, queda en el registro de diagnóstico.
+
+## 0.30.1
+
+- El campo «MAME alternativo» ya no muestra una ruta de ejemplo que parecía un valor cargado: guardar con el campo así lo dejaba vacío.
+
 ## 0.30.0
 
 - **MAME alternativo.** Configuración → Arcade acepta un segundo MAME, más viejo, con su propia carpeta de ROMs (por ejemplo `K:\Juegos\MAME64 - Legacy 0170\mame64.exe`). El launcher indexa esa carpeta con ese MAME y suma a la biblioteca sólo los juegos que el principal no tiene; los que corren en los dos se abren con el principal. Cada juego se abre automáticamente con el MAME que le corresponde y su ficha lo indica en «Emulador». La búsqueda nocturna y «Verificar de nuevo» revisan las dos carpetas; el ajuste de contenido para adultos es uno solo para ambos.

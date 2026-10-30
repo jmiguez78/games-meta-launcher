@@ -12,6 +12,7 @@ import { readZipEntries } from './zip-index.mjs';
 import { readJsonCached, writeJsonAtomic } from './json-file.mjs';
 import { badRequest, conflict, notFound } from './http.mjs';
 import { parseCommandDat, formatCommands } from './mame-commands.mjs';
+import { log } from './log.mjs';
 
 const CACHE_SCHEMA = 1;
 const SUPPORT_BASE = 'https://raw.githubusercontent.com/AntoPISA/MAME_SupportFiles/main/';
@@ -462,11 +463,20 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
   function run(exe, args) {
     return spawnImpl(exe, args, { cwd: path.dirname(exe), windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
   }
+  async function output(exe, args) {
+    const child = run(exe, args);
+    child.on?.('error', () => {});
+    let text = '';
+    for await (const chunk of child.stdout) text += chunk;
+    return text;
+  }
+  // «0.289 (mame0289)» con -version; las versiones viejas que no lo entienden lo dicen en -help
+  // («M.A.M.E. v0.170 (Jan 27 2016)»).
   async function mameVersion(exe) {
-    const child = run(exe, ['-version']);
-    let output = '';
-    for await (const chunk of child.stdout) output += chunk;
-    return output.trim().split(/\s/)[0] || null;
+    const first = (await output(exe, ['-version'])).trim().split(/\s/)[0];
+    if (/^\d+\.\d+/.test(first ?? '')) return first;
+    const help = await output(exe, ['-help']);
+    return help.match(/\bv(\d+\.\d+\w*)/)?.[1] ?? null;
   }
   // Archivos de apoyo: la copia descargada (se renueva cada 30 días); si la descarga falla, la anterior;
   // si no hay ninguna, la que viene con la aplicación. Se informa de dónde salió cada uno.
@@ -696,11 +706,17 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
       if (status.running) return;
       Object.assign(status, { running: true, phase: 'start', done: 0, total: 0, error: null });
       index()
-        .then(async () => {
+        .then(async (result) => {
+          log(
+            'info',
+            'arcade',
+            `${legacy ? 'MAME alternativo' : 'MAME'} ${result.version}: ${result.stats?.games ?? 0} juegos`
+          );
           if (after) await after();
         })
         .catch((error) => {
           status.error = error.message;
+          log('warn', 'arcade', `${legacy ? 'MAME alternativo' : 'MAME'}: ${error.message}`);
         })
         .finally(() => {
           status.running = false;

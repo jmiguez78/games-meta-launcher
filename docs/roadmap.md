@@ -143,8 +143,37 @@ Pantalla «Iniciando…» con el arte del juego y ventana que se minimiza al jug
 
 Navegación completa con mando y modo de pantalla grande con F11, Menú o desde Configuración.
 
+## 0.23.0 a 0.24.0 — Arcade (MAME) · Completada
+
+Los juegos de MAME como una tienda más: verificación de cada set por CRC, un juego por grupo de versiones, arte de libretro, fila «Clásicos del arcade», descripción en español desde Wikipedia, IGDB y movimientos de los juegos de pelea.
+
+## 0.25.0 a 0.27.0 — Interfaz en módulos, modo sala y estilos en capas · Completada
+
+Mejoras F2, F7 y F3 del [plan de 20 mejoras](https://claude.ai/artifact/P6YEfTpo3wKLN2vmiBea3u): la interfaz dividida en módulos ES, un modo sala propio para la TV y el mando (con «Listos para jugar / Toda la colección») y una hoja de estilos ordenada con `@layer`.
+
+## 0.28.0 — Blindaje · Completada
+
+Tanda 1: escrituras seguras, caché en memoria, Electron endurecido, registro de diagnóstico, datos versionados, arranque instantáneo y todo en español.
+
+## 0.29.0 — Base para crecer · Completada
+
+Tanda 2: integración continua en GitHub, pruebas de interfaz con Playwright, rutas declarativas y aviso de versión nueva.
+
+## 0.30.0 — MAME alternativo · Completada
+
+Un segundo MAME, más viejo, para los sets que el principal no corre (Arcade pasó de 138 a 182 juegos). En 0.30.1–0.30.3, portadas de Arcade que no aparecían.
+
+## 0.31.0 — Experiencia · Completada
+
+Tanda 3: sesiones medidas en todas las tiendas, «Tu actividad», fila única de tareas en segundo plano con eventos del servidor, «Primeros pasos» y portable con los datos junto al ejecutable.
+
+## 0.32.0 — Ambición · Completada
+
+Tanda 4: listas propias (manuales y automáticas), biblioteca para miles de juegos y el tema claro y los estados de error revisados. Con esta versión se completa el plan de 20 mejoras.
+
 ## Próximo
 
-- Registro de sesiones con duración: requiere vigilar el proceso de cada juego en Windows y validarlo en la PC.
+- Probar en la PC la medición de sesiones de Epic, GOG y Xbox, el portable junto al ejecutable y las listas.
+- Unir la rama `ux-fases-0-3` a `main`.
+- Actualizar las acciones de GitHub (aviso de Node 20).
 - Validación de coincidencias de IGDB, pendiente desde 0.12.0.
-- Grilla virtualizada si la colección supera los 1.000 juegos.

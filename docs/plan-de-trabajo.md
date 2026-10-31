@@ -12,7 +12,9 @@ flowchart LR
   F --> G[Integraciones de cuentas]
 ```
 
-## Estado actual — implementación hasta 0.22.0 terminada
+## Estado actual — implementación hasta 0.32.0 terminada
+
+De 0.23.0 a 0.32.0 se sumó Arcade (MAME, con un MAME alternativo para los sets viejos) y se completó el [plan de 20 mejoras](https://claude.ai/artifact/P6YEfTpo3wKLN2vmiBea3u) en cuatro tandas: blindaje (0.28), base para crecer (0.29), experiencia (0.31) y ambición (0.32). El detalle de cada versión está en el [plan de versiones](roadmap.md) y en el [registro de cambios](../CHANGELOG.md).
 
 De 0.19.0 a 0.22.0 se completó la segunda ronda de experiencia: Biblioteca con facetas, Configuración en secciones, pantalla «Iniciando…» y soporte de mando con pantalla grande.
 

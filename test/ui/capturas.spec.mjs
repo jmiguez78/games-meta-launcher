@@ -84,9 +84,12 @@ test('Inicio con primeros pasos', async ({ page }) => {
   });
   await openApp(page);
   await page.waitForSelector('#onboarding:not([hidden]) .onboarding-step');
-  await page.locator('#onboarding').scrollIntoViewIfNeeded();
+  // Captura de la ventana (como las demás): recortada a la tarjeta, un par de diferencias de suavizado de
+  // letras entre máquinas superaba el 1 % y la prueba fallaba en GitHub.
   await stable(page);
-  await expect(page.locator('#onboarding')).toHaveScreenshot('primeros-pasos.png');
+  await page.locator('#onboarding').evaluate((card) => window.scrollTo(0, card.offsetTop - 120));
+  await page.waitForTimeout(300);
+  await expect(page).toHaveScreenshot('primeros-pasos.png');
 });
 
 // Tema claro y estados de error (F10).

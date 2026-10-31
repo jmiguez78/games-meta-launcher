@@ -452,3 +452,41 @@ test('una imagen que todavía se descarga responde 503 sin retener la conexión'
   finish(null);
   local.close();
 });
+
+test('listas propias: crear, agregar juegos, renombrar, quitar de Inicio y borrar', async () => {
+  const send = (method, url, value) => fetch(`${base}${url}`, { method, ...json(value ?? {}) });
+  const manual = await (await send('POST', '/api/lists', { name: '  Para el finde ', kind: 'manual' })).json();
+  assert.equal(manual.name, 'Para el finde');
+  assert.deepEqual(manual.games, []);
+  assert.equal((await send('POST', '/api/lists', { name: '' })).status, 400);
+  const auto = await (
+    await send('POST', '/api/lists', {
+      name: 'Cortos sin jugar',
+      kind: 'auto',
+      rule: { collection: 'pc', filters: { length: ['short'], played: ['never'], inventado: ['x'] }, sort: 'raro' }
+    })
+  ).json();
+  assert.deepEqual(auto.rule.filters, { length: ['short'], played: ['never'] });
+  assert.equal(auto.rule.sort, 'name');
+  await send('PUT', `/api/lists/${manual.id}/games`, { key: 'steam:10' });
+  await send('PUT', `/api/lists/${manual.id}/games`, { key: 'epic games:x' });
+  const removed = await (await send('PUT', `/api/lists/${manual.id}/games`, { key: 'steam:10', member: false })).json();
+  assert.deepEqual(removed.games, ['epic games:x']);
+  assert.equal((await send('PUT', `/api/lists/${auto.id}/games`, { key: 'steam:10' })).status, 400);
+  await send('PUT', `/api/lists/${auto.id}`, { name: 'Cortos', home: false });
+  const library = await (await fetch(`${base}/api/library`)).json();
+  assert.deepEqual(
+    library.lists.map((list) => [list.name, list.kind, list.home]),
+    [
+      ['Para el finde', 'manual', true],
+      ['Cortos', 'auto', false]
+    ]
+  );
+  // Viajan con el respaldo.
+  const backup = await (await fetch(`${base}/api/preferences/export`)).json();
+  assert.equal(backup.lists.length, 2);
+  assert.equal((await send('DELETE', `/api/lists/${manual.id}`)).status, 204);
+  assert.equal((await send('DELETE', `/api/lists/${manual.id}`)).status, 404);
+  await send('DELETE', `/api/lists/${auto.id}`);
+  assert.deepEqual((await (await fetch(`${base}/api/library`)).json()).lists, []);
+});

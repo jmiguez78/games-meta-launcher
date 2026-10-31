@@ -1,9 +1,21 @@
 // Pedidos a la API local y utilidades de texto.
 
+// Sin conexión con el servidor, una respuesta vacía (204) o un error que no es JSON se informan en palabras.
 export async function request(url, options) {
-  const response = await fetch(url, options);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'No se pudo completar la acción.');
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch {
+    throw new Error('No se pudo conectar con el launcher. Revisá que la aplicación siga abierta y volvé a intentarlo.');
+  }
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+  if (!response.ok) throw new Error(data?.error || 'No se pudo completar la acción (error ' + response.status + ').');
   return data;
 }
 

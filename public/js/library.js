@@ -8,11 +8,13 @@ import { remember, remembered, state } from './state.js';
 export const library = document.querySelector('#library');
 
 // Juegos visibles en la Biblioteca: filtrados, ordenados y con los duplicados entre tiendas agrupados.
+// Con una lista abierta (F9), la búsqueda y los filtros se aplican sobre los juegos de esa lista.
 export function visibleEntries() {
-  const filtered = GMLCatalog.filterGames(state.games, {
+  const list = state.list && (state.lists || []).find((item) => item.id === state.list);
+  const filtered = GMLCatalog.filterGames(list ? GMLCatalog.listGames(list, state.games) : state.games, {
     query: state.query,
-    scope: state.installation,
-    collection: activeCollection(),
+    scope: list ? '' : state.installation,
+    collection: list ? 'all' : activeCollection(),
     filters: state.filters,
     favorite: state.favorite
   });
@@ -50,6 +52,50 @@ export function setSort(sort, direction = 'asc') {
   document.querySelector('#sort').value = sort;
 }
 
+// Pintado por lotes (F6): con bibliotecas grandes se dibujan las primeras portadas y el resto a medida que el
+// desplazamiento se acerca al final. Buscar o filtrar sólo redibuja lo que se ve.
+const FIRST_BATCH = 96;
+const NEXT_BATCH = 120;
+const batch = { entries: [], shown: 0, append: () => {} };
+const moreMarker = document.createElement('div');
+moreMarker.className = 'library-more';
+moreMarker.setAttribute('aria-hidden', 'true');
+const moreObserver = new IntersectionObserver((items) => items.some((item) => item.isIntersecting) && showMore(), {
+  rootMargin: '1500px 0px'
+});
+function showMore() {
+  if (batch.shown >= batch.entries.length) return;
+  const next = batch.entries.slice(batch.shown, batch.shown + NEXT_BATCH);
+  batch.shown += next.length;
+  batch.append(next);
+  if (batch.shown >= batch.entries.length) moreMarker.remove();
+  // Si el marcador sigue cerca de la vista (pantalla alta), se sigue sin esperar otro desplazamiento.
+  else
+    requestAnimationFrame(() => {
+      if (moreMarker.isConnected && moreMarker.getBoundingClientRect().top < innerHeight + 1500) showMore();
+    });
+}
+// Dibuja los primeros `count` (al menos el lote inicial) y deja el resto para cuando haga falta.
+function paintInBatches(entries, append, count = FIRST_BATCH) {
+  Object.assign(batch, { entries, shown: Math.min(entries.length, Math.max(count, FIRST_BATCH)), append });
+  append(entries.slice(0, batch.shown));
+  if (batch.shown < entries.length) {
+    library.after(moreMarker);
+    moreObserver.observe(moreMarker);
+  } else moreMarker.remove();
+}
+// Todos los juegos visibles en pantalla (antes de, por ejemplo, saltar al último con Fin).
+export function showAllTiles() {
+  while (batch.shown < batch.entries.length) showMore();
+}
+function posterFor({ game, alsoOn }) {
+  const card = cachedPoster(game);
+  const badge = card.querySelector('.poster-badge');
+  badge.textContent = alsoOn.length ? alsoOn.length + 1 + ' tiendas' : '';
+  badge.title = alsoOn.length ? 'También en ' + alsoOn.map((item) => item.platform).join(', ') : '';
+  return card;
+}
+
 export function makeTable(entries) {
   const table = document.createElement('table');
   table.className = 'data-table games-table';
@@ -79,8 +125,10 @@ export function makeTable(entries) {
   actionsHeader.scope = 'col';
   actionsHeader.innerHTML = '<span class="visually-hidden">Acciones</span>';
   headRow.append(actionsHeader);
-  const body = table.querySelector('tbody');
-  entries.forEach(({ game, alsoOn }) => {
+  return table;
+}
+function tableRows(entries) {
+  return entries.map(({ game, alsoOn }) => {
     const row = document.createElement('tr');
     row.className = 'tile' + (game.key === state.selectedKey ? ' selected' : '');
     row.dataset.key = game.key;
@@ -111,10 +159,9 @@ export function makeTable(entries) {
     cells[3].textContent = played ? GMLShelves.relativeDay(new Date(played).toISOString()) : '—';
     cells[4].textContent = GMLCatalog.rating(game) ?? '—';
     cells[5].textContent = GMLCatalog.length(game) ? GMLShelves.hours(GMLCatalog.length(game)) : '—';
-    body.append(row);
     decorateActions(row, game);
+    return row;
   });
-  return table;
 }
 
 export function renderLibraryState() {
@@ -169,25 +216,30 @@ export function renderLibrary() {
   }
   if (!entries.some(({ game }) => game.key === state.selectedKey) && entries[0])
     state.selectedKey = entries[0].game.key;
-  if (state.view === 'explorer') library.replaceChildren(makeTable(entries));
-  else
-    library.replaceChildren(
-      ...entries.map(({ game, alsoOn }) => {
-        const card = cachedPoster(game);
-        const badge = card.querySelector('.poster-badge');
-        badge.textContent = alsoOn.length ? alsoOn.length + 1 + ' tiendas' : '';
-        badge.title = alsoOn.length ? 'También en ' + alsoOn.map((item) => item.platform).join(', ') : '';
-        return card;
-      })
-    );
+  // El juego seleccionado o con foco siempre queda dibujado aunque esté más abajo del primer lote.
+  const keep = Math.max(
+    entries.findIndex(({ game }) => game.key === (focused?.key || state.selectedKey)),
+    // Al volver a dibujar con el mismo largo (marcar un favorito), no se pierde lo que ya se veía.
+    batch.entries.length === entries.length ? batch.shown - 1 : -1
+  );
+  if (state.view === 'explorer') {
+    const table = makeTable(entries);
+    const body = table.querySelector('tbody');
+    library.replaceChildren(table);
+    paintInBatches(entries, (part) => body.append(...tableRows(part)), keep + 1);
+  } else {
+    library.replaceChildren();
+    paintInBatches(entries, (part) => library.append(...part.map(posterFor)), keep + 1);
+  }
   const active =
     library.querySelector('.tile[data-key="' + CSS.escape(state.selectedKey) + '"]') || library.querySelector('.tile');
   if (active) selectTile(active, false);
   const tile = focused?.key && library.querySelector('.tile[data-key="' + CSS.escape(focused.key) + '"]');
   if (tile) (focused.action ? tile.querySelector('[data-action="' + focused.action + '"]') : tile)?.focus();
-  const total = GMLCatalog.collapseDuplicates(
-    GMLCatalog.filterGames(state.games, { scope: state.installation, collection: activeCollection() })
-  ).length;
+  const openList = state.list && (state.lists || []).find((item) => item.id === state.list);
+  const total = openList
+    ? GMLCatalog.collapseDuplicates(GMLCatalog.listGames(openList, state.games)).length
+    : collectionTotal();
   document.querySelector('#counter').textContent =
     entries.length === total
       ? entries.length + (entries.length === 1 ? ' juego' : ' juegos')
@@ -196,6 +248,22 @@ export function renderLibrary() {
   renderActiveFilters();
   renderFacets();
   pruneCoverLoads();
+}
+
+// Total de la colección elegida (sin búsqueda ni filtros): sólo cambia con la biblioteca, el alcance o la colección.
+let totalMemo = null;
+function collectionTotal() {
+  const collection = activeCollection();
+  if (totalMemo?.games !== state.games || totalMemo.scope !== state.installation || totalMemo.collection !== collection)
+    totalMemo = {
+      games: state.games,
+      scope: state.installation,
+      collection,
+      value: GMLCatalog.collapseDuplicates(
+        GMLCatalog.filterGames(state.games, { scope: state.installation, collection })
+      ).length
+    };
+  return totalMemo.value;
 }
 
 export const hasArcade = () => state.games.some((game) => game.platform === 'Arcade');
@@ -240,7 +308,8 @@ export function renderFilters() {
 // Panel de filtros: cada faceta muestra sus opciones con la cantidad de juegos que quedarían al elegirla.
 export function renderFacets() {
   const panel = document.querySelector('#facet-groups');
-  if (!panel) return;
+  // Con el panel cerrado no se cuentan las opciones (es lo más costoso de cada tecla): se cuentan al abrirlo.
+  if (!panel || document.querySelector('#filter-panel').classList.contains('hidden')) return;
   const counts = GMLCatalog.facetCounts(state.games, {
     query: state.query,
     scope: state.installation,
@@ -298,6 +367,9 @@ export function renderFacets() {
 
 export function renderActiveFilters() {
   const labels = [];
+  const list = state.list && (state.lists || []).find((item) => item.id === state.list);
+  if (state.list && !list) state.list = null;
+  if (list) labels.push(['Lista: ' + list.name, () => (state.list = null)]);
   if (state.query)
     labels.push(['“' + state.query + '”', () => (document.querySelector('#search').value = state.query = '')]);
   if (state.favorite) labels.push(['Favoritos', () => (state.favorite = false)]);
@@ -343,6 +415,7 @@ export function renderActiveFilters() {
 
 // Quita búsqueda y filtros; el alcance (instalados o toda la cuenta) y el orden se conservan.
 export function clearFilters() {
+  state.list = null;
   state.query = '';
   state.favorite = false;
   state.filters = { store: [], genre: [], length: [], played: [], rating: [], decade: [], players: [], tag: [] };
@@ -356,6 +429,7 @@ export function setFiltersOpen(open) {
   document.querySelector('#library-page').classList.toggle('filters-open', open);
   document.querySelector('#toggle-filters').setAttribute('aria-expanded', String(open));
   remember('gml-filters-open', open ? 'yes' : 'no');
+  if (open) renderFacets();
 }
 
 export function syncViewButtons() {
@@ -368,6 +442,8 @@ export function syncViewButtons() {
 
 // Enlaces de eventos y estado inicial; se llama una vez desde main.js.
 export function setup() {
+  // Fin lleva al último juego: antes se dibujan los que faltan (fase de captura, antes que bindTiles).
+  library.addEventListener('keydown', (event) => event.key === 'End' && showAllTiles(), true);
   bindTiles(library);
   // Barra fija de la Biblioteca: su alto ubica el panel de filtros y el foco; al despegarse toma fondo y borde.
   (() => {

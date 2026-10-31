@@ -144,3 +144,24 @@ test('Arcade: colecciones, década, jugadores y horas medidas por el launcher', 
   assert.deepEqual(keys(filterGames(library, { query: 'tortugas ninja' })), []);
   assert.deepEqual(keys(filterGames(library, { query: 'tmnt' })), ['arcade:tmnt']);
 });
+
+test('juegos de una lista: los elegidos en su orden o los que cumplen la regla', () => {
+  const { listGames } = globalThis.GMLCatalog;
+  const games = [
+    { key: 'steam:1', name: 'Hades', platform: 'Steam', meta: { timeToBeat: { normally: 20 * 3600 } } },
+    { key: 'epic:2', name: 'Celeste', platform: 'Epic Games', meta: { timeToBeat: { normally: 6 * 3600 } } },
+    { key: 'gog:3', name: 'Celeste', platform: 'GOG Galaxy', meta: { timeToBeat: { normally: 6 * 3600 } } },
+    { key: 'arcade:sf2', name: 'Street Fighter II', platform: 'Arcade' }
+  ];
+  assert.deepEqual(
+    listGames({ kind: 'manual', games: ['arcade:sf2', 'borrado:9', 'steam:1'] }, games).map((game) => game.key),
+    ['arcade:sf2', 'steam:1']
+  );
+  assert.deepEqual(
+    listGames({ kind: 'auto', rule: { collection: 'pc', filters: { length: ['short'] } } }, games).map(
+      (game) => game.key
+    ),
+    ['epic:2']
+  );
+  assert.deepEqual(listGames(null, games), []);
+});

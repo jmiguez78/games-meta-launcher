@@ -25,12 +25,19 @@
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase();
-  // Título comparable entre tiendas: sin mayúsculas, tildes, marcas ni signos.
+  // Título comparable entre tiendas: sin mayúsculas, tildes, marcas ni signos. Se recuerda por nombre.
+  const titleKeys = new Map();
   function titleKey(name) {
-    return normalize(name)
-      .replace(/[®™©]/g, '')
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
+    let key = titleKeys.get(name);
+    if (key === undefined) {
+      key = normalize(name)
+        .replace(/[®™©]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+      if (titleKeys.size > 50000) titleKeys.clear();
+      titleKeys.set(name, key);
+    }
+    return key;
   }
 
   // Facetas: cada una devuelve los valores de un juego. Dentro de una faceta las opciones se suman (o);
@@ -110,10 +117,13 @@
     tag: { label: 'Etiqueta', values: (game) => (Array.isArray(game.tags) ? game.tags : []) }
   };
 
-  function matchesQuery(game, query) {
-    const words = normalize(query).split(/\s+/).filter(Boolean);
-    if (!words.length) return true;
-    const haystack = normalize(
+  // Índice de búsqueda (F6): el texto normalizado de cada juego se arma una vez y se reutiliza en cada tecla.
+  // Si cambian el nombre o las etiquetas (editar el juego), se vuelve a armar.
+  const haystacks = new WeakMap();
+  function haystackOf(game) {
+    const cached = haystacks.get(game);
+    if (cached && cached.name === game.name && cached.tags === game.tags) return cached.text;
+    const text = normalize(
       [
         game.name,
         game.originalName,
@@ -125,6 +135,13 @@
         game.arcade && game.arcade.series
       ].join(' ')
     );
+    haystacks.set(game, { name: game.name, tags: game.tags, text });
+    return text;
+  }
+  const queryWords = (query) => normalize(query).split(/\s+/).filter(Boolean);
+  function matchesQuery(game, words) {
+    if (!words.length) return true;
+    const haystack = haystackOf(game);
     return words.every((word) => haystack.includes(word));
   }
   function matchesFacets(game, filters, skip) {
@@ -146,23 +163,25 @@
     return true;
   }
   function filterGames(games, { query = '', scope = '', collection = 'all', filters = {}, favorite = false } = {}) {
+    const words = queryWords(query);
     return games.filter(
       (game) =>
         matchesCollection(game, collection) &&
         matchesScope(game, scope) &&
         (!favorite || game.favorite) &&
-        matchesQuery(game, query) &&
+        matchesQuery(game, words) &&
         matchesFacets(game, filters)
     );
   }
   // Conteo de cada opción con el resto de los filtros aplicados: muestra cuántos juegos quedarían al elegirla.
   function facetCounts(games, { query = '', scope = '', collection = 'all', filters = {}, favorite = false } = {}) {
+    const words = queryWords(query);
     const base = games.filter(
       (game) =>
         matchesCollection(game, collection) &&
         matchesScope(game, scope) &&
         (!favorite || game.favorite) &&
-        matchesQuery(game, query)
+        matchesQuery(game, words)
     );
     const result = {};
     for (const [id, facet] of Object.entries(facets)) {
@@ -225,7 +244,22 @@
     return games.filter((game) => primaries.has(game)).map((game) => ({ game, alsoOn: primaries.get(game) }));
   }
 
+  // Juegos de una lista propia: los elegidos (en el orden en que se agregaron) o, en una lista automática,
+  // los que cumplen su regla, ordenados y sin duplicados entre tiendas.
+  function listGames(list, games) {
+    if (!list) return [];
+    if (list.kind === 'manual') {
+      const byKey = new Map(games.map((game) => [game.key, game]));
+      return (list.games || []).map((key) => byKey.get(key)).filter(Boolean);
+    }
+    const rule = list.rule || {};
+    return collapseDuplicates(sortGames(filterGames(games, rule), rule.sort, rule.direction)).map(
+      (entry) => entry.game
+    );
+  }
+
   root.GMLCatalog = {
+    listGames,
     facets,
     titleKey,
     lastPlayed,

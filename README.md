@@ -4,16 +4,17 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.31.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. Mide el tiempo jugado de los juegos que abrís desde el launcher, en todas las tiendas, y lo resume en **Tu actividad**. La información ampliada de IGDB sigue en beta.
+Versión `0.32.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. Mide el tiempo jugado de los juegos que abrís desde el launcher, en todas las tiendas, y lo resume en **Tu actividad**. La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 
-1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.31.0.exe`, o ejecutá `npm run desktop` durante el desarrollo. La primera vez, **Primeros pasos** en Inicio muestra los juegos encontrados por tienda y lo que falta conectar (Steam, IGDB, Arcade); se oculta al completarlo o con «Ocultar».
+1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.32.0.exe`, o ejecutá `npm run desktop` durante el desarrollo. La primera vez, **Primeros pasos** en Inicio muestra los juegos encontrados por tienda y lo que falta conectar (Steam, IGDB, Arcade); se oculta al completarlo o con «Ocultar».
 2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en una portada abre la página del juego; Jugar lo inicia.
 3. En **Biblioteca**, buscá, ordená y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
 4. En **Configuración**, elegí el tema, si la ventana se minimiza al jugar y la pantalla grande; conectá Steam e IGDB; programá la búsqueda nocturna y respaldá tus preferencias.
-5. En **Tu actividad**, mirá las horas por semana, los más jugados, tu racha y las últimas sesiones.
-6. Con un mando, apretá Menú (o F11 en el teclado) para pasar al **modo sala**: pantalla completa, filas grandes y el arte del juego de fondo. A elige, B vuelve, X marca favorito, Y salta de letra en la Biblioteca, LB/RB cambian de sección, Vista (⧉) alterna entre los juegos listos para jugar (lo que muestra al entrar) y toda la colección, y Menú abre las opciones (incluida la salida).
+5. Armá **listas propias**: desde la página de un juego, con «Listas», o en la Biblioteca con el botón **Listas** (una lista automática guarda una búsqueda con sus filtros y se completa sola). Las que estén «En Inicio» aparecen como filas.
+6. En **Tu actividad**, mirá las horas por semana, los más jugados, tu racha y las últimas sesiones.
+7. Con un mando, apretá Menú (o F11 en el teclado) para pasar al **modo sala**: pantalla completa, filas grandes y el arte del juego de fondo. A elige, B vuelve, X marca favorito, Y salta de letra en la Biblioteca, LB/RB cambian de sección, Vista (⧉) alterna entre los juegos listos para jugar (lo que muestra al entrar) y toda la colección, y Menú abre las opciones (incluida la salida).
 
 La versión portable incluye su propio runtime. Para desarrollo se requiere `npm install`.
 
@@ -40,6 +41,14 @@ El inventario generado se guarda en `data/library.json`, que no forma parte del 
 Al iniciar un juego, el launcher vigila su carpeta de instalación (en Windows, consultando los procesos cada pocos segundos mientras espera y cada 15 s durante el juego). La sesión empieza cuando aparece un proceso que corre desde esa carpeta y termina cuando deja de verse dos veces seguidas; los reportes de errores, instaladores y antitrampas no cuentan. Si el juego no aparece en 4 minutos (por ejemplo, un lanzador que pide actualizar), esa sesión no se mide. Al cerrarse, la ventana vuelve al frente, aparece un aviso con la duración y se guarda en `sessions.json` (versión de esquema 1, hasta 5.000 sesiones). Arcade se mide como antes, viendo cerrarse a MAME.
 
 **Tu actividad** suma las horas por semana (lo medido por el launcher), las últimas dos semanas (con las horas que informa Steam, también las jugadas fuera del launcher), los más jugados (horas de Steam o medidas), la racha de días seguidos y las últimas sesiones.
+
+## Listas propias
+
+Una lista es **manual** (los juegos que elegís, en el orden en que los agregás) o **automática** (guarda la búsqueda de la Biblioteca: colección, alcance, texto, filtros y orden; sus juegos se calculan cada vez con las mismas reglas). Se administran desde **Biblioteca → Listas** (crear, renombrar, mostrar u ocultar en Inicio, borrar con «Deshacer») y la paleta (Ctrl K). «Ver todo» en una fila de Inicio abre la Biblioteca con sólo esa lista, y la búsqueda y los filtros se aplican sobre ella. Se guardan en `preferences.json` (hasta 50 listas) y viajan con el respaldo.
+
+## Bibliotecas grandes
+
+La búsqueda usa un índice armado una vez por juego y la Biblioteca dibuja las portadas por lotes (las primeras 96 y el resto al desplazarse; Fin dibuja todas). Con 2.000 juegos, cada tecla redibuja en menos de 30 ms; una prueba de interfaz lo controla. Las cantidades del panel de filtros sólo se calculan con el panel abierto.
 
 ## Tareas en segundo plano
 

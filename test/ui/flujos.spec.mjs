@@ -96,3 +96,35 @@ test('Configuración avisa una versión nueva y ofrece ver las novedades', async
   await expect(page.locator('#update-status')).toHaveText('Versión 0.29.0. Hay una versión nueva: 0.30.0.');
   await expect(page.locator('#check-updates')).toHaveText('Ver novedades');
 });
+
+test('listas propias: crear desde un juego, verla en Inicio y en la Biblioteca, y una automática', async ({ page }) => {
+  await openApp(page);
+  await openGame(page, 'steam:900000');
+  await page.locator('#game-aside [data-action=lists]').click();
+  const picker = page.locator('#list-picker');
+  await expect(picker).toBeVisible();
+  await picker.locator('#list-picker-name').fill('Para el finde');
+  await picker.getByRole('button', { name: 'Crear y agregar' }).click();
+  await expect(picker.getByRole('checkbox', { name: 'Para el finde' })).toBeChecked();
+  await picker.getByRole('button', { name: 'Cerrar' }).click();
+
+  await show(page, 'home');
+  const shelf = page.locator('.shelf', { has: page.getByRole('heading', { name: 'Para el finde' }) });
+  await expect(shelf.locator('.tile')).toHaveCount(1);
+  await shelf.getByRole('button', { name: 'Ver toda la lista Para el finde' }).click();
+  await expect(page.locator('#library .tile')).toHaveCount(1);
+  await expect(page.locator('#active-filters')).toContainText('Lista: Para el finde');
+
+  // Una idea de lista automática: los arcades para dos jugadores.
+  await page.locator('#open-lists').click();
+  await page.locator('#list-ideas').getByRole('button', { name: 'Arcade de a dos' }).click();
+  await expect(page.locator('#lists-manage .list-row')).toHaveCount(2);
+  await expect(page.locator('#lists-manage')).toContainText('Automática · 6 juegos');
+  // Borrar las dos (y deshacer una) deja el resto de las pruebas como estaba.
+  await page.getByRole('button', { name: 'Borrar «Arcade de a dos»' }).click();
+  await expect(page.locator('#lists-manage .list-row')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Borrar «Para el finde»' }).click();
+  await expect(page.locator('#lists-empty')).toBeVisible();
+  await page.locator('#lists-dialog').getByRole('button', { name: 'Cerrar' }).click();
+  await expect(page.locator('#active-filters')).not.toContainText('Lista:');
+});

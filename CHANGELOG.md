@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.32.0
+
+Tanda 4 del plan, «ambición»: listas propias, una biblioteca que aguanta miles de juegos y el tema claro y los errores revisados. Con esta tanda se completa el plan de 20 mejoras.
+
+- **Listas propias (F9).** Manuales (desde la página de un juego, con «Listas») o automáticas: guardan una búsqueda de la Biblioteca con sus filtros y se completan solas. Hay ideas para empezar («Cortos sin estrenar», «Para el finde», «Arcade de a dos»). Las listas «En Inicio» aparecen como filas, con «Ver todo» para abrirlas en la Biblioteca. Se administran desde el botón **Listas** de la Biblioteca o la paleta, y viajan con el respaldo.
+- **Biblioteca para miles (F6).** Índice de búsqueda y portadas dibujadas por lotes. Con 2.000 juegos, abrir la Biblioteca pasó de unos 460 ms a 20 ms y cada tecla de la búsqueda, de hasta 75 ms a menos de 15 ms. Las cantidades del panel de filtros se calculan sólo con el panel abierto.
+- **Tema claro y estados de error (F10).** Inicio sin juegos o con error al cargar muestra un aviso con «Reintentar» o «Buscar juegos» en lugar de filas vacías, con su título y el buscador legible. Sin conexión con el launcher, los avisos lo dicen en palabras en lugar de un error técnico. Un error al cargar la biblioteca ya no queda como error sin atender de la página. Nuevas capturas de referencia (Tu actividad en tema claro, Inicio con error, Biblioteca vacía) y auditoría de accesibilidad de Tu actividad, Primeros pasos, Listas y el estado de error, en ambos temas.
+
 ## 0.31.0
 
 Tanda 3 del plan, «experiencia»: el tiempo jugado de todas las tiendas, una pantalla para verlo, la primera vez guiada, tareas en segundo plano ordenadas y un portable que viaja con sus datos.

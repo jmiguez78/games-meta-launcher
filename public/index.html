@@ -122,6 +122,8 @@
                 <option value="length">Más cortos primero</option>
                 <option value="platform">Tienda</option>
               </select></label
+            ><button id="open-lists" class="button" type="button" aria-haspopup="dialog">
+              <span data-icon="list"></span> Listas</button
             ><button id="toggle-filters" class="button" aria-expanded="false" aria-controls="filter-panel">
               <span data-icon="filter"></span> Filtros <span id="active-filter-count" class="badge hidden">0</span>
             </button>
@@ -590,6 +592,61 @@
           ><button id="save-tags" type="submit" class="button primary">Guardar cambios</button>
         </div>
       </form>
+    </dialog>
+    <dialog id="lists-dialog" class="lists-dialog" aria-labelledby="lists-title">
+      <div class="dialog-body">
+        <div class="dialog-heading">
+          <h2 id="lists-title">Tus listas</h2>
+          <button type="button" class="icon-btn dialog-close" data-close aria-label="Cerrar">
+            <span data-icon="x"></span>
+          </button>
+        </div>
+        <p class="helper-text">
+          Una lista es tuya (agregás juegos desde su página, con «Listas») o automática: guarda una búsqueda de la
+          Biblioteca y se completa sola. Las que están «En Inicio» aparecen como filas.
+        </p>
+        <ul id="lists-manage" class="lists-manage"></ul>
+        <p id="lists-empty" class="activity-empty" hidden>Todavía no tenés listas.</p>
+        <form id="list-create" class="list-create" novalidate>
+          <label
+            >Nueva lista<input id="list-name" maxlength="60" autocomplete="off" placeholder="Para el finde"
+          /></label>
+          <p id="list-create-error" class="form-error" role="alert"></p>
+          <div class="button-row">
+            <button type="submit" class="button primary">Crear lista</button
+            ><button type="button" id="list-from-search" class="button">Guardar la búsqueda actual</button>
+          </div>
+        </form>
+        <div class="list-ideas">
+          <h3>Ideas para empezar</h3>
+          <div id="list-ideas" class="button-row"></div>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="list-picker" class="lists-dialog" aria-labelledby="list-picker-title">
+      <div class="dialog-body">
+        <div class="dialog-heading">
+          <h2 id="list-picker-title">Listas</h2>
+          <button type="button" class="icon-btn dialog-close" data-close aria-label="Cerrar">
+            <span data-icon="x"></span>
+          </button>
+        </div>
+        <fieldset id="list-picker-options" class="list-picker-options">
+          <legend class="visually-hidden">Listas que incluyen este juego</legend>
+        </fieldset>
+        <p id="list-picker-empty" class="activity-empty" hidden>Todavía no tenés listas propias.</p>
+        <form id="list-picker-create" class="list-create" novalidate>
+          <label
+            >Nueva lista con este juego<input
+              id="list-picker-name"
+              maxlength="60"
+              autocomplete="off"
+              placeholder="Para jugar con amigos"
+          /></label>
+          <p id="list-picker-error" class="form-error" role="alert"></p>
+          <div class="button-row"><button type="submit" class="button primary">Crear y agregar</button></div>
+        </form>
+      </div>
     </dialog>
     <dialog id="palette" class="palette" aria-label="Buscar o ir a">
       <div class="palette-search">

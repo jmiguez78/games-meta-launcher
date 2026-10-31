@@ -11,6 +11,7 @@ import { setup as setupCouch } from './couch.js';
 import { setup as setupEvents } from './events.js';
 import { loadActivity, setup as setupActivity } from './activity.js';
 import { setup as setupOnboarding } from './onboarding.js';
+import { setup as setupLists } from './lists.js';
 import { request } from './api.js';
 import { readSnapshot, saveSnapshot } from './snapshot.js';
 import { report, setup as setupReport } from './report.js';
@@ -73,6 +74,7 @@ let shownText = null;
 function applyCatalog(text) {
   const catalog = JSON.parse(text);
   state.games = catalog.games;
+  state.lists = catalog.lists || [];
   posterCache.clear();
   state.generatedAt = catalog.generatedAt;
   shownText = text;
@@ -88,11 +90,26 @@ function renderAll() {
 // Al abrir, se pinta la última biblioteca guardada (arranque instantáneo) y se pide la actual en paralelo.
 export async function load() {
   const firstLoad = !state.games.length;
-  const pending = fetch('/api/library').then(async (response) => {
-    const text = await response.text();
-    if (!response.ok) throw new Error(JSON.parse(text).error || 'No se pudo cargar la biblioteca.');
-    return text;
-  });
+  const pending = fetch('/api/library').then(
+    async (response) => {
+      const text = await response.text();
+      if (!response.ok) {
+        let message = '';
+        try {
+          message = JSON.parse(text).error;
+        } catch {
+          /* respuesta que no es JSON */
+        }
+        throw new Error(message || 'No se pudo cargar la biblioteca (error ' + response.status + ').');
+      }
+      return text;
+    },
+    () => {
+      throw new Error('No se pudo conectar con el launcher. Revisá que la aplicación siga abierta.');
+    }
+  );
+  // Mientras se lee la última biblioteca guardada, un error del pedido no debe quedar como «sin atender».
+  pending.catch(() => {});
   if (firstLoad) {
     const saved = await readSnapshot();
     if (saved) {
@@ -147,6 +164,7 @@ setupUpdates();
 setupEvents();
 setupActivity();
 setupOnboarding();
+setupLists();
 document
   .querySelectorAll('.nav-item[data-page]')
   .forEach((button) => (button.onclick = () => showPage(button.dataset.page)));

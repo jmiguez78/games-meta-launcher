@@ -38,5 +38,32 @@ for (const theme of ['dark', 'light']) {
       await show(page, 'settings');
       expect(await audit(page)).toEqual([]);
     });
+    test('Tu actividad', async ({ page }) => {
+      await openApp(page);
+      await show(page, 'activity');
+      await page.waitForSelector('#activity-recent li');
+      expect(await audit(page)).toEqual([]);
+    });
+    test('Primeros pasos y listas', async ({ page }) => {
+      await page.route('**/api/onboarding', async (route) => {
+        const response = await route.fetch();
+        await route.fulfill({ response, json: { ...(await response.json()), dismissed: false } });
+      });
+      await openApp(page);
+      await page.waitForSelector('#onboarding:not([hidden]) .onboarding-step');
+      expect(await audit(page)).toEqual([]);
+      await show(page, 'library');
+      await page.click('#open-lists');
+      expect(await audit(page)).toEqual([]);
+    });
+    test('error al cargar la biblioteca', async ({ page }) => {
+      await page.route('**/api/library', (route) =>
+        route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"Falla de prueba."}' })
+      );
+      await page.goto('/');
+      await show(page, 'library');
+      await page.waitForSelector('#library-state:not(.hidden)');
+      expect(await audit(page)).toEqual([]);
+    });
   });
 }

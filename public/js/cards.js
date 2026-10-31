@@ -1,5 +1,6 @@
 // Portadas de juegos (tarjetas), sus acciones y la navegación por teclado entre ellas.
 import { applyCover, coverInfo, setAmbient, statusText } from './art.js';
+import { openPicker } from './lists.js';
 import { editGame, updatePreference } from './editor.js';
 import { notify, notifyError, say, undoPreference } from './feedback.js';
 import { openGamePage } from './game-page.js';
@@ -128,6 +129,7 @@ export async function posterAction(game, action) {
   if (action === 'play') return playOrReview(game);
   if (action === 'page') return openGamePage(game);
   if (action === 'edit') return editGame(game);
+  if (action === 'lists') return openPicker(game);
   if (action === 'favorite') {
     const previous = Boolean(game.favorite);
     try {

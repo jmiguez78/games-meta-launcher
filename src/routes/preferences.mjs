@@ -1,5 +1,5 @@
 // Preferencias por juego, respaldo, portadas propias y ajustes de la aplicación.
-import { badRequest, check } from '../http.mjs';
+import { badRequest, check, withStatus } from '../http.mjs';
 
 export function preferencesRoutes(router, d) {
   router.put('/api/preferences', async ({ body }) => {
@@ -11,6 +11,17 @@ export function preferencesRoutes(router, d) {
     return prefs.games[key];
   });
   router.get('/api/preferences/export', () => d.preferences());
+  // Listas propias (ver lists.mjs).
+  router.post('/api/lists', async ({ body }) => d.lists.create(await body()));
+  router.put('/api/lists/:id([\\w-]+)', async ({ params, body }) => d.lists.update(params.id, await body()));
+  router.delete('/api/lists/:id([\\w-]+)', async ({ params }) => {
+    await d.lists.remove(params.id);
+    return withStatus(204);
+  });
+  router.put('/api/lists/:id([\\w-]+)/games', async ({ params, body }) => {
+    const update = await body();
+    return d.lists.setMember(params.id, update.key, update.member !== false);
+  });
   router.post('/api/preferences/import', async ({ body }) => {
     const imported = await body();
     if (!imported.games || typeof imported.games !== 'object' || Array.isArray(imported.games))

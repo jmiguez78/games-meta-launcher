@@ -116,6 +116,18 @@ body:is([data-page='home'], [data-page='game']) .topbar h1 {
     top: 24px;
   }
 }
+/* Inicio sin imagen principal (sin juegos o con error): la barra superior y el título vuelven a su lugar. */
+body.home-bare[data-page='home'] .topbar {
+  position: static;
+  margin-bottom: 26px;
+}
+body.home-bare[data-page='home'] .topbar h1 {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}
 
 /* ── Barra lateral ── */
 .sidebar {
@@ -632,6 +644,10 @@ body:is([data-page='home'], [data-page='game']) .topbar h1 {
 .shelf-controls {
   display: flex;
   gap: 6px;
+}
+.shelf-more {
+  margin-left: auto;
+  white-space: nowrap;
 }
 .shelf-controls .icon-btn {
   width: 36px;

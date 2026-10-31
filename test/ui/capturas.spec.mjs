@@ -88,3 +88,44 @@ test('Inicio con primeros pasos', async ({ page }) => {
   await stable(page);
   await expect(page.locator('#onboarding')).toHaveScreenshot('primeros-pasos.png');
 });
+
+// Tema claro y estados de error (F10).
+const lightTheme = (page) =>
+  page.route('**/api/settings', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ contentType: 'application/json', body: '{"theme":"light","minimizeOnLaunch":false}' })
+      : route.continue()
+  );
+
+test('Tu actividad en tema claro', async ({ page }) => {
+  await lightTheme(page);
+  await openApp(page);
+  await show(page, 'activity');
+  await page.waitForSelector('#activity-recent li');
+  await stable(page);
+  await expect(page).toHaveScreenshot('actividad-claro.png');
+});
+
+test('Inicio cuando la biblioteca no carga', async ({ page }) => {
+  await lightTheme(page);
+  await page.route('**/api/library', (route) =>
+    route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"No se pudo leer el inventario."}' })
+  );
+  await page.goto('/');
+  await page.waitForSelector('#home-empty.error');
+  await page.evaluate(() => document.fonts.ready);
+  await stable(page);
+  await expect(page).toHaveScreenshot('inicio-error.png');
+});
+
+test('Biblioteca vacía', async ({ page }) => {
+  await page.route('**/api/library', (route) =>
+    route.fulfill({ contentType: 'application/json', body: '{"schema":2,"games":[],"lists":[]}' })
+  );
+  await page.goto('/');
+  await show(page, 'library');
+  await page.locator('#search').blur();
+  await page.evaluate(() => document.fonts.ready);
+  await stable(page);
+  await expect(page).toHaveScreenshot('biblioteca-vacia.png');
+});

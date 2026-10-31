@@ -1,5 +1,7 @@
 // Inicio: imagen principal y filas.
 import { applyCover, artColors, coverInfo, paintBackdrop, pruneCoverLoads, showWordmark } from './art.js';
+import { load } from './main.js';
+import { listShelves, openList } from './lists.js';
 import { bindTiles, makePosterCard, posterAction, selectTile } from './cards.js';
 import { showGame } from './game-page.js';
 import { icon } from './icons.js';
@@ -124,7 +126,10 @@ export function renderShelves() {
   homeShelvesHost.replaceChildren();
   const hero = heroGame();
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  GMLShelves.homeShelves(uniqueGames(), { exclude: hero ? [hero.game.key] : [] }).forEach((shelf) => {
+  // Las listas propias marcadas «En Inicio» van después de Continuar y Favoritos.
+  const builtIn = GMLShelves.homeShelves(uniqueGames(), { exclude: hero ? [hero.game.key] : [] });
+  const after = builtIn.findIndex((shelf) => shelf.id === 'favorites') + 1 || 1;
+  [...builtIn.slice(0, after), ...listShelves(), ...builtIn.slice(after)].forEach((shelf) => {
     const section = document.createElement('section');
     section.className = 'shelf';
     section.setAttribute('aria-labelledby', 'shelf-' + shelf.id);
@@ -136,6 +141,15 @@ export function renderShelves() {
     heading.id = 'shelf-' + shelf.id;
     heading.textContent = shelf.title;
     section.querySelector('.shelf-heading p').textContent = shelf.subtitle;
+    if (shelf.listId) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'text-button shelf-more';
+      more.textContent = 'Ver todo';
+      more.setAttribute('aria-label', 'Ver toda la lista ' + shelf.title);
+      more.onclick = () => openList(shelf.listId);
+      section.querySelector('.shelf-controls').before(more);
+    }
     const track = section.querySelector('.shelf-track');
     track.dataset.shelf = shelf.id;
     track.setAttribute('aria-labelledby', heading.id);
@@ -168,10 +182,27 @@ export function renderShelves() {
   });
 }
 
+// Sin juegos o con error al cargar, Inicio muestra sólo el aviso (sin filas vacías) y un botón para resolverlo.
 export function renderHomeEmpty() {
   const holder = document.querySelector('#home-empty');
-  const empty = !state.loading && !state.loadError && !heroPicks.length;
-  holder.classList.toggle('hidden', !empty);
+  const failed = Boolean(state.loadError) && !state.games.length;
+  const empty = !state.loading && !failed && !heroPicks.length;
+  holder.classList.toggle('hidden', !empty && !failed);
+  holder.classList.toggle('error', failed);
+  homeShelvesHost.hidden = (empty && !state.games.length) || failed;
+  // Sin imagen principal el buscador de la barra superior vuelve a su estilo normal (no hay foto detrás).
+  document.body.classList.toggle('home-bare', !heroPicks.length);
+  if (failed) {
+    holder.innerHTML =
+      '<span class="state-icon">' +
+      icon('alert') +
+      '</span><h2>No pudimos cargar tu biblioteca</h2><p></p><button type="button" class="button">' +
+      icon('refresh') +
+      ' Reintentar</button>';
+    holder.querySelector('p').textContent = state.loadError;
+    holder.querySelector('button').onclick = () => load();
+    return;
+  }
   if (!empty) return;
   holder.innerHTML =
     '<span class="state-icon">' +

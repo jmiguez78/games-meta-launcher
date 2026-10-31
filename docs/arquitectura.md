@@ -42,6 +42,7 @@ flowchart LR
 | `snapshot.js`, `report.js`                            | Arranque instantáneo (última biblioteca en IndexedDB) y errores de la interfaz al registro |
 | `events.js`                                           | Eventos del servidor: fila de tareas, biblioteca cambiada y sesiones medidas               |
 | `activity.js`, `onboarding.js`                        | Tu actividad y Primeros pasos                                                              |
+| `lists.js`                                            | Listas propias: filas de Inicio, filtro de la Biblioteca y diálogos                        |
 
 `npm run check` comprueba la sintaxis de todo `src/` y de los scripts de la interfaz (`tools/check-syntax.mjs`), que cada `import` exista en su módulo de origen (`tools/check-modules.mjs`) y las reglas de los estilos (`tools/check-styles.mjs`). `window.GML` expone el estado y la navegación para depurar desde la consola.
 
@@ -50,6 +51,7 @@ flowchart LR
 - `src/activity.mjs`: resumen para «Tu actividad» (semanas, racha, más jugados, últimas sesiones). `GET /api/activity?now=`.
 - `src/tasks.mjs`: fila única de tareas en segundo plano por prioridad y `GET /api/events` (text/event-stream: `tasks`, `library`, `session`). `GET /api/tasks` devuelve el estado de la fila.
 - `src/portable.mjs`: carpeta de datos del portable (junto al `.exe` o en AppData) y copia de los datos. `GET /api/portable`, `POST /api/portable/copy`.
+- `src/lists.mjs`: listas propias en `preferences.json` (validación y cambios). `POST /api/lists`, `PUT/DELETE /api/lists/:id`, `PUT /api/lists/:id/games` (`{ key, member }`). Llegan a la interfaz dentro de `/api/library` (`lists`); los juegos de una lista automática los calcula `GMLCatalog.listGames`.
 - `GET /api/onboarding`: datos de «Primeros pasos» (juegos por tienda, avance de la búsqueda, conexiones y claves que hay que reconectar).
 - `src/wiki.mjs`: Wikipedia en inglés → Wikidata (videojuego, año, IGDB P5794, artículo en español) → introducción en español. Rutas de datos: `arcade-info.json`.
 - `src/mame-commands.mjs`: lee `command.dat` y convierte sus códigos en flechas y botones legibles. `GET /api/arcade/:set/commands`.

@@ -15,6 +15,7 @@ import { createSessionLog, createSessionTracker } from './sessions.mjs';
 import { createTaskHub } from './tasks.mjs';
 import { buildActivity } from './activity.mjs';
 import { copyToPortable, portableFolder } from './portable.mjs';
+import { cleanLists, createLists } from './lists.mjs';
 import { createWiki } from './wiki.mjs';
 import { displayName } from './names.mjs';
 import { arcadeCategoryEs, metaEs } from './es.mjs';
@@ -416,6 +417,7 @@ const buildLibrary = memo((catalog, prefs, metadata, account, arcadeList) => {
   return {
     ...catalog,
     steamUpdatedAt: account.updatedAt,
+    lists: cleanLists(prefs.lists),
     games: [...merged, ...arcadeList].map(({ art, ...game }) => {
       const saved = prefs.games[game.key] ?? {};
       const name = displayName(game.name);
@@ -694,6 +696,7 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit, onRestart
     forIgdb,
     // Primeros pasos (F1): juegos encontrados por tienda y qué falta conectar.
     portable: portableInfo,
+    lists: createLists(updatePreferences),
     async copyToPortable() {
       const info = portableInfo();
       if (!info.available) throw conflict('Esta opción es sólo para el ejecutable portable.');
@@ -781,7 +784,11 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit, onRestart
           .filter(([, saved]) => saved && typeof saved === 'object')
           .map(([key, saved]) => [key, importedGame(saved)])
       );
-      await updatePreferences((prefs) => ({ ...prefs, games }));
+      await updatePreferences((prefs) => ({
+        ...prefs,
+        games,
+        ...(Array.isArray(imported.lists) ? { lists: cleanLists(imported.lists) } : {})
+      }));
       log('info', 'preferencias', `Preferencias importadas: ${Object.keys(games).length} juegos`);
       return { ok: true };
     },

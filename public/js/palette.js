@@ -8,6 +8,7 @@ import { icon } from './icons.js';
 import { clearFilters, renderLibrary } from './library.js';
 import { pageMeta, showPage } from './main.js';
 import { exportPreferences } from './settings.js';
+import { openList, openManager } from './lists.js';
 import { state } from './state.js';
 
 // Paleta de comandos (Control+K): combobox con lista agrupada y aria-activedescendant.
@@ -37,7 +38,21 @@ export function paletteCommands() {
     keywords: 'tema apariencia modo color',
     run: () => document.querySelector('[data-theme-option="' + option + '"]').click()
   });
+  const lists = (state.lists || []).map((list) => ({
+    group: 'Tus listas',
+    label: 'Ver lista «' + list.name + '»',
+    icon: 'list',
+    keywords: 'lista ' + list.name,
+    run: () => openList(list.id)
+  }));
   const actions = [
+    {
+      group: 'Acciones',
+      label: 'Administrar tus listas',
+      icon: 'list',
+      keywords: 'listas crear nueva automática colección',
+      run: openManager
+    },
     {
       group: 'Acciones',
       label: 'Buscar juegos nuevos',
@@ -94,7 +109,7 @@ export function paletteCommands() {
       run: exportPreferences
     }
   ];
-  return [...sections, ...actions];
+  return [...sections, ...actions, ...lists];
 }
 
 export function gameCommand(game, group) {

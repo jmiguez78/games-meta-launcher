@@ -245,19 +245,38 @@ test('la integración informa que no está configurada y no expone secretos', as
 });
 
 test('guarda el tema y lo conserva al restaurar un respaldo', async () => {
-  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'dark', minimizeOnLaunch: true });
+  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), {
+    theme: 'dark',
+    minimizeOnLaunch: true,
+    onboardingDismissed: false
+  });
   const invalid = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ theme: 'rosa' }) });
   assert.equal(invalid.status, 400);
   const saved = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ theme: 'light' }) });
-  assert.deepEqual(await saved.json(), { theme: 'light', minimizeOnLaunch: true });
+  assert.deepEqual(await saved.json(), { theme: 'light', minimizeOnLaunch: true, onboardingDismissed: false });
   const minimize = await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ minimizeOnLaunch: false }) });
-  assert.deepEqual(await minimize.json(), { theme: 'light', minimizeOnLaunch: false });
+  assert.deepEqual(await minimize.json(), { theme: 'light', minimizeOnLaunch: false, onboardingDismissed: false });
   assert.equal(
     (await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ minimizeOnLaunch: 'sí' }) })).status,
     400
   );
   await fetch(`${base}/api/preferences/import`, { method: 'POST', ...json({ games: {} }) });
-  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), { theme: 'light', minimizeOnLaunch: false });
+  assert.deepEqual(await (await fetch(`${base}/api/settings`)).json(), {
+    theme: 'light',
+    minimizeOnLaunch: false,
+    onboardingDismissed: false
+  });
+});
+
+test('Primeros pasos: juegos por tienda, conexiones y descartar', async () => {
+  const data = await (await fetch(`${base}/api/onboarding`)).json();
+  assert.equal(data.dismissed, false);
+  assert.deepEqual(data.library.byPlatform, { Steam: 1, 'Epic Games': 1, 'GOG Galaxy': 1 });
+  assert.equal(data.steam.configured, false);
+  assert.equal(data.arcade.configured, false);
+  await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ onboardingDismissed: true }) });
+  assert.equal((await (await fetch(`${base}/api/onboarding`)).json()).dismissed, true);
+  await fetch(`${base}/api/settings`, { method: 'PUT', ...json({ onboardingDismissed: false }) });
 });
 
 test('Arcade sin MAME configurado no indexa ni rompe la biblioteca', async () => {

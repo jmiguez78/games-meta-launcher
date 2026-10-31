@@ -4,15 +4,16 @@ Lanzador local para Windows que reúne juegos detectados en Steam, Epic Games, X
 
 ## Estado
 
-Versión `0.30.3`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. La información ampliada de IGDB sigue en beta.
+Versión `0.31.0`. Detecta instalaciones locales y las reúne con tu cuenta de Steam, sin repetir juegos comprados en varias tiendas. Inicio propone qué jugar con una imagen principal y filas por intención. La Biblioteca tiene dos vistas (Portadas y Tabla), orden visible y filtros por tienda, género, duración, tiempo jugado, valoración y etiquetas. Cada juego tiene su página con arte, logo, descripción en español cuando Steam la ofrece, tiempo jugado y logros. Al jugar aparece una pantalla «Iniciando…» y la ventana se minimiza. Se usa con mouse, teclado o mando, y tiene un modo sala para la TV y el mando (F11 o el botón Menú). Suma los juegos de MAME como una tienda más, Arcade, con versiones regionales agrupadas y arte de libretro. Mide el tiempo jugado de los juegos que abrís desde el launcher, en todas las tiendas, y lo resume en **Tu actividad**. La información ampliada de IGDB sigue en beta.
 
 ## Uso rápido
 
-1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.29.2.exe`, o ejecutá `npm run desktop` durante el desarrollo.
+1. Generá el portable con `npm run package` y abrí `releases/Games Meta Launcher 0.31.0.exe`, o ejecutá `npm run desktop` durante el desarrollo. La primera vez, **Primeros pasos** en Inicio muestra los juegos encontrados por tienda y lo que falta conectar (Steam, IGDB, Arcade); se oculta al completarlo o con «Ocultar».
 2. En **Inicio**, elegí el juego destacado o uno de las filas. Un clic en una portada abre la página del juego; Jugar lo inicia.
 3. En **Biblioteca**, buscá, ordená y filtrá. Por defecto se muestran los juegos instalados; «Toda la cuenta» suma los de Steam sin instalar.
 4. En **Configuración**, elegí el tema, si la ventana se minimiza al jugar y la pantalla grande; conectá Steam e IGDB; programá la búsqueda nocturna y respaldá tus preferencias.
-5. Con un mando, apretá Menú (o F11 en el teclado) para pasar al **modo sala**: pantalla completa, filas grandes y el arte del juego de fondo. A elige, B vuelve, X marca favorito, Y salta de letra en la Biblioteca, LB/RB cambian de sección, Vista (⧉) alterna entre los juegos listos para jugar (lo que muestra al entrar) y toda la colección, y Menú abre las opciones (incluida la salida).
+5. En **Tu actividad**, mirá las horas por semana, los más jugados, tu racha y las últimas sesiones.
+6. Con un mando, apretá Menú (o F11 en el teclado) para pasar al **modo sala**: pantalla completa, filas grandes y el arte del juego de fondo. A elige, B vuelve, X marca favorito, Y salta de letra en la Biblioteca, LB/RB cambian de sección, Vista (⧉) alterna entre los juegos listos para jugar (lo que muestra al entrar) y toda la colección, y Menú abre las opciones (incluida la salida).
 
 La versión portable incluye su propio runtime. Para desarrollo se requiere `npm install`.
 
@@ -32,7 +33,27 @@ La versión portable incluye su propio runtime. Para desarrollo se requiere `npm
 
 La primera vez, `npx playwright install chromium` descarga el navegador de las pruebas de interfaz. Si un cambio visual es intencional, `npm run test:ui -- --update-snapshots` actualiza las capturas de referencia (`test/ui/capturas/`).
 
-El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC. Tus favoritos, etiquetas, progreso, notas, puntuaciones, portadas y fecha de última vez jugado se guardan localmente en `data/preferences.json` y `data/covers/`, también excluidos del repositorio. La fecha de juego se registra al iniciar un título desde Games Meta Launcher. La aplicación portable guarda esos datos en el perfil local de Windows.
+El inventario generado se guarda en `data/library.json`, que no forma parte del repositorio porque representa el estado de esta PC. Tus favoritos, etiquetas, progreso, notas, puntuaciones, portadas y fecha de última vez jugado se guardan localmente en `data/preferences.json` y `data/covers/`, también excluidos del repositorio. La fecha de juego se registra al iniciar un título desde Games Meta Launcher.
+
+## Sesiones y «Tu actividad»
+
+Al iniciar un juego, el launcher vigila su carpeta de instalación (en Windows, consultando los procesos cada pocos segundos mientras espera y cada 15 s durante el juego). La sesión empieza cuando aparece un proceso que corre desde esa carpeta y termina cuando deja de verse dos veces seguidas; los reportes de errores, instaladores y antitrampas no cuentan. Si el juego no aparece en 4 minutos (por ejemplo, un lanzador que pide actualizar), esa sesión no se mide. Al cerrarse, la ventana vuelve al frente, aparece un aviso con la duración y se guarda en `sessions.json` (versión de esquema 1, hasta 5.000 sesiones). Arcade se mide como antes, viendo cerrarse a MAME.
+
+**Tu actividad** suma las horas por semana (lo medido por el launcher), las últimas dos semanas (con las horas que informa Steam, también las jugadas fuera del launcher), los más jugados (horas de Steam o medidas), la racha de días seguidos y las últimas sesiones.
+
+## Tareas en segundo plano
+
+Buscar juegos, sincronizar Steam, indexar los dos MAME, Wikipedia e IGDB pasan por una sola fila: corren de a una, por prioridad, y pedir dos veces la misma no la duplica. La interfaz no sondea: escucha `/api/events` (eventos del servidor) y recibe el avance (al pie de la barra lateral), un aviso cuando cambian los datos de la biblioteca y cada sesión medida.
+
+## Portable
+
+El portable muestra una imagen de bienvenida mientras se descomprime. Sus datos pueden viajar con el ejecutable, en la carpeta `Games Meta Launcher - datos` junto al `.exe`:
+
+- si esa carpeta existe, se usa;
+- si no, y la PC ya tiene datos en el perfil de Windows (`%APPDATA%\Games Meta Launcher`), se siguen usando esos. **Configuración → Datos del portable → Guardar junto al .exe** los copia (sin las cachés del navegador interno) y vuelve a abrir el launcher; la copia del perfil queda como respaldo;
+- en una PC sin datos, se crea la carpeta junto al `.exe` si se puede escribir ahí.
+
+Las claves de Steam e IGDB se cifran para cada usuario de Windows: en otra PC no se pueden abrir. El launcher sigue funcionando, avisa al abrir y Configuración pide volver a conectarlas.
 
 ## Arcade (MAME)
 

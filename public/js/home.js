@@ -54,9 +54,7 @@ export function renderHero() {
   const played = GMLShelves.lastPlayed(game);
   [
     game.platform,
-    game.steam && GMLShelves.hours(game.steam.playtimeHours)
-      ? GMLShelves.hours(game.steam.playtimeHours) + ' jugadas'
-      : '',
+    GMLShelves.hours(GMLShelves.playedHours(game)) ? GMLShelves.hours(GMLShelves.playedHours(game)) + ' jugadas' : '',
     played ? 'Última sesión: ' + GMLShelves.relativeDay(new Date(played).toISOString()).toLowerCase() : '',
     game.meta && game.meta.genres && game.meta.genres[0]
   ]

@@ -11,6 +11,10 @@ import { createIgdb, imageUrl } from './igdb.mjs';
 import { createSteam, mergeSteamLibrary } from './steam.mjs';
 import { createSteamAssets } from './steam-assets.mjs';
 import { createArcade } from './mame.mjs';
+import { createSessionLog, createSessionTracker } from './sessions.mjs';
+import { createTaskHub } from './tasks.mjs';
+import { buildActivity } from './activity.mjs';
+import { copyToPortable, portableFolder } from './portable.mjs';
 import { createWiki } from './wiki.mjs';
 import { displayName } from './names.mjs';
 import { arcadeCategoryEs, metaEs } from './es.mjs';
@@ -86,7 +90,7 @@ function updatePreferences(change) {
 }
 async function rawLibrary() {
   const catalog = await readJsonCached(dataPath, null);
-  return Array.isArray(catalog?.games) && catalog.schema === CATALOG_SCHEMA ? catalog : scanLibrary();
+  return Array.isArray(catalog?.games) && catalog.schema === CATALOG_SCHEMA ? catalog : runScan();
 }
 // Memoria de resultados: si las entradas son los mismos objetos (nada cambió en disco), se reutiliza el cálculo.
 function memo(compute) {
@@ -155,10 +159,71 @@ async function arcadeGames() {
   const [main, older] = await Promise.all([arcade.games(), legacyArcade.games()]);
   return combineArcade(main, older);
 }
+// Portable (B8): ¿los datos viven junto al .exe? Sólo tiene sentido con el ejecutable portable.
+function portableInfo() {
+  const folder = portableFolder(process.env.PORTABLE_EXECUTABLE_DIR);
+  if (!folder) return { available: false };
+  return { available: true, active: path.resolve(dataDir) === path.resolve(folder), folder };
+}
+// Búsqueda de juegos instalados con su avance por tienda (la primera vez, «Primeros pasos» lo muestra).
+// Dos pedidos a la vez comparten la misma búsqueda.
+const STORES = 6;
+const scanProgress = { running: false, done: 0, total: STORES, found: {} };
+let scanning = null;
+function runScan() {
+  scanning ??= (async () => {
+    Object.assign(scanProgress, { running: true, done: 0, found: {} });
+    try {
+      const result = await scanLibrary({
+        onSource: (platform, count) => {
+          scanProgress.done += 1;
+          scanProgress.found[platform] = count;
+        }
+      });
+      log('info', 'biblioteca', `Búsqueda de juegos: ${result.games.length} encontrados`);
+      return result;
+    } finally {
+      scanProgress.running = false;
+      scanning = null;
+    }
+  })();
+  return scanning;
+}
+// Fila única de tareas en segundo plano (B7): ver tasks.mjs.
+const tasks = createTaskHub({ log });
+const progressOf = (status) =>
+  status?.running ? { phase: status.phase ?? null, done: status.done ?? 0, total: status.total ?? 0 } : null;
+// Indexa un MAME y, si salió bien, pone en fila Wikipedia (y después IGDB) para los juegos de Arcade.
+function queueArcade(slot) {
+  const instance = slot === 'legacy' ? legacyArcade : arcade;
+  return tasks.enqueue(
+    slot === 'legacy' ? 'arcade-legacy' : 'arcade',
+    slot === 'legacy' ? 'MAME alternativo' : 'Arcade (MAME)',
+    async () => {
+      await instance.start();
+      if (!instance.status().error) queueArcadeInfo();
+    },
+    { progress: () => progressOf(instance.status()) }
+  );
+}
 // Indexa los MAME configurados (el alternativo después del principal) y sigue con Wikipedia e IGDB.
 async function startArcade() {
-  if ((await arcade.settings()).exe) arcade.start(afterArcadeIndex);
-  if ((await legacyArcade.settings()).exe) legacyArcade.start(afterArcadeIndex);
+  if ((await arcade.settings()).exe) queueArcade('main');
+  if ((await legacyArcade.settings()).exe) queueArcade('legacy');
+}
+function queueArcadeInfo() {
+  return tasks.enqueue('wiki', 'Descripciones de Wikipedia', enrichArcade, {
+    progress: () => progressOf(arcade.status())
+  });
+}
+// IGDB: la lista de juegos se arma al empezar la tarea, con la biblioteca de ese momento.
+function queueIgdb(gamesFor = async () => forIgdb((await library()).games)) {
+  return tasks.enqueue('igdb', 'Información de IGDB', async () => igdb.start(await gamesFor()), {
+    progress: () => progressOf(igdb.status())
+  });
+}
+function queueSteam() {
+  return tasks.enqueue('steam', 'Biblioteca de Steam', () => steam.sync(), { lightweight: true });
 }
 const wiki = createWiki();
 // Aviso de versión nueva: el repositorio de publicaciones se indica en package.json (gml.releases).
@@ -188,21 +253,11 @@ async function forIgdb(games) {
   return games.filter((game) => !isArcade(game) || chosen.has(game.key));
 }
 // Después de indexar Arcade: Wikipedia (descripción en español e identificador de IGDB) y, si IGDB está
-// conectado y libre, sus fichas.
-// Las dos indexaciones (MAME principal y alternativo) pueden terminar juntas: se encadenan para no escribir dos
-// veces a la vez la información compartida.
-let arcadeFollowUp = Promise.resolve();
-function afterArcadeIndex() {
-  arcadeFollowUp = arcadeFollowUp.then(enrichArcade, enrichArcade);
-  return arcadeFollowUp;
-}
+// conectado, sus fichas. Como todo pasa por la fila, nunca corren dos a la vez.
 async function enrichArcade() {
   const games = (await library()).games;
   await arcade.enrich(await arcadeForInfo(games), wiki);
-  if ((await igdb.settings()).configured && !igdb.status().running) {
-    const refreshed = (await library()).games;
-    igdb.start(await forIgdb(refreshed.filter(isArcade)));
-  }
+  if ((await igdb.settings()).configured) queueIgdb(async () => forIgdb((await library()).games.filter(isArcade)));
 }
 const isSteamApp = (game) => game.platform === 'Steam' && /^\d+$/.test(game.id);
 // Rutas clásicas de la CDN: alcanzan para saber si hay arte en línea sin consultar a Steam.
@@ -521,17 +576,23 @@ export async function appSettings() {
   // Al iniciar un juego, la ventana se minimiza salvo que se haya desactivado.
   return {
     theme: themes.includes(settings.theme) ? settings.theme : 'dark',
-    minimizeOnLaunch: settings.minimizeOnLaunch !== false
+    minimizeOnLaunch: settings.minimizeOnLaunch !== false,
+    // «Primeros pasos» en Inicio: oculto si se descartó.
+    onboardingDismissed: settings.onboardingDismissed === true
   };
 }
-// Suma el tiempo de una sesión que el launcher pudo medir (hoy, Arcade: abre y ve cerrarse a MAME).
-async function recordSession(key, seconds) {
-  if (!Number.isFinite(seconds) || seconds < 5) return;
-  log('info', 'juego', `Sesión de ${Math.round(seconds)} s en ${key}`);
+// Sesiones medidas por el launcher: Arcade (abre y ve cerrarse a MAME) y, en Windows, cualquier juego con
+// carpeta de instalación conocida (se vigilan sus procesos). Suman al tiempo jugado y quedan en sessions.json.
+const sessionLog = createSessionLog(dataDir);
+async function recordSession(game, { start, seconds, source }) {
+  if (!Number.isFinite(seconds) || seconds < 5) return null;
+  log('info', 'juego', `Sesión de ${Math.round(seconds)} s en ${game.key}`);
+  const entry = await sessionLog.add({ key: game.key, name: game.name, start, seconds, source });
   await updatePreferences((prefs) => {
-    const saved = prefs.games[key] ?? {};
-    prefs.games[key] = { ...saved, playSeconds: (saved.playSeconds ?? 0) + Math.min(seconds, 86400) };
+    const saved = prefs.games[game.key] ?? {};
+    prefs.games[game.key] = { ...saved, playSeconds: (saved.playSeconds ?? 0) + Math.min(seconds, 86400) };
   });
+  return entry;
 }
 // La interfaz puede registrar errores; se limita la cantidad para que un error en bucle no llene el disco.
 let clientLogWindow = { start: 0, count: 0 };
@@ -592,8 +653,23 @@ async function diagnostics() {
   };
 }
 // Rutas de la API agrupadas por dominio (src/routes/). Lo que no es /api se sirve desde public/.
-export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
+export function createServer({ onSettingsChange, onLaunch, onGameExit, onRestart, listProcesses } = {}) {
   const router = createRouter();
+  // Al cerrarse un juego medido: se guarda la sesión y la ventana vuelve al frente.
+  async function finishSession(game, session) {
+    const entry = await recordSession(game, session).catch((error) => {
+      log('warn', 'juego', `No se pudo guardar la sesión de ${game.key}: ${error.message}`);
+      return null;
+    });
+    if (entry) tasks.emit('session', entry);
+    tasks.emit('library', { reason: 'session' });
+    onGameExit?.(game, entry);
+  }
+  const tracker = createSessionTracker({
+    ...(listProcesses ? { listProcesses } : {}),
+    onEnd: (game, session) => finishSession(game, { ...session, source: 'proceso' }),
+    onMissing: (game) => log('info', 'juego', `No se detectó el proceso de ${game.key}; la sesión no se mide`)
+  });
   const deps = {
     library,
     libraryJson,
@@ -611,8 +687,56 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
     legacyArcade,
     arcadeGames,
     startArcade,
+    queueArcade,
+    queueIgdb,
+    queueSteam,
+    tasks,
     forIgdb,
-    afterArcadeIndex,
+    // Primeros pasos (F1): juegos encontrados por tienda y qué falta conectar.
+    portable: portableInfo,
+    async copyToPortable() {
+      const info = portableInfo();
+      if (!info.available) throw conflict('Esta opción es sólo para el ejecutable portable.');
+      if (info.active) throw conflict('Los datos ya están junto al ejecutable.');
+      await copyToPortable(dataDir, info.folder);
+      log('info', 'app', `Datos copiados junto al ejecutable: ${info.folder}`);
+      if (onRestart) setTimeout(onRestart, 1500);
+      return { ok: true, folder: info.folder, restart: Boolean(onRestart) };
+    },
+    async onboarding() {
+      const [catalog, steamSettings, igdbSettings, arcadeSettings, legacySettings, settings] = await Promise.all([
+        library(),
+        steam.settings().catch(() => ({})),
+        igdb.settings().catch(() => ({})),
+        arcade.settings(),
+        legacyArcade.settings(),
+        appSettings()
+      ]);
+      const byPlatform = {};
+      for (const game of catalog.games)
+        if (game.platform !== 'Arcade' && game.installed !== false)
+          byPlatform[game.platform] = (byPlatform[game.platform] ?? 0) + 1;
+      return {
+        dismissed: settings.onboardingDismissed,
+        library: { generatedAt: catalog.generatedAt ?? null, byPlatform },
+        scan: { ...scanProgress, found: { ...scanProgress.found }, queued: tasks.has('scan') },
+        steam: { configured: Boolean(steamSettings.configured) },
+        igdb: { configured: Boolean(igdbSettings.configured) },
+        // Claves guardadas en otra PC o con otro usuario de Windows: hay que volver a conectar.
+        needsReconnect: [steamSettings.needsReconnect && 'Steam', igdbSettings.needsReconnect && 'IGDB'].filter(
+          Boolean
+        ),
+        portable: portableInfo(),
+        arcade: {
+          configured: Boolean(arcadeSettings.exe || legacySettings.exe),
+          games: catalog.games.filter((game) => game.platform === 'Arcade').length
+        }
+      };
+    },
+    async activity(now = Date.now()) {
+      const [sessions, catalog] = await Promise.all([sessionLog.list(), library()]);
+      return buildActivity({ sessions, games: catalog.games, now });
+    },
     gameArt,
     startDetached,
     schedule,
@@ -621,19 +745,27 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
     updates,
     clientLog,
     async scan() {
-      const scanned = await scanLibrary();
-      log('info', 'biblioteca', `Búsqueda de juegos: ${scanned.games.length} encontrados`);
-      if ((await steam.settings()).configured) steam.sync().catch(() => {});
+      const scanned = await tasks.enqueue('scan', 'Buscar juegos', runScan, {
+        lightweight: true,
+        progress: () =>
+          scanProgress.running ? { phase: 'stores', done: scanProgress.done, total: scanProgress.total } : null
+      });
+      if ((await steam.settings()).configured) queueSteam();
       await startArcade();
       return scanned;
     },
     async play(game, key) {
-      if (game.launch?.type === 'mame')
+      let tracked = false;
+      if (game.launch?.type === 'mame') {
+        tracked = true;
         await arcadeFor(game).launch(key.slice('arcade:'.length), async (seconds) => {
-          await recordSession(game.key, seconds).catch(() => {});
-          onGameExit?.(game);
+          const start = new Date(Date.now() - seconds * 1000).toISOString();
+          await finishSession(game, { start, seconds, source: 'mame' });
         });
-      else await launch(game);
+      } else {
+        await launch(game);
+        tracked = tracker.track(game);
+      }
       log('info', 'juego', `Iniciado ${game.key} (${game.launch?.type ?? 'sin tipo'})`);
       await updatePreferences((prefs) => {
         prefs.games[game.key] = { ...(prefs.games[game.key] ?? {}), lastLaunchedAt: new Date().toISOString() };
@@ -641,7 +773,7 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
       // La aplicación de escritorio se minimiza para dejar el juego adelante.
       const minimize = (await appSettings()).minimizeOnLaunch;
       if (minimize) setTimeout(() => onLaunch?.(game), 1200);
-      return { ok: true, minimize };
+      return { ok: true, minimize, tracked };
     },
     async importPreferences(imported) {
       const games = Object.fromEntries(
@@ -683,7 +815,10 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit } = {}) {
       return send(res, status, JSON.stringify({ error: error.message || 'Error inesperado.' }));
     }
   });
-  server.on('close', () => steam.close());
+  server.on('close', () => {
+    steam.close();
+    tracker.stop();
+  });
   return server;
 }
 async function serveStatic(res, url) {
@@ -731,7 +866,7 @@ export function startServer(port = Number(process.env.PORT || 4321), options = {
   const updateSteam = setTimeout(async () => {
     try {
       const settings = await steam.settings();
-      if (settings.configured && settings.stale) await steam.sync();
+      if (settings.configured && settings.stale) await queueSteam();
     } catch {}
   }, 1000);
   updateSteam.unref();

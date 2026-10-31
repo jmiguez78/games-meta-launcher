@@ -261,7 +261,9 @@ export async function loadSteamSettings() {
         '.' +
         (settings.stale ? ' Hay datos pendientes de actualizar.' : '') +
         (settings.error ? ' ' + settings.error : '')
-      : 'Sin conectar.';
+      : settings.needsReconnect
+        ? 'La conexión se guardó en otra PC o con otro usuario de Windows y acá no se puede abrir. Volvé a conectarla.'
+        : 'Sin conectar.';
     document.querySelector('#steam-settings-status').classList.toggle('connected', Boolean(settings.configured));
   } catch (error) {
     document.querySelector('#steam-settings-status').textContent = error.message;

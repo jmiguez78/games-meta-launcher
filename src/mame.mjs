@@ -433,6 +433,7 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
   const commandsPath = path.join(dataDir, `${prefix}-commands.json`);
   const infoPath = path.join(dataDir, 'arcade-info.json');
   let commandsCache = null;
+  let running = null;
   const supportDir = path.join(dataDir, 'mame-support');
   const status = { running: false, phase: null, done: 0, total: 0, error: null, finishedAt: null };
   let catalog = null;
@@ -783,10 +784,11 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
       }
     },
     // after: lo que sigue a una indexación exitosa (buscar información en Wikipedia e IGDB).
+    // Devuelve una promesa que se cumple al terminar (también si falló: el error queda en status).
     start(after) {
-      if (status.running) return;
+      if (status.running && running) return running;
       Object.assign(status, { running: true, phase: 'start', done: 0, total: 0, error: null });
-      index()
+      running = index()
         .then(async (result) => {
           log(
             'info',
@@ -803,7 +805,9 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
           status.running = false;
           status.phase = null;
           status.finishedAt = new Date().toISOString();
+          running = null;
         });
+      return running;
     },
     // Imágenes: primero las carpetas de arte de MAME (si las hay), después libretro-thumbnails.
     async localArt(game, kind) {

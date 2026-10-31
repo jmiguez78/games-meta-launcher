@@ -1,6 +1,7 @@
 import { app, BrowserWindow, nativeTheme, session, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chooseDataDir } from './portable.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Puerto fijo para que la interfaz conserve lo que recuerda (vista, colección, la última biblioteca) entre
@@ -10,6 +11,18 @@ const PREFERRED_PORT = 47321;
 let server;
 let window;
 const scanMode = process.argv.includes('--scan');
+
+// Portable (B8): los datos pueden vivir junto al .exe (ver portable.mjs). Se decide antes de que Electron use la
+// carpeta; las cachés de Chromium se quedan en AppData de cada PC.
+// Sin await: tiene que pasar antes del evento «ready».
+{
+  const defaultDir = app.getPath('userData');
+  const chosen = chooseDataDir({ exeDir: process.env.PORTABLE_EXECUTABLE_DIR, defaultDir });
+  if (chosen.portable) {
+    app.setPath('sessionData', defaultDir);
+    app.setPath('userData', chosen.dir);
+  }
+}
 
 async function runScan() {
   process.env.GML_DATA_DIR = app.getPath('userData');
@@ -64,6 +77,12 @@ function bringBack() {
 }
 const callbacks = {
   onLaunch: () => window?.minimize(),
+  // Después de copiar los datos junto al .exe: se vuelve a abrir el portable (no la copia temporal).
+  onRestart: () => {
+    const exe = process.env.PORTABLE_EXECUTABLE_FILE;
+    app.relaunch(exe ? { execPath: exe, args: [] } : undefined);
+    app.exit(0);
+  },
   onGameExit: () => {
     bringBack();
     window?.webContents.executeJavaScript("window.dispatchEvent(new Event('gml-game-exit'))").catch(() => {});

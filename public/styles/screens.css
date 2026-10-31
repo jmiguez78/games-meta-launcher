@@ -1672,6 +1672,248 @@ a.meta-source {
   font-size: 13px;
 }
 
+/* ── Primeros pasos ── */
+.onboarding {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+}
+.onboarding-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: start;
+  justify-content: space-between;
+}
+.onboarding-head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.onboarding-head p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 1100px) {
+  .onboarding-steps {
+    grid-template-columns: 1fr;
+  }
+}
+.onboarding-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: 6px var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+.onboarding-step h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.onboarding-step p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.onboarding-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-accent);
+  border-radius: 50%;
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+.onboarding-step.done .onboarding-mark {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+.onboarding-mark .icon {
+  width: 15px;
+  height: 15px;
+}
+.onboarding-action {
+  grid-column: 2;
+}
+.onboarding-action:empty {
+  display: none;
+}
+
+/* ── Tu actividad ── */
+.activity-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.activity-panel .section-heading {
+  margin: 0;
+}
+.activity-chart {
+  position: relative;
+}
+.week-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.week-chart .grid {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+.week-chart .tick {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.week-chart .bar {
+  fill: var(--accent-muted);
+}
+.week-chart .bar.current {
+  fill: var(--accent);
+}
+/* Zonas de foco: cada semana entera, sobre el área del dibujo (los márgenes los pone activity.js). */
+.week-hits {
+  position: absolute;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+.week-hit {
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: default;
+}
+.week-hit:hover,
+.week-hit:focus-visible {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.chart-tip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: 180px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-size: 12px;
+  pointer-events: none;
+}
+.activity-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .activity-columns {
+    grid-template-columns: 1fr;
+  }
+}
+.activity-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.activity-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.activity-row:has(.activity-meter) {
+  grid-template-columns: auto minmax(0, 1.4fr) minmax(60px, 1fr) auto;
+}
+.activity-row:not(:has(.activity-cover)) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.activity-row:hover:not(:disabled),
+.activity-row:focus-visible {
+  background: var(--surface-soft);
+}
+.activity-row:disabled {
+  cursor: default;
+}
+.activity-cover {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 4px;
+  background: linear-gradient(145deg, var(--cover-from), var(--cover-to));
+  color: var(--white);
+}
+.activity-cover .cover-initial {
+  font-size: 10px;
+}
+.activity-name {
+  display: grid;
+  min-width: 0;
+}
+.activity-name strong,
+.activity-name small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-name small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.activity-meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--line-soft);
+}
+.activity-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent-muted);
+}
+.activity-value {
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.activity-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
 /* ── Para revisar ── */
 .stat-grid {
   display: grid;

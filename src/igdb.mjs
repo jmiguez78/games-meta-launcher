@@ -236,6 +236,7 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
     }
   });
   let token = null;
+  let readableSecret = null;
   let lastRequest = 0;
   const status = { running: false, done: 0, total: 0, matched: 0, error: null, finishedAt: null };
 
@@ -398,7 +399,22 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
     metadata: async () => (await metadataFile.read()).games ?? EMPTY,
     async settings() {
       const saved = (await readJson(credentialsPath, {})).igdb;
-      return { configured: Boolean(saved?.clientId && saved?.secret), clientId: saved?.clientId ?? '' };
+      const stored = Boolean(saved?.clientId && saved?.secret);
+      // En otra PC el secreto cifrado no se puede abrir: se pide volver a conectar (se prueba una vez por secreto).
+      if (stored && readableSecret?.secret !== saved.secret)
+        readableSecret = {
+          secret: saved.secret,
+          ok: await decrypt(saved.secret).then(
+            () => true,
+            () => false
+          )
+        };
+      const unreadable = stored && !readableSecret.ok;
+      return {
+        configured: stored && !unreadable,
+        ...(unreadable ? { needsReconnect: true } : {}),
+        clientId: saved?.clientId ?? ''
+      };
     },
     async connect(clientId, clientSecret) {
       if (!/^[a-z0-9]{10,64}$/i.test(clientId) || !/^[a-z0-9]{10,64}$/i.test(clientSecret))
@@ -413,10 +429,11 @@ export function createIgdb(dataDir, { fetchImpl = fetch, decrypt = unprotect, re
       token = null;
       await writeJson(credentialsPath, all);
     },
+    // Promesa que se cumple al terminar (un error queda en status).
     start(games) {
-      if (status.running) return;
+      if (status.running) return Promise.resolve();
       Object.assign(status, { running: true, done: 0, total: games.length, matched: 0, error: null });
-      refresh(games)
+      return refresh(games)
         .catch((error) => {
           status.error = error.message;
         })

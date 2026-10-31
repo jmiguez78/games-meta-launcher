@@ -20,7 +20,7 @@ export function integrationRoutes(router, d) {
   });
   router.post('/api/steam/sync', async () => {
     if (!(await steam.settings()).configured) throw conflict('Conectá Steam primero.');
-    steam.sync().catch(() => {});
+    d.queueSteam();
     return withStatus(202, await steam.settings());
   });
   router.get('/api/steam/games/:appid(\\d+)/:kind(details|achievements)', ({ params, query }) =>
@@ -39,7 +39,7 @@ export function integrationRoutes(router, d) {
   router.put('/api/integrations/igdb', async ({ body }) => {
     const update = await body();
     await igdb.connect(String(update.clientId ?? '').trim(), String(update.clientSecret ?? '').trim());
-    igdb.start(await d.forIgdb((await d.library()).games));
+    d.queueIgdb();
     return { ...(await igdb.settings()), status: igdb.status() };
   });
   router.delete('/api/integrations/igdb', async () => {
@@ -49,7 +49,7 @@ export function integrationRoutes(router, d) {
   router.get('/api/metadata/status', () => igdb.status());
   router.post('/api/metadata/refresh', async () => {
     if (!(await igdb.settings()).configured) throw conflict('Conectá IGDB en Configuración primero.');
-    igdb.start(await d.forIgdb((await d.library()).games));
+    d.queueIgdb();
     return withStatus(202, igdb.status());
   });
 
@@ -66,10 +66,10 @@ export function integrationRoutes(router, d) {
     const update = await body();
     const { legacyExe, ...main } = update;
     await arcade.configure(main);
-    if ('exe' in main && (await arcade.settings()).exe) arcade.start(d.afterArcadeIndex);
+    if ('exe' in main && (await arcade.settings()).exe) d.queueArcade('main');
     if (legacyExe !== undefined) {
       await legacyArcade.configure({ exe: legacyExe });
-      if ((await legacyArcade.settings()).exe) legacyArcade.start(d.afterArcadeIndex);
+      if ((await legacyArcade.settings()).exe) d.queueArcade('legacy');
     }
     return mameInfo();
   });

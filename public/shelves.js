@@ -162,6 +162,11 @@
     const days = Math.round(hours / 24);
     return days === 1 ? 'hace 1 día' : 'hace ' + days + ' días';
   }
+  // Horas jugadas: las de Steam si es de Steam; si no, las que midió el launcher.
+  function playedHours(game) {
+    if (game.steam && Number.isFinite(game.steam.playtimeHours)) return game.steam.playtimeHours;
+    return Number.isFinite(game.playSeconds) && game.playSeconds > 0 ? game.playSeconds / 3600 : 0;
+  }
   function hours(value) {
     if (!Number.isFinite(value) || value <= 0) return '';
     if (value < 1) return Math.max(1, Math.round(value * 60)) + ' min';
@@ -211,6 +216,7 @@
     relativeDay,
     relativeTime,
     hours,
+    playedHours,
     playable,
     libraryRows,
     initialOf

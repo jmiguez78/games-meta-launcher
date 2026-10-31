@@ -24,6 +24,9 @@
           <button class="nav-item" data-page="library">
             <span data-icon="grid"></span><span class="nav-label">Biblioteca</span>
           </button>
+          <button class="nav-item" data-page="activity">
+            <span data-icon="clock"></span><span class="nav-label">Tu actividad</span>
+          </button>
           <button class="nav-item hidden" data-page="diagnostics" id="nav-diagnostics">
             <span data-icon="activity"></span><span class="nav-label">Para revisar</span
             ><span id="review-count" class="nav-badge"></span>
@@ -37,6 +40,7 @@
             <span data-icon="refresh"></span><span class="nav-label">Buscar juegos nuevos</span>
           </button>
           <p id="last-update" class="sync-status nav-label" role="status">Cargando inventario…</p>
+          <p id="task-status" class="sync-status task-status nav-label" role="status" hidden></p>
         </div>
       </aside>
       <main class="workspace">
@@ -66,6 +70,16 @@
               </div>
             </div>
             <div id="hero-picker" class="hero-picker" role="group" aria-label="Otros juegos destacados"></div>
+          </section>
+          <section id="onboarding" class="onboarding surface-card" aria-labelledby="onboarding-title" hidden>
+            <div class="onboarding-head">
+              <div>
+                <h2 id="onboarding-title">Primeros pasos</h2>
+                <p id="onboarding-summary"></p>
+              </div>
+              <button id="onboarding-dismiss" class="text-button" type="button">Ocultar</button>
+            </div>
+            <ol id="onboarding-steps" class="onboarding-steps"></ol>
           </section>
           <div id="home-empty" class="library-state hidden"></div>
           <div id="home-shelves" class="home-shelves"></div>
@@ -150,6 +164,62 @@
                 <button id="empty-clear" class="button">Quitar filtros</button>
               </section>
             </div>
+          </div>
+        </section>
+        <section id="activity-page" class="page hidden">
+          <p class="page-intro">
+            El launcher mide cada sesión de los juegos que abrís desde acá, en todas las tiendas. Steam suma sus propias
+            horas, también las que jugaste fuera del launcher.
+          </p>
+          <section id="activity-summary" class="stat-grid" aria-label="Resumen"></section>
+          <section class="surface-card activity-panel" aria-labelledby="activity-weeks-title">
+            <div class="section-heading">
+              <div>
+                <h2 id="activity-weeks-title">Horas por semana</h2>
+                <p>Las últimas 12 semanas, con lo medido por el launcher.</p>
+              </div>
+            </div>
+            <div id="activity-chart" class="activity-chart"></div>
+            <p id="activity-tip" class="chart-tip" role="status" hidden></p>
+            <table id="activity-table" class="visually-hidden">
+              <caption>
+                Horas jugadas por semana
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Semana del</th>
+                  <th scope="col">Horas</th>
+                  <th scope="col">Sesiones</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </section>
+          <div class="activity-columns">
+            <section class="surface-card activity-panel" aria-labelledby="activity-top-title">
+              <div class="section-heading">
+                <div>
+                  <h2 id="activity-top-title">Más jugados</h2>
+                  <p>Horas totales: las de Steam o las medidas por el launcher.</p>
+                </div>
+              </div>
+              <ol id="activity-top" class="activity-list"></ol>
+              <p id="activity-top-empty" class="activity-empty" hidden>
+                Todavía no hay horas registradas. Abrí un juego desde el launcher y al cerrarlo aparece acá.
+              </p>
+            </section>
+            <section class="surface-card activity-panel" aria-labelledby="activity-recent-title">
+              <div class="section-heading">
+                <div>
+                  <h2 id="activity-recent-title">Últimas sesiones</h2>
+                  <p>Las que midió el launcher, de la más reciente a la más vieja.</p>
+                </div>
+              </div>
+              <ul id="activity-recent" class="activity-list"></ul>
+              <p id="activity-recent-empty" class="activity-empty" hidden>
+                Sin sesiones medidas todavía. Se registran al cerrar un juego que abriste desde el launcher.
+              </p>
+            </section>
           </div>
         </section>
         <section id="diagnostics-page" class="page hidden">
@@ -376,6 +446,17 @@
                         accept="application/json"
                         class="visually-hidden"
                     /></label>
+                  </div>
+                </div>
+              </section>
+              <section class="settings-row" id="portable-row" hidden>
+                <div class="settings-copy">
+                  <h3>Datos del portable</h3>
+                  <p id="portable-status"></p>
+                </div>
+                <div class="settings-control">
+                  <div class="button-row">
+                    <button type="button" class="button" id="portable-copy" hidden>Guardar junto al .exe</button>
                   </div>
                 </div>
               </section>

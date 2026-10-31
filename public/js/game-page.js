@@ -51,7 +51,11 @@ export function renderGameAside(game) {
   const stats = aside.querySelector('.game-stats');
   const played = GMLShelves.lastPlayed(game);
   const length = game.meta?.timeToBeat?.normally;
-  statRow(stats, 'Tiempo jugado', game.steam ? GMLShelves.hours(game.steam.playtimeHours) || 'Sin horas en Steam' : '');
+  statRow(
+    stats,
+    'Tiempo jugado',
+    GMLShelves.hours(GMLShelves.playedHours(game)) || (game.steam ? 'Sin horas en Steam' : 'Sin sesiones medidas')
+  );
   statRow(stats, 'Últimas dos semanas', GMLShelves.hours(game.steam?.recentHours));
   statRow(stats, 'Última sesión', played ? GMLShelves.relativeDay(new Date(played).toISOString()) : 'Sin registro');
   statRow(stats, 'Duración estimada', length ? 'Unas ' + GMLShelves.hours(length / 3600) : '');

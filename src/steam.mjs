@@ -196,8 +196,17 @@ export function createSteam(dataDir, options = {}) {
     const saved = supplied === undefined ? await credentials() : supplied;
     return options.rpc ? options.rpc(tool, args, saved) : transport.call(tool, args, saved);
   }
+  // Las claves se cifran para el usuario de Windows que las guardó: en otra PC (o con el portable en otra
+  // cuenta) no se pueden abrir. La biblioteca sigue funcionando sin la cuenta y Configuración pide reconectar.
+  async function readableCredentials() {
+    try {
+      return { saved: await credentials(), unreadable: false };
+    } catch {
+      return { saved: null, unreadable: true };
+    }
+  }
   async function account() {
-    const saved = await credentials();
+    const { saved } = await readableCredentials();
     const cached = await read(accountFile, null);
     return saved && cached?.steamId === saved.steamId ? cached : NO_ACCOUNT;
   }
@@ -327,7 +336,7 @@ export function createSteam(dataDir, options = {}) {
     sync,
     close: () => transport?.stop(),
     async settings() {
-      const saved = await credentials();
+      const { saved, unreadable } = await readableCredentials();
       const snapshot = await account();
       let localConnectionAvailable = false;
       try {
@@ -336,6 +345,7 @@ export function createSteam(dataDir, options = {}) {
       } catch {}
       return {
         configured: Boolean(saved),
+        ...(unreadable ? { needsReconnect: true } : {}),
         steamId: saved?.steamId || '',
         localConnectionAvailable,
         updatedAt: snapshot.updatedAt,

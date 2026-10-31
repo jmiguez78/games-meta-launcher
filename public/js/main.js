@@ -8,6 +8,9 @@ import { setup as setupSettings } from './settings.js';
 import { setup as setupPalette } from './palette.js';
 import { setup as setupEditor } from './editor.js';
 import { setup as setupCouch } from './couch.js';
+import { setup as setupEvents } from './events.js';
+import { loadActivity, setup as setupActivity } from './activity.js';
+import { setup as setupOnboarding } from './onboarding.js';
 import { request } from './api.js';
 import { readSnapshot, saveSnapshot } from './snapshot.js';
 import { report, setup as setupReport } from './report.js';
@@ -22,7 +25,7 @@ import { hydrateIcons } from './icons.js';
 import { hideLaunchOverlay, launchOverlay } from './launch.js';
 import { renderFilters, renderLibrary, setFiltersOpen } from './library.js';
 import { openPalette, palette } from './palette.js';
-import { loadIgdb, loadMame, loadSchedule, loadSettings } from './settings.js';
+import { loadIgdb, loadMame, loadPortable, loadSchedule, loadSettings } from './settings.js';
 import { state } from './state.js';
 import { initializeSteamUI, loadSteamSettings } from './steam.js';
 
@@ -30,6 +33,7 @@ import { initializeSteamUI, loadSteamSettings } from './steam.js';
 export const pageMeta = {
   home: ['Inicio', 'inicio para jugar ahora'],
   library: ['Biblioteca', 'biblioteca colección juegos'],
+  activity: ['Tu actividad', 'actividad tiempo jugado horas sesiones racha estadísticas'],
   diagnostics: ['Estado de la biblioteca', 'diagnóstico estado sistema revisión plataformas'],
   settings: ['Configuración', 'configuración preferencias ajustes'],
   game: ['Juego', '']
@@ -51,6 +55,7 @@ export function showPage(page, { focus = true } = {}) {
   renderHealthSignals();
   if (page === 'home') setAmbient(heroGame()?.game);
   if (page === 'diagnostics') loadHealth();
+  if (page === 'activity') loadActivity();
   if (page === 'settings') {
     document.querySelector('#big-screen').checked = document.body.classList.contains('couch');
     loadSchedule();
@@ -58,6 +63,7 @@ export function showPage(page, { focus = true } = {}) {
     loadMame();
     loadSteamSettings();
     loadUpdates();
+    loadPortable();
   }
   if (page === 'library' && focus) document.querySelector('#search').focus();
 }
@@ -138,6 +144,9 @@ setupPalette();
 setupEditor();
 setupCouch();
 setupUpdates();
+setupEvents();
+setupActivity();
+setupOnboarding();
 document
   .querySelectorAll('.nav-item[data-page]')
   .forEach((button) => (button.onclick = () => showPage(button.dataset.page)));

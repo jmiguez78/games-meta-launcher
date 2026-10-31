@@ -142,8 +142,23 @@ export function writeFixture(dir) {
   const write = (name, value) => fs.writeFileSync(path.join(dir, name), JSON.stringify(value));
   write('library.json', { schema: 2, generatedAt: new Date(NOW - DAY).toISOString(), games });
   write('metadata.json', { schemaVersion: 3, games: metadata });
-  write('preferences.json', { schemaVersion: 1, settings: {}, games: prefs });
+  // «Primeros pasos» descartado: las capturas de Inicio no la incluyen (tiene su propia prueba).
+  write('preferences.json', { schemaVersion: 1, settings: { onboardingDismissed: true }, games: prefs });
   write('arcade.json', { exe: 'C:\\MAME\\mame.exe', showAdult: false });
+  // Sesiones medidas por el launcher en las últimas semanas, para «Tu actividad».
+  const sessions = [];
+  for (let index = 0; index < 26; index++) {
+    const game = index % 4 === 0 ? 'arcade:laber' : games[(index * 7) % games.length];
+    const key = typeof game === 'string' ? game : game.key;
+    sessions.push({
+      key,
+      name: typeof game === 'string' ? 'Laberinto Hambriento' : game.name,
+      start: new Date(NOW - (index * 2.6 + 0.3) * DAY - 3600000 * (index % 5)).toISOString(),
+      seconds: 900 + ((index * 1373) % 7200),
+      source: index % 4 === 0 ? 'mame' : 'proceso'
+    });
+  }
+  write('sessions.json', { schemaVersion: 1, sessions: sessions.reverse() });
   write('arcade-catalog.json', {
     schema: 1,
     version: '0.289',

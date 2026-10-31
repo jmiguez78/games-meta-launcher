@@ -40,10 +40,17 @@ flowchart LR
 | `couch.js`                                            | Modo sala para TV y mando (con `styles/couch.css`)                                         |
 | `settings.js`, `diagnostics.js`, `steam.js`           | Configuración, Para revisar y todo lo de Steam                                             |
 | `snapshot.js`, `report.js`                            | Arranque instantáneo (última biblioteca en IndexedDB) y errores de la interfaz al registro |
+| `events.js`                                           | Eventos del servidor: fila de tareas, biblioteca cambiada y sesiones medidas               |
+| `activity.js`, `onboarding.js`                        | Tu actividad y Primeros pasos                                                              |
 
 `npm run check` comprueba la sintaxis de todo `src/` y de los scripts de la interfaz (`tools/check-syntax.mjs`), que cada `import` exista en su módulo de origen (`tools/check-modules.mjs`) y las reglas de los estilos (`tools/check-styles.mjs`). `window.GML` expone el estado y la navegación para depurar desde la consola.
 
 - `src/mame.mjs`: Arcade. Lee `-listxml` en flujo, verifica sets por CRC, aplica filtros y agrupa versiones (funciones puras con pruebas en `test/mame.test.mjs`); `createArcade` orquesta la indexación en segundo plano, el arte y el lanzamiento con medición de la sesión. Rutas: `GET/PUT /api/integrations/mame`, `POST /api/mame/scan`. Los juegos llegan a `/api/library` con `platform: 'Arcade'`, `key: 'arcade:<set>'`, `launch.type: 'mame'` y un objeto `arcade` (fabricante, jugadores, controles, orientación, saga, ranking, versiones).
+- `src/sessions.mjs`: sesiones de juego. `createSessionTracker` vigila la carpeta de instalación de un juego iniciado (procesos de Windows vía `Get-CimInstance Win32_Process`) y avisa al cerrarse; `createSessionLog` guarda `sessions.json`.
+- `src/activity.mjs`: resumen para «Tu actividad» (semanas, racha, más jugados, últimas sesiones). `GET /api/activity?now=`.
+- `src/tasks.mjs`: fila única de tareas en segundo plano por prioridad y `GET /api/events` (text/event-stream: `tasks`, `library`, `session`). `GET /api/tasks` devuelve el estado de la fila.
+- `src/portable.mjs`: carpeta de datos del portable (junto al `.exe` o en AppData) y copia de los datos. `GET /api/portable`, `POST /api/portable/copy`.
+- `GET /api/onboarding`: datos de «Primeros pasos» (juegos por tienda, avance de la búsqueda, conexiones y claves que hay que reconectar).
 - `src/wiki.mjs`: Wikipedia en inglés → Wikidata (videojuego, año, IGDB P5794, artículo en español) → introducción en español. Rutas de datos: `arcade-info.json`.
 - `src/mame-commands.mjs`: lee `command.dat` y convierte sus códigos en flechas y botones legibles. `GET /api/arcade/:set/commands`.
 - `src/zip-index.mjs`: lee el directorio central de un `.zip` (nombre, tamaño, CRC) sin descomprimir.
@@ -65,6 +72,7 @@ flowchart LR
 | `metadata.json`                | `schemaVersion: 3` | Fichas de IGDB, compactas                                      |
 | `library.json`                 | `schema: 2`        | Inventario de la última búsqueda (se regenera)                 |
 | `arcade-*.json`, `mame-*.json` | `schema` propio    | Índice de Arcade (se regenera)                                 |
+| `sessions.json`                | `schemaVersion: 1` | Sesiones medidas por el launcher (hasta 5.000)                 |
 | `logs/gml.log`                 | —                  | Registro de diagnóstico                                        |
 
 El servidor calcula `/api/library` una vez por versión de sus entradas: si ningún archivo cambió, reutiliza el resultado (y su JSON). La interfaz guarda la última biblioteca en IndexedDB y la pinta al abrir mientras pide la actual (`public/js/snapshot.js`).

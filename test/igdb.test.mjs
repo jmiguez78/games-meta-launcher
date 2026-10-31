@@ -251,3 +251,18 @@ test('Arcade: usa el identificador de Wikidata y, si no hay, sólo acepta el mis
   assert.equal(saved.games['arcade:racingb'].igdbId, null);
   assert.ok(bodies.some((body) => /where platforms = \(52\)/.test(body)));
 });
+
+test('si el secreto guardado no se puede abrir en esta PC, IGDB pide reconectar', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gml-igdb-'));
+  await fs.writeFile(
+    path.join(dir, 'integrations.json'),
+    JSON.stringify({ igdb: { clientId: 'client', secret: 'de-otra-pc' } })
+  );
+  const client = createIgdb(dir, {
+    decrypt: async () => {
+      throw new Error('DPAPI');
+    }
+  });
+  assert.deepEqual(await client.settings(), { configured: false, needsReconnect: true, clientId: 'client' });
+  await fs.rm(dir, { recursive: true, force: true });
+});

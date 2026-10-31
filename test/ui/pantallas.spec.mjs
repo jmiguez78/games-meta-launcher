@@ -52,3 +52,33 @@ test('Configuración y Para revisar abren sin errores', async ({ page }) => {
   await show(page, 'diagnostics');
   await expect(page.locator('#health-summary')).not.toBeEmpty();
 });
+
+test('Tu actividad muestra semanas, más jugados y últimas sesiones', async ({ page }) => {
+  await openApp(page);
+  await show(page, 'activity');
+  await expect(page.locator('#activity-summary .stat')).toHaveCount(4);
+  await expect(page.locator('#activity-chart .week-hit')).toHaveCount(12);
+  await expect(page.locator('#activity-top li').first()).toBeVisible();
+  await expect(page.locator('#activity-recent li')).toHaveCount(12);
+  await page.locator('#activity-chart .week-hit').last().focus();
+  await expect(page.locator('#activity-tip')).toContainText('Esta semana');
+  await page.locator('#activity-recent li button').first().click();
+  await expect(page.locator('#game-page')).toBeVisible();
+});
+
+test('Primeros pasos muestra los juegos por tienda y lleva a conectar Steam', async ({ page }) => {
+  await page.route('**/api/onboarding', async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({ response, json: { ...data, dismissed: false } });
+  });
+  await openApp(page);
+  const card = page.locator('#onboarding');
+  await expect(card).toBeVisible();
+  await expect(card.locator('.onboarding-step')).toHaveCount(3);
+  await expect(card.locator('.onboarding-step').first()).toContainText('Steam 8');
+  await expect(card.locator('.onboarding-step.done')).toHaveCount(2);
+  await card.getByRole('button', { name: 'Conectar' }).click();
+  await expect(page.locator('#settings-page')).toBeVisible();
+  await expect(page.locator('#steam-form input').first()).toBeFocused();
+});

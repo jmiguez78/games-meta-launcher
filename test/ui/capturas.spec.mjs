@@ -68,3 +68,23 @@ test('Inicio en tema claro', async ({ page }) => {
   await stable(page);
   await expect(page).toHaveScreenshot('inicio-claro.png');
 });
+
+test('Tu actividad', async ({ page }) => {
+  await openApp(page);
+  await show(page, 'activity');
+  await page.waitForSelector('#activity-recent li');
+  await stable(page);
+  await expect(page).toHaveScreenshot('actividad.png', { fullPage: true });
+});
+
+test('Inicio con primeros pasos', async ({ page }) => {
+  await page.route('**/api/onboarding', async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), dismissed: false } });
+  });
+  await openApp(page);
+  await page.waitForSelector('#onboarding:not([hidden]) .onboarding-step');
+  await page.locator('#onboarding').scrollIntoViewIfNeeded();
+  await stable(page);
+  await expect(page.locator('#onboarding')).toHaveScreenshot('primeros-pasos.png');
+});

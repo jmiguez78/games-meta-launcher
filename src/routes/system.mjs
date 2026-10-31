@@ -1,7 +1,16 @@
 // Sistema: tarea programada, registro de la interfaz, diagnóstico y avisos de versión nueva.
 import { HANDLED, check, send, withStatus } from '../http.mjs';
+import { streamEvents } from '../tasks.mjs';
 
 export function systemRoutes(router, d) {
+  // Eventos del servidor: estado de la fila de tareas, biblioteca cambiada y sesiones medidas (ver tasks.mjs).
+  router.get('/api/events', ({ req, res }) => {
+    streamEvents(req, res, d.tasks);
+    return HANDLED;
+  });
+  router.get('/api/tasks', () => d.tasks.snapshot());
+  router.get('/api/portable', () => d.portable());
+  router.post('/api/portable/copy', () => d.copyToPortable());
   router.get('/api/schedule', () => d.schedule());
   router.put('/api/schedule', async ({ body }) => {
     const update = await body();

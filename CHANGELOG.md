@@ -1,5 +1,15 @@
 # Registro de cambios
 
+## 0.31.0
+
+Tanda 3 del plan, «experiencia»: el tiempo jugado de todas las tiendas, una pantalla para verlo, la primera vez guiada, tareas en segundo plano ordenadas y un portable que viaja con sus datos.
+
+- **Sesiones para todas las tiendas (B6).** Al iniciar un juego de Steam, Epic, GOG, Xbox, EA o Ubisoft, el launcher vigila su carpeta de instalación y mide cuánto tiempo estuvo abierto. Al cerrarlo, la ventana vuelve al frente con un aviso («Sesión de 1 h 20 min en Hades») y el tiempo se suma al juego. La página del juego, Inicio y el modo sala muestran ese tiempo cuando Steam no lo informa.
+- **Tu actividad (F8).** Nueva sección en la barra lateral: horas de esta semana y de las últimas dos (con las de Steam), racha de días seguidos, horas por semana de los últimos tres meses, los más jugados y las últimas sesiones. Un clic en un juego abre su página.
+- **Tareas en segundo plano unificadas (B7).** Buscar juegos, Steam, los dos MAME, Wikipedia e IGDB corren en una sola fila, de a una y por prioridad. La interfaz deja de preguntar cada segundo: el servidor avisa el avance (al pie de la barra lateral), cuándo cambió la biblioteca y cada sesión medida. Una búsqueda de Arcade que termina con la aplicación en otra pantalla ahora también actualiza la biblioteca.
+- **Primeros pasos (F1).** Una tarjeta en Inicio con tres pasos: los juegos encontrados por tienda, conectar Steam e IGDB, y sumar Arcade. Cada paso lleva directo a su lugar en Configuración. Desaparece al completarla o con «Ocultar».
+- **Portable de verdad (B8).** Imagen de bienvenida mientras el portable se descomprime. Los datos pueden vivir junto al `.exe` (carpeta `Games Meta Launcher - datos`): se usa si existe, se crea en una PC nueva, y en una PC que ya tenía datos Configuración ofrece copiarlos. En otra PC, si las claves de Steam o IGDB no se pueden abrir, la biblioteca sigue funcionando y se avisa que hay que volver a conectarlas (antes, la biblioteca no cargaba).
+
 ## 0.30.3
 
 - **Portadas que no aparecían.** Una portada que todavía se está descargando ya no ocupa una de las pocas conexiones del navegador: pasado un segundo y medio el servidor responde «descargando» y la portada se vuelve a pedir cuando está a la vista. Antes, al sumar muchos juegos nuevos (los del MAME alternativo), las portadas ya guardadas quedaban esperando detrás y se veían las iniciales.

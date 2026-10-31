@@ -116,11 +116,11 @@ export async function loadSettings() {
   }
 }
 
-export let igdbPoll;
-
 export function describeIgdbStatus(settings, status) {
   if (status.running) return 'Buscando información… ' + status.done + ' de ' + status.total + ' juegos.';
   if (status.error) return status.error;
+  if (settings.needsReconnect)
+    return 'La conexión se guardó en otra PC o con otro usuario de Windows y acá no se puede abrir. Volvé a conectarla.';
   if (status.finishedAt)
     return 'Listo: se encontró información de ' + status.matched + ' de ' + status.total + ' juegos.';
   return settings.configured
@@ -139,20 +139,12 @@ export async function loadIgdb() {
     showCredentialFields('igdb', settings.configured);
     document.querySelector('#igdb-status').textContent = describeIgdbStatus(settings, status);
     document.querySelector('#igdb-status').classList.toggle('connected', Boolean(settings.configured));
-    clearTimeout(igdbPoll);
-    if (status.running) igdbPoll = setTimeout(loadIgdb, 1000);
-    else if (status.finishedAt && status.finishedAt !== state.metadataLoadedAt) {
-      state.metadataLoadedAt = status.finishedAt;
-      await load();
-    }
   } catch (error) {
     document.querySelector('#igdb-status').textContent = error.message;
   }
 }
 
 // Arcade (MAME): ruta del ejecutable, estado de la indexación y resultado de la verificación.
-export let mamePoll;
-
 export function describeMame(info) {
   const status = info.status || {};
   if (status.running) {
@@ -246,21 +238,18 @@ export async function loadMame() {
     const legacyInput = document.querySelector('#mame-legacy-exe');
     if (document.activeElement !== legacyInput) legacyInput.value = info.legacy?.exe || '';
     document.querySelector('#mame-legacy-status').textContent = describeLegacyMame(info.legacy);
-    const running = Boolean(info.status?.running || info.legacy?.status?.running);
-    const finishedAt = [info.status?.finishedAt, info.legacy?.status?.finishedAt].filter(Boolean).sort().at(-1);
+    const queued = (state.tasks || []).some((task) => task.id.startsWith('arcade'));
+    const running = Boolean(info.status?.running || info.legacy?.status?.running || queued);
     document.querySelector('#mame-adult').checked = info.showAdult;
     document.querySelector('#mame-scan').hidden = !info.configured && !info.legacy?.configured;
     document.querySelector('#mame-scan').disabled = running;
     document.querySelector('#mame-save').disabled = running;
     const status = document.querySelector('#mame-status');
-    status.textContent = describeMame(info);
+    status.textContent =
+      queued && !info.status?.running && !info.legacy?.status?.running
+        ? 'En fila: Arcade se revisa cuando terminen las tareas anteriores.'
+        : describeMame(info);
     status.classList.toggle('connected', Boolean(info.stats?.games));
-    clearTimeout(mamePoll);
-    if (running) mamePoll = setTimeout(loadMame, 800);
-    else if (finishedAt && finishedAt !== state.mameLoadedAt) {
-      state.mameLoadedAt = finishedAt;
-      await load();
-    }
   } catch (error) {
     document.querySelector('#mame-status').textContent = error.message;
   }
@@ -286,7 +275,57 @@ export function igdbErrors(clientId, secret) {
 }
 
 // Enlaces de eventos y estado inicial; se llama una vez desde main.js.
+// Mientras la fila de tareas avanza (eventos del servidor), Configuración actualiza sus estados; a lo sumo
+// una vez por segundo.
+let tasksRefresh = 0;
+function refreshFromTasks() {
+  if (state.page !== 'settings' || tasksRefresh) return;
+  tasksRefresh = setTimeout(() => {
+    tasksRefresh = 0;
+    loadMame();
+    loadIgdb();
+  }, 1000);
+}
+
+// Portable (B8): dónde están los datos y, si siguen en esta PC, la opción de llevarlos junto al .exe.
+export async function loadPortable() {
+  const row = document.querySelector('#portable-row');
+  try {
+    const info = await request('/api/portable');
+    row.hidden = !info.available;
+    if (!info.available) return;
+    document.querySelector('#portable-status').textContent = info.active
+      ? 'Tus datos viajan con el ejecutable, en la carpeta «' +
+        info.folder.split(/[\\/]/).pop() +
+        '». Llevá esa carpeta junto al .exe para usarlo en otra PC.'
+      : 'Tus datos están en esta PC. Podés copiarlos a una carpeta junto al .exe para llevarlos con el portable; la copia de esta PC queda como respaldo.';
+    document.querySelector('#portable-copy').hidden = info.active;
+  } catch {
+    row.hidden = true;
+  }
+}
+
+async function copyToPortable(event) {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const result = await request('/api/portable/copy', { method: 'POST' });
+    notify(
+      result.restart
+        ? 'Datos copiados junto al ejecutable. El launcher se vuelve a abrir para usarlos.'
+        : 'Datos copiados junto al ejecutable. Cerrá y volvé a abrir el launcher para usarlos.',
+      { type: 'success' }
+    );
+  } catch (error) {
+    notifyError(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 export function setup() {
+  document.querySelector('#portable-copy').onclick = copyToPortable;
+  window.addEventListener('gml-tasks', refreshFromTasks);
   document.querySelector('#big-screen').onchange = (event) => GMLGamepad.setBigScreen(event.currentTarget.checked);
   document.querySelector('#minimize-on-launch').onchange = async (event) => {
     const input = event.currentTarget;

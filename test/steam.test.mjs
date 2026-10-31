@@ -200,3 +200,18 @@ test('las reseñas de respaldo se conservan sin conexión', async (t) => {
   assert.equal(result.reviews.stale, true);
   assert.equal(result.reviews.data.reviews[0].review, 'Texto');
 });
+
+test('en otra PC la clave guardada no se abre: pide reconectar y la biblioteca sigue andando', async (t) => {
+  const { directory } = await fixture(t);
+  // Mismos archivos, otro usuario de Windows: DPAPI no puede descifrar.
+  const other = createSteam(directory, {
+    decrypt: async () => {
+      throw new Error('DPAPI');
+    }
+  });
+  t.after(() => other.close());
+  const settings = await other.settings();
+  assert.equal(settings.configured, false);
+  assert.equal(settings.needsReconnect, true);
+  assert.deepEqual((await other.account()).games, []);
+});

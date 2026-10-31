@@ -230,12 +230,7 @@ const reasons = {
 };
 function facts(game) {
   const played = GMLShelves.lastPlayed(game);
-  const hours =
-    game.steam && Number.isFinite(game.steam.playtimeHours)
-      ? game.steam.playtimeHours
-      : game.playSeconds
-        ? game.playSeconds / 3600
-        : 0;
+  const hours = GMLShelves.playedHours(game);
   return [
     game.arcade ? [game.meta?.developers?.[0], game.arcade.year].filter(Boolean).join(' · ') : game.platform,
     played ? 'Última vez: ' + GMLShelves.relativeDay(new Date(played).toISOString()).toLowerCase() : 'Sin estrenar',

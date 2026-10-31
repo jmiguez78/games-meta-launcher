@@ -269,14 +269,19 @@ async function folderLibraries(platform, rootNames) {
       }
   return games;
 }
-export async function scanLibrary() {
+// onSource(tienda, juegos): avisa cada tienda revisada (para mostrar el avance la primera vez).
+export async function scanLibrary({ onSource } = {}) {
+  const report = (platform) => (games) => {
+    onSource?.(platform, games.length);
+    return games;
+  };
   const sources = await Promise.all([
-    steamGames(),
-    epicGames(),
-    xboxGames(),
-    ubisoftGames(),
-    folderLibraries('EA app', ['EALibrary', 'EA Games']),
-    folderLibraries('GOG Galaxy', ['GOG Games', 'GOG Galaxy Games'])
+    steamGames().then(report('Steam')),
+    epicGames().then(report('Epic Games')),
+    xboxGames().then(report('Xbox / Microsoft Store')),
+    ubisoftGames().then(report('Ubisoft Connect')),
+    folderLibraries('EA app', ['EALibrary', 'EA Games']).then(report('EA app')),
+    folderLibraries('GOG Galaxy', ['GOG Games', 'GOG Galaxy Games']).then(report('GOG Galaxy'))
   ]);
   const byKey = new Map();
   for (const game of sources.flat()) byKey.set(game.key, game);

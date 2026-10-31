@@ -10,6 +10,12 @@ export function libraryRoutes(router, d) {
     return HANDLED;
   });
   router.get('/api/health', () => d.health());
+  router.get('/api/onboarding', () => d.onboarding());
+  // now: la hora de la interfaz (el mismo equipo); define qué semana es «esta».
+  router.get('/api/activity', ({ query }) => {
+    const now = Number(query.get('now'));
+    return d.activity(Number.isFinite(now) && now > 0 ? now : Date.now());
+  });
   router.post('/api/scan', () => d.scan());
   router.post('/api/launch/:key', async ({ params }) => {
     const games = (await d.library()).games;

@@ -52,6 +52,8 @@ jobs:
             test/ui/.informe
             test/ui/.resultados
           retention-days: 14
+          # Las carpetas empiezan con punto: sin esto, upload-artifact las omite y no sube nada.
+          include-hidden-files: true
 
   ejecutable:
     name: Ejecutable portable

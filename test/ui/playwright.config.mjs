@@ -11,7 +11,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never', outputFolder: '.informe' }]] : 'list',
+  // En GitHub, «github» deja cada falla como anotación del trabajo (visible sin descargar el registro).
+  reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never', outputFolder: '.informe' }]] : 'list',
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     viewport: { width: 1440, height: 900 },

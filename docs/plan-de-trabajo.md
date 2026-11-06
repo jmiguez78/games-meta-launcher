@@ -13,14 +13,14 @@ flowchart LR
   G --> H[Liberar como Viciódromo]
 ```
 
-## Estado actual — 0.36.0, camino a la primera versión pública
+## Estado actual — 0.36.2, primera versión pública
 
-Desde 0.36.0 la aplicación se llama **Viciódromo** y el repositorio es público (`jmiguez78/viciodromo`, licencia MIT). El trabajo sigue el [plan para liberar](https://claude.ai/artifact/JuCVM1ZRyRS1PQK3yomuTY), en tres tandas:
+Desde 0.36.0 la aplicación se llama **Viciódromo** y el repositorio es público (`jmiguez78/viciodromo`, licencia MIT). La 0.36.2 es la primera versión publicada con ese nombre. El trabajo sigue el [plan para liberar](https://claude.ai/artifact/JuCVM1ZRyRS1PQK3yomuTY), en tres tandas:
 
 | Tanda | Qué resuelve | Estado |
 | --- | --- | --- |
 | 1. Juegos de cualquier PC | Buscador sin rutas de la PC de desarrollo: todas las unidades y el registro de Windows | Hecha en 0.35.0; falta confirmarla en la PC |
-| 2. Lo que no es código | Licencia y aviso legal (hechos), nombre y repositorio (hechos en 0.36.0), avisos de terceros, primera versión publicada | En curso |
+| 2. Lo que no es código | Licencia, aviso legal, nombre, repositorio público, avisos de terceros y primera versión publicada | Hecha en 0.36.2 |
 | 3. Confianza | Prueba en otra PC desde cero, VirusTotal, firma o instalador | Pendiente |
 
 De 0.33.0 a 0.34.0 se sumaron tus capturas y videos en la página de cada juego y en Inicio.

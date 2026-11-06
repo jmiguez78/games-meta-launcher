@@ -183,10 +183,13 @@ Tanda 1 del [plan para liberar](https://claude.ai/artifact/JuCVM1ZRyRS1PQK3yomuT
 
 Games Meta Launcher pasa a llamarse Viciódromo: nombre, imagen de bienvenida, ejecutable, repositorio (`jmiguez78/viciodromo`, público, con licencia MIT) y documentación. Los datos, la carpeta del portable y la tarea nocturna pasan solos al nombre nuevo.
 
+## 0.36.2 — Primera versión pública · Completada
+
+Tanda 2 del plan para liberar: licencia MIT, aviso legal, `THIRD_PARTY_NOTICES.md` (también dentro del ejecutable), los archivos de AntoPISA fuera de la aplicación (se descargan), `main` al día y la primera versión publicada como Viciódromo en [Releases](https://github.com/jmiguez78/viciodromo/releases/tag/v0.36.2).
+
 ## Próximo
 
-- Tanda 2 del plan para liberar: archivo de avisos de terceros, README para usuarios ya publicado, unir la rama de trabajo a `main` y publicar la primera versión como Viciódromo.
 - Tanda 3: probar el portable en otra PC desde cero, revisar cada `.exe` en VirusTotal y decidir sobre la firma del ejecutable o un instalador.
 - Probar en la PC la medición de sesiones de Epic, GOG y Xbox, el portable junto al ejecutable y las listas.
-- Actualizar las acciones de GitHub (aviso de Node 20).
+- Revisar dos pruebas de accesibilidad del tema claro que a veces fallan en Ubuntu 24.04 y pasan al repetirse (contraste de `#library-state` y de la pestaña Información).
 - Validación de coincidencias de IGDB, pendiente desde 0.12.0.

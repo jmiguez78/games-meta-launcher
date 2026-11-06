@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Ofrecer una biblioteca y lanzador local, con conexiones opcionales a Steam e IGDB. El escaneo de instalaciones permanece local; cada integración consulta su servicio con los identificadores necesarios.
+Viciódromo es una biblioteca y lanzador local, con conexiones opcionales a Steam e IGDB. El escaneo de instalaciones permanece local; cada integración consulta su servicio con los identificadores necesarios.
 
 ```mermaid
 flowchart LR
@@ -16,8 +16,8 @@ flowchart LR
 
 ## Componentes
 
-- `src/indexer.mjs`: recorre bibliotecas conocidas y genera un catálogo normalizado.
-- `src/server.mjs`: servicios de la biblioteca (inventario, preferencias, arte, lanzamiento) y servidor local. Las rutas de la API están en `src/routes/`, una por dominio: `library.mjs` (biblioteca, jugar, instalar, imágenes), `preferences.mjs` (preferencias, respaldo, portadas, ajustes), `integrations.mjs` (Steam, IGDB, Arcade) y `system.mjs` (tarea nocturna, registro, diagnóstico, versiones nuevas).
+- `src/indexer.mjs`: busca los juegos instalados en todas las unidades de la PC y en el registro de Windows (leído con PowerShell en UTF-8) y genera un catálogo normalizado. `scanLibrary({ env })` recibe las unidades y el registro, así las pruebas simulan otra PC (ver [Operación](operacion.md#cómo-se-encuentran-los-juegos-instalados)).
+- `src/server.mjs`: servicios de la biblioteca (inventario, preferencias, arte, lanzamiento) y servidor local. Las rutas de la API están en `src/routes/`, una por dominio: `library.mjs` (biblioteca, jugar, instalar, imágenes), `preferences.mjs` (preferencias, respaldo, portadas, ajustes), `integrations.mjs` (Steam, IGDB, Arcade), `system.mjs` (tarea nocturna, registro, diagnóstico, versiones nuevas) y `screenshots.mjs` (tus capturas y videos).
 - `src/http.mjs`: enrutador declarativo (`router.get('/api/steam/games/:appid(\d+)/:kind', …)`), lectura y validación del cuerpo y errores con código: 400 datos inválidos, 404 inexistente, 405 método no permitido, 409 falta conectar o configurar algo, 413 demasiado grande, 502 un servicio externo falló. Sólo los errores inesperados responden 500 y van al registro como error.
 - `src/updates.mjs`: consulta la última publicación en GitHub (como mucho una vez por día) para avisar una versión nueva en Configuración y con un aviso al abrir.
 - `src/electron-main.mjs`: abre la ventana de escritorio y ejecuta la indexación programada sin mostrarla. Una sola instancia (abrir el .exe otra vez trae la ventana al frente), `sandbox`, sin navegación fuera de la interfaz (los enlaces https se abren en el navegador), sólo el permiso de pantalla completa y puerto fijo 47321 (con otro libre si está ocupado), para que la interfaz conserve lo que guarda en el navegador entre aperturas.
@@ -50,7 +50,8 @@ flowchart LR
 - `src/sessions.mjs`: sesiones de juego. `createSessionTracker` vigila la carpeta de instalación de un juego iniciado (procesos de Windows vía `Get-CimInstance Win32_Process`) y avisa al cerrarse; `createSessionLog` guarda `sessions.json`.
 - `src/activity.mjs`: resumen para «Tu actividad» (semanas, racha, más jugados, últimas sesiones). `GET /api/activity?now=`.
 - `src/tasks.mjs`: fila única de tareas en segundo plano por prioridad y `GET /api/events` (text/event-stream: `tasks`, `library`, `session`). `GET /api/tasks` devuelve el estado de la fila.
-- `src/portable.mjs`: carpeta de datos del portable (junto al `.exe` o en AppData) y copia de los datos. `GET /api/portable`, `POST /api/portable/copy`.
+- `src/portable.mjs`: carpeta de datos del portable (junto al `.exe` o en AppData), copia de los datos y paso de los datos del nombre anterior (Games Meta Launcher) al actual. Copia con `copyTree` y no con `fs.cp`: en Windows, `fs.cp` no copia carpetas hacia rutas con tildes. `GET /api/portable`, `POST /api/portable/copy`.
+- `src/screenshots.mjs`: tus capturas y videos, leídos de Steam, MAME, Xbox Game Bar, NVIDIA, Videos y las carpetas propias, y asociados a cada juego por número, set, carpeta o nombre de archivo. El índice vive en memoria (se rehace como mucho una vez por minuto). La interfaz nunca recibe rutas, sólo identificadores: `GET /api/screenshots/game/:key`, `GET /api/screenshots/recent`, `GET/PUT /api/screenshots/folders`, `GET /api/screenshots/file/:id`, `GET /api/screenshots/video/:id` (por partes, con `Range`) y `POST /api/screenshots/file/:id/open`.
 - `src/lists.mjs`: listas propias en `preferences.json` (validación y cambios). `POST /api/lists`, `PUT/DELETE /api/lists/:id`, `PUT /api/lists/:id/games` (`{ key, member }`). Llegan a la interfaz dentro de `/api/library` (`lists`); los juegos de una lista automática los calcula `GMLCatalog.listGames`.
 - `GET /api/onboarding`: datos de «Primeros pasos» (juegos por tienda, avance de la búsqueda, conexiones y claves que hay que reconectar).
 - `src/wiki.mjs`: Wikipedia en inglés → Wikidata (videojuego, año, IGDB P5794, artículo en español) → introducción en español. Rutas de datos: `arcade-info.json`.
@@ -64,7 +65,7 @@ flowchart LR
 - `data/library.json`: inventario local generado; se excluye del control de versiones.
 - `test/`: pruebas automáticas con `node:test` de la API, los módulos y las herramientas.
 - `test/ui/`: pruebas de interfaz con Playwright sobre una biblioteca inventada (`fixture.mjs`, sin imágenes ni datos reales y sin descargas: `GML_OFFLINE=1`). Pantallas, flujos (buscar, favoritos, paleta, modo sala, arranque instantáneo, diagnóstico, aviso de versión), accesibilidad WCAG 2.1 AA con axe en ambos temas y capturas de referencia en `test/ui/capturas/`.
-- `tools/ci/`: flujos de GitHub Actions, para copiar a `.github/workflows/` (ver `tools/ci/LEEME.md`): integración continua (`ci.yml`: pruebas en Windows, interfaz en Linux y portable como artefacto) y publicación al subir una etiqueta (`release.yml`).
+- `.github/workflows/`: integración continua (`ci.yml`: pruebas en Windows, interfaz en Linux y portable como artefacto) y publicación al subir una etiqueta (`release.yml`).
 
 ## Datos del perfil
 
@@ -91,7 +92,8 @@ La interfaz se sirve con una política de contenido estricta: sólo sus scripts,
 - La fecha de última vez jugado se conserva únicamente para los inicios solicitados desde la aplicación.
 - IGDB requiere una aplicación de Twitch y conexión explícita desde Configuración. Sólo se envían nombres e identificadores de juegos. Steam consulta la biblioteca de la cuenta conectada mediante su integración opcional.
 - La ficha presenta información disponible en secciones desplegables. La historia permanece plegada por posibles spoilers. Las duraciones son estimaciones de IGDB (segundos convertidos a horas); los idiomas y modos pueden variar entre ediciones y plataformas.
-- Las capturas e ilustraciones se cargan de forma diferida desde la CDN de IGDB en la pestaña Multimedia y se amplían en un diálogo nativo con navegación por teclado; los videos y enlaces se abren externamente. La información textual descargada permanece disponible sin conexión; las imágenes pueden requerir internet.
+- Tus capturas y videos se leen en su lugar, sin copiarlos ni modificarlos; sólo se sirven archivos del índice, por identificador. Los videos se sirven por partes para no leer archivos de varios GB enteros, y la fila de Inicio muestra sólo imágenes.
+- Las capturas e ilustraciones de IGDB se cargan de forma diferida desde su CDN en la pestaña Multimedia y se amplían en un diálogo nativo con navegación por teclado; los videos y enlaces se abren externamente. La información textual descargada permanece disponible sin conexión; las imágenes pueden requerir internet.
 
 ## Steam desde 0.14.0
 

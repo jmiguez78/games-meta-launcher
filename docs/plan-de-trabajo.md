@@ -10,9 +10,20 @@ flowchart LR
   D --> E[Experiencia de biblioteca]
   E --> F[Configuración y diagnóstico]
   F --> G[Integraciones de cuentas]
+  G --> H[Liberar como Viciódromo]
 ```
 
-## Estado actual — implementación hasta 0.32.0 terminada
+## Estado actual — 0.36.0, camino a la primera versión pública
+
+Desde 0.36.0 la aplicación se llama **Viciódromo** y el repositorio es público (`jmiguez78/viciodromo`, licencia MIT). El trabajo sigue el [plan para liberar](https://claude.ai/artifact/JuCVM1ZRyRS1PQK3yomuTY), en tres tandas:
+
+| Tanda | Qué resuelve | Estado |
+| --- | --- | --- |
+| 1. Juegos de cualquier PC | Buscador sin rutas de la PC de desarrollo: todas las unidades y el registro de Windows | Hecha en 0.35.0; falta confirmarla en la PC |
+| 2. Lo que no es código | Licencia y aviso legal (hechos), nombre y repositorio (hechos en 0.36.0), avisos de terceros, primera versión publicada | En curso |
+| 3. Confianza | Prueba en otra PC desde cero, VirusTotal, firma o instalador | Pendiente |
+
+De 0.33.0 a 0.34.0 se sumaron tus capturas y videos en la página de cada juego y en Inicio.
 
 De 0.23.0 a 0.32.0 se sumó Arcade (MAME, con un MAME alternativo para los sets viejos) y se completó el [plan de 20 mejoras](https://claude.ai/artifact/P6YEfTpo3wKLN2vmiBea3u) en cuatro tandas: blindaje (0.28), base para crecer (0.29), experiencia (0.31) y ambición (0.32). El detalle de cada versión está en el [plan de versiones](roadmap.md) y en el [registro de cambios](../CHANGELOG.md).
 

@@ -1,5 +1,12 @@
 # Registro de cambios
 
+## 0.36.1
+
+- **Repositorio público con el nombre nuevo.** El código está en [jmiguez78/viciodromo](https://github.com/jmiguez78/viciodromo), bajo la licencia MIT, con aviso legal y créditos. El aviso de versión nueva consulta ese repositorio (GitHub redirige el nombre anterior, pero así no depende de la redirección).
+- **Documentación al día.** El README está pensado para quien llega al repositorio: descarga y requisitos, qué hace, primeros pasos, tus capturas y videos, tus datos, privacidad y, al final, desarrollo y aviso legal. Arquitectura, Operación, Sistema de diseño, Plan de versiones y Plan de trabajo cubren hasta la 0.36.
+- Se quita `tools/ci/`, una copia vieja de los flujos de GitHub Actions: los que corren están en `.github/workflows/`.
+- El acceso directo de desarrollo se llama «Viciódromo (desarrollo)».
+
 ## 0.36.0
 
 **Games Meta Launcher ahora se llama Viciódromo:** el lugar donde se vicia.

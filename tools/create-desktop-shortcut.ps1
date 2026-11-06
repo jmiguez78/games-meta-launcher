@@ -1,6 +1,6 @@
-$projectPath = Split-Path $PSScriptRoot -Parent
+﻿$projectPath = Split-Path $PSScriptRoot -Parent
 $desktop = [Environment]::GetFolderPath('Desktop')
-$shortcutPath = Join-Path $desktop 'Games Meta Launcher.lnk'
+$shortcutPath = Join-Path $desktop 'Viciódromo (desarrollo).lnk'
 $nodePath = (Get-Command node -ErrorAction Stop).Source
 $launcher = Join-Path $projectPath 'tools\launch.ps1'
 $shell = New-Object -ComObject WScript.Shell

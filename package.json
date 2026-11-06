@@ -1,14 +1,21 @@
 {
   "name": "viciodromo",
   "productName": "Viciódromo",
-  "version": "0.36.0",
+  "version": "0.36.1",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
   "description": "Viciódromo: todos tus juegos de PC en un solo lugar. Lanzador y catálogo para Windows.",
   "author": "Jorge Miguez",
+  "license": "MIT",
+  "homepage": "https://github.com/jmiguez78/viciodromo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmiguez78/viciodromo.git"
+  },
+  "bugs": "https://github.com/jmiguez78/viciodromo/issues",
   "gml": {
-    "releases": "jmiguez78/games-meta-launcher"
+    "releases": "jmiguez78/viciodromo"
   },
   "scripts": {
     "start": "node src/server.mjs",

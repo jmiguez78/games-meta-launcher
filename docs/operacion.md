@@ -1,4 +1,4 @@
-# Operación e indexación
+# Operación de Viciódromo
 
 ## Buscar juegos a demanda
 
@@ -59,6 +59,7 @@ Los nombres se comparan sin tildes, marcas ni signos; si el nombre de la captura
 
 - **Desarrollo** (`npm start`, `npm run desktop`): en `data/` dentro del proyecto (excluida del repositorio).
 - **Portable:** en la carpeta `Viciódromo - datos` junto al `.exe` si existe o si es una PC sin datos previos; si la PC ya tenía datos, en el perfil de Windows (`%APPDATA%\Viciódromo`). **Configuración → Datos del portable** los copia junto al ejecutable. Las cachés del navegador interno quedan siempre en el perfil de Windows.
+- **Cambio de nombre (0.36.0):** si `%APPDATA%\Viciódromo` no tiene datos y `%APPDATA%\Games Meta Launcher` sí, se copian (menos las cachés pesadas de Chromium) y la carpeta vieja queda como respaldo. La carpeta `Games Meta Launcher - datos` junto al `.exe` se renombra a `Viciódromo - datos`, y la tarea «Games Meta Launcher - Indexación nocturna» se reemplaza por «Viciódromo - Búsqueda nocturna» con el mismo horario.
 
 | Archivo                                 | Contenido                                                                          |
 | --------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -87,7 +88,7 @@ Las claves de Steam e IGDB se cifran con Windows DPAPI para el usuario que las g
 
 ## Acceso directo
 
-El script `tools/create-desktop-shortcut.ps1` crea un acceso directo en el Escritorio para iniciar la aplicación local.
+Para desarrollo, el script `tools/create-desktop-shortcut.ps1` crea un acceso directo «Viciódromo (desarrollo)» en el Escritorio que inicia la interfaz local en el navegador. Con el portable no hace falta: alcanza con un acceso directo al `.exe`.
 
 ```powershell
 .\tools\create-desktop-shortcut.ps1

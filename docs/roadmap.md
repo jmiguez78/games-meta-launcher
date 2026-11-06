@@ -171,9 +171,22 @@ Tanda 3: sesiones medidas en todas las tiendas, «Tu actividad», fila única de
 
 Tanda 4: listas propias (manuales y automáticas), biblioteca para miles de juegos y el tema claro y los estados de error revisados. Con esta versión se completa el plan de 20 mejoras.
 
+## 0.33.0 a 0.34.0 — Tus capturas y videos · Completada
+
+Pestaña «Tus capturas» en cada juego y fila en Inicio, con las imágenes de Steam, MAME, Xbox Game Bar (también el botón de captura del mando, en la carpeta «Capturas» de Windows aunque esté en otra unidad), NVIDIA y carpetas propias; desde 0.34.0, también los videos de Game Bar, servidos por partes. La búsqueda nocturna se repara sola si apunta a otro ejecutable, y la tarea de desarrollo usa otro nombre para no reemplazarla.
+
+## 0.35.0 — Juegos de cualquier PC · Completada
+
+Tanda 1 del [plan para liberar](https://claude.ai/artifact/JuCVM1ZRyRS1PQK3yomuTY): el buscador revisa todas las unidades y el registro de Windows (Steam donde esté instalado, Xbox según `.GamingRoot`, Ubisoft, GOG y EA desde sus registros), sin rutas de la PC de desarrollo.
+
+## 0.36.0 — Viciódromo · Completada
+
+Games Meta Launcher pasa a llamarse Viciódromo: nombre, imagen de bienvenida, ejecutable, repositorio (`jmiguez78/viciodromo`, público, con licencia MIT) y documentación. Los datos, la carpeta del portable y la tarea nocturna pasan solos al nombre nuevo.
+
 ## Próximo
 
+- Tanda 2 del plan para liberar: archivo de avisos de terceros, README para usuarios ya publicado, unir la rama de trabajo a `main` y publicar la primera versión como Viciódromo.
+- Tanda 3: probar el portable en otra PC desde cero, revisar cada `.exe` en VirusTotal y decidir sobre la firma del ejecutable o un instalador.
 - Probar en la PC la medición de sesiones de Epic, GOG y Xbox, el portable junto al ejecutable y las listas.
-- Unir la rama `ux-fases-0-3` a `main`.
 - Actualizar las acciones de GitHub (aviso de Node 20).
 - Validación de coincidencias de IGDB, pendiente desde 0.12.0.

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { CATALOG_SCHEMA, scanLibrary, steamArtwork } from './indexer.mjs';
+import { CATALOG_SCHEMA, scanLibrary, steamArtwork, steamDirectory, windowsEnv } from './indexer.mjs';
 import { createIgdb, imageUrl } from './igdb.mjs';
 import { createSteam, mergeSteamLibrary } from './steam.mjs';
 import { createSteamAssets } from './steam-assets.mjs';
@@ -232,16 +232,14 @@ function queueSteam() {
 const wiki = createWiki();
 // Tus capturas (ver screenshots.mjs). Las carpetas salen del registro de Windows cuando se puede
 // (dónde está Steam, dónde está «Videos»); GML_STEAM_DIR y GML_VIDEOS_DIR las fijan en las pruebas.
+// Caché de imágenes del cliente de Steam, donde esté instalado (se consulta una vez).
+let steamCacheDir = null;
+const steamArtCache = () =>
+  (steamCacheDir ??= steamDirectory(windowsEnv).then((dir) => path.join(dir, 'appcache', 'librarycache')));
+// Un valor del registro (con PowerShell, ver windowsEnv.registry: respeta las tildes de las rutas).
 async function registryValue(key, name) {
-  if (process.platform !== 'win32') return null;
-  try {
-    const { stdout } = await execFileAsync('reg.exe', ['query', key, '/v', name]);
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const value = stdout.match(new RegExp(`${escaped}\\s+REG_(?:EXPAND_)?SZ\\s+(.+)`, 'i'))?.[1]?.trim();
-    return value ? value.replace(/%([^%]+)%/g, (all, variable) => process.env[variable] ?? all) : null;
-  } catch {
-    return null;
-  }
+  const value = (await windowsEnv.registry(key, { recurse: false }))[0]?.values[name];
+  return value ? value.replace(/%([^%]+)%/g, (all, variable) => process.env[variable] ?? all) : null;
 }
 const MAX_SCREENSHOT_FOLDERS = 10;
 async function extraScreenshotFolders() {
@@ -251,10 +249,7 @@ async function extraScreenshotFolders() {
 let screenshotRoots = null;
 async function screenshotSources() {
   screenshotRoots ??= (async () => {
-    const steamDir =
-      process.env.GML_STEAM_DIR ||
-      (await registryValue('HKCU\\Software\\Valve\\Steam', 'SteamPath'))?.replaceAll('/', '\\') ||
-      'C:\\Program Files (x86)\\Steam';
+    const steamDir = process.env.GML_STEAM_DIR || (await steamDirectory(windowsEnv));
     const videos =
       process.env.GML_VIDEOS_DIR ||
       (await registryValue(
@@ -483,7 +478,8 @@ async function gameArt(key, kind) {
   // Los juegos de la cuenta que no están instalados (y los inventarios anteriores, que no registraban el logo)
   // pueden tener el arte en la caché local del cliente de Steam: se busca ahí antes de descargar.
   const missing = kind === 'cover' ? !(game.art?.portrait || game.art?.landscape || game.art?.logo) : !game.art?.[kind];
-  const art = missing && isSteamApp(game) ? { ...(await steamArtwork(game.id)), ...game.art } : game.art;
+  const art =
+    missing && isSteamApp(game) ? { ...(await steamArtwork(game.id, await steamArtCache())), ...game.art } : game.art;
   return (await localArt(art, kind)) ?? (await onlineArt(game, metadata[key], kind));
 }
 function publicMeta(meta) {

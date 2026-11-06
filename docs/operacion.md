@@ -26,6 +26,21 @@ Durante el desarrollo, el script `tools/register-nightly-index.ps1` crea otra ta
 .\tools\register-nightly-index.ps1
 ```
 
+## Cómo se encuentran los juegos instalados
+
+`src/indexer.mjs` revisa todas las unidades que existen (de C: a Z:; una de red que no responde en 1,5 s se saltea) y el registro de Windows, leído con PowerShell en UTF-8. Las pruebas reemplazan unidades y registro con `scanLibrary({ env })`.
+
+| Tienda | De dónde sale | Cómo se abre |
+| --- | --- | --- |
+| Steam | Carpeta de Steam del registro (`SteamPath`), sus bibliotecas en `libraryfolders.vdf` y `SteamLibrary` en cada unidad | `steam://run/<appid>` |
+| Epic Games | Manifiestos en `%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests` | `com.epicgames.launcher://apps/<app>` |
+| Xbox / Microsoft Store | Carpetas de `.GamingRoot` en la raíz de cada unidad y `XboxGames` | `shell:AppsFolder\<paquete>!<app>` |
+| Ubisoft Connect | Registro `Ubisoft\Launcher\Installs\<número>`; respaldo: `UbisoftLibrary` en cada unidad (sin número no se abre) | `uplay://launch/<número>/0` |
+| GOG Galaxy | Registro `GOG.com\Games\<número>` con su ejecutable; respaldo: `GOG Games` y `GOG Galaxy Games` | El ejecutable del registro |
+| EA app | Registro `Electronic Arts` y `EA Games` («Install Dir»); respaldo: `C:\Program Files\EA Games`, `EA Games` y `EALibrary` | El ejecutable principal de la carpeta |
+
+Un juego que aparece por el registro y por una carpeta de respaldo se cuenta una vez.
+
 ## Tus capturas
 
 Las capturas (`.png`, `.jpg`, `.webp`) y los videos (`.mp4`, `.webm`) se leen en su lugar, sin copiarlas (`src/screenshots.mjs`); los videos se sirven por partes (`/api/screenshots/video/:id`, con `Range`) y los de MAME grabados con Game Bar se asocian por el set que figura entre corchetes en el nombre; el índice vive en memoria y se rehace como mucho una vez por minuto, o con «Buscar de nuevo».

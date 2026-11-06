@@ -1,7 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { writeJsonAtomic } from './json-file.mjs';
 import { fileURLToPath } from 'node:url';
+
+const execFileAsync = promisify(execFile);
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = path.join(
@@ -10,7 +14,84 @@ const outputPath = path.join(
 );
 // Se incrementa cuando cambia la forma del inventario, para que el servidor lo regenere.
 export const CATALOG_SCHEMA = 2;
-const DRIVE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'H', 'K'];
+
+// Lo que el buscador necesita saber de la PC: qué unidades hay y qué dice el registro de Windows. Las pruebas
+// pasan su propia versión (carpetas temporales en lugar de unidades y un registro inventado).
+const DRIVE_TIMEOUT_MS = 1500;
+export const windowsEnv = {
+  // Unidades que existen (sin A: ni B:). Una de red desconectada puede tardar: pasado el límite se saltea.
+  async drives() {
+    if (process.platform !== 'win32') return [];
+    const letters = 'CDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const found = await Promise.all(
+      letters.map((letter) =>
+        Promise.race([
+          fs.access(`${letter}:\\`).then(
+            () => letter,
+            () => null
+          ),
+          new Promise((resolve) => setTimeout(resolve, DRIVE_TIMEOUT_MS, null))
+        ])
+      )
+    );
+    return found.filter(Boolean);
+  },
+  root: (letter) => `${letter}:\\`,
+  // La clave (y con recurse, todas sus subclaves) con sus valores; [] si no existe. Con PowerShell y salida UTF-8:
+  // reg.exe escribe en la página de códigos de la consola y una carpeta con tildes («C:\Users\José») llegaría rota.
+  async registry(key, { recurse = true } = {}) {
+    if (process.platform !== 'win32') return [];
+    const full = key.replace(/^HKLM\\/i, 'HKEY_LOCAL_MACHINE\\').replace(/^HKCU\\/i, 'HKEY_CURRENT_USER\\');
+    if (!/^HKEY_(LOCAL_MACHINE|CURRENT_USER)\\[\w .\\-]+$/.test(full)) return [];
+    const script =
+      "[Console]::OutputEncoding = [Text.Encoding]::UTF8; $k = 'Registry::" +
+      full +
+      "'; if (Test-Path $k) { @(@(Get-Item $k)" +
+      (recurse ? ' + @(Get-ChildItem $k -Recurse -ErrorAction SilentlyContinue)' : '') +
+      ' | ' +
+      'ForEach-Object { $v = @{}; foreach ($n in $_.GetValueNames()) { $v[$n] = [string]$_.GetValue($n) }; ' +
+      '[pscustomobject]@{ key = $_.Name; values = $v } }) | ConvertTo-Json -Depth 4 -Compress }';
+    try {
+      const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+        windowsHide: true,
+        maxBuffer: 16 * 1024 * 1024
+      });
+      return parseRegistryJson(stdout);
+    } catch {
+      return [];
+    }
+  }
+};
+
+// Respuesta de PowerShell → [{ key, values: { nombre: valor } }]. Con una sola clave llega un objeto, no una lista.
+export function parseRegistryJson(text) {
+  let data;
+  try {
+    data = JSON.parse(String(text ?? '').trim() || '[]');
+  } catch {
+    return [];
+  }
+  return (Array.isArray(data) ? data : [data])
+    .filter((item) => item && typeof item.key === 'string')
+    .map((item) => ({
+      key: item.key,
+      values: Object.fromEntries(
+        Object.entries(item.values && typeof item.values === 'object' ? item.values : {}).map(([name, value]) => [
+          name,
+          String(value ?? '')
+        ])
+      )
+    }));
+}
+const lastSegment = (key) => key.split('\\').pop();
+// Las rutas del registro pueden venir con barras normales o una barra final («C:/Games/Anno 1800/»).
+const cleanPath = (value) => {
+  const text = String(value ?? '')
+    .trim()
+    .replace(/^"|"$/g, '');
+  return text ? path.normalize(text).replace(/(?<!^[A-Za-z]:)[\\/]+$/, '') : '';
+};
+const sameLocation = (location) => location.toLowerCase().replace(/[\\/]+$/, '');
 
 async function exists(target) {
   try {
@@ -68,7 +149,8 @@ function makeGame({
   };
 }
 
-const STEAM_LIBRARY_CACHE = 'C:\\Program Files (x86)\\Steam\\appcache\\librarycache';
+const STEAM_DEFAULT = 'C:\\Program Files (x86)\\Steam';
+const STEAM_LIBRARY_CACHE = `${STEAM_DEFAULT}\\appcache\\librarycache`;
 // Herramientas que Steam instala como aplicaciones pero no son juegos.
 const STEAM_NON_GAMES = new Set(['228980']);
 const steamArtFiles = {
@@ -109,21 +191,29 @@ export async function xboxArtwork(location, config) {
 export function parseSteamManifest(text) {
   return { id: vdfValue(text, 'appid'), name: vdfValue(text, 'name'), installDir: vdfValue(text, 'installdir') };
 }
-async function steamLibraries() {
-  const bases = new Set(['C:\\Program Files (x86)\\Steam\\steamapps']);
-  const primary = 'C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf';
-  const text = await readText(primary);
-  for (const match of text.matchAll(/"path"\s+"([^"]+)"/gi))
-    bases.add(path.join(match[1].replaceAll('\\\\', '\\'), 'steamapps'));
-  for (const drive of DRIVE_LETTERS) {
-    bases.add(`${drive}:\\SteamLibrary\\steamapps`);
-    bases.add(`${drive}:\\Juegos\\Steam Games\\steamapps`);
-  }
-  return [...bases];
+// Dónde está Steam: lo dice el registro (instalado en otra unidad también); si no, la carpeta por defecto.
+export async function steamDirectory(env) {
+  const only = { recurse: false };
+  const user = (await env.registry('HKCU\\Software\\Valve\\Steam', only))[0]?.values.SteamPath;
+  const machine = (await env.registry('HKLM\\SOFTWARE\\WOW6432Node\\Valve\\Steam', only))[0]?.values.InstallPath;
+  return cleanPath(user || machine) || STEAM_DEFAULT;
 }
-async function steamGames() {
+// Bibliotecas de Steam: las que lista libraryfolders.vdf y, por si falta, «SteamLibrary» en cada unidad.
+async function steamLibraries(env, steamDir, drives) {
+  const bases = new Map();
+  const add = (base) => bases.set(sameLocation(base), base);
+  add(path.join(steamDir, 'steamapps'));
+  const text = await readText(path.join(steamDir, 'steamapps', 'libraryfolders.vdf'));
+  for (const match of text.matchAll(/"path"\s+"([^"]+)"/gi))
+    add(path.join(match[1].replaceAll('\\\\', '\\'), 'steamapps'));
+  for (const drive of drives) add(path.join(env.root(drive), 'SteamLibrary', 'steamapps'));
+  return [...bases.values()];
+}
+async function steamGames(env, drives) {
+  const steamDir = await steamDirectory(env);
+  const cache = path.join(steamDir, 'appcache', 'librarycache');
   const games = [];
-  for (const base of await steamLibraries()) {
+  for (const base of await steamLibraries(env, steamDir, drives)) {
     let files = [];
     try {
       files = await fs.readdir(base);
@@ -143,7 +233,7 @@ async function steamGames() {
           location,
           launch: present ? { type: 'uri', target: `steam://run/${manifest.id}`, available: true } : null,
           status: present ? 'installed' : 'attention',
-          art: await steamArtwork(manifest.id),
+          art: await steamArtwork(manifest.id, cache),
           evidence: present
             ? 'Manifiesto Steam y carpeta presentes'
             : 'Steam lo registra como instalado, pero la carpeta no existe. Verificá los archivos o desinstalalo desde Steam.'
@@ -153,8 +243,9 @@ async function steamGames() {
   }
   return games;
 }
-async function epicGames() {
-  const manifestDir = 'C:\\ProgramData\\Epic\\EpicGamesLauncher\\Data\\Manifests';
+async function epicGames(env) {
+  const programData = env.programData ?? process.env.ProgramData ?? 'C:\\ProgramData';
+  const manifestDir = path.join(programData, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests');
   let files = [];
   try {
     files = await fs.readdir(manifestDir);
@@ -193,8 +284,32 @@ async function epicGames() {
   }
   return games;
 }
-async function xboxGames() {
-  const roots = ['C:\\XboxGames', 'F:\\Juegos', 'G:\\XBoxLibrary'];
+// .GamingRoot: archivo oculto que la app Xbox deja en la raíz de cada unidad donde instala juegos. Empieza con
+// «RGBX», un número de 4 bytes y después las carpetas (relativas a la unidad) en UTF-16, separadas por un cero.
+export function parseGamingRoot(bytes) {
+  if (!bytes || bytes.length < 10 || bytes.toString('latin1', 0, 4) !== 'RGBX') return [];
+  return bytes
+    .subarray(8)
+    .toString('utf16le')
+    .split('\0')
+    .map((item) => item.trim().replace(/^[\\/]+/, ''))
+    .filter((item) => item && !/[<>:"|?*\u0000-\u001f]/.test(item));
+}
+// Bibliotecas de la app Xbox: las de .GamingRoot y, por si falta, «XboxGames» (el nombre por defecto) en cada unidad.
+async function xboxRoots(env, drives) {
+  const roots = new Map();
+  for (const drive of drives) {
+    const base = env.root(drive);
+    const marker = await fs.readFile(path.join(base, '.GamingRoot')).catch(() => null);
+    for (const relative of [...parseGamingRoot(marker), 'XboxGames']) {
+      const root = path.join(base, ...relative.split(/[\\/]+/));
+      roots.set(sameLocation(root), root);
+    }
+  }
+  return [...roots.values()];
+}
+async function xboxGames(env, drives) {
+  const roots = await xboxRoots(env, drives);
   const games = [];
   for (const root of roots)
     for (const folder of await folders(root)) {
@@ -219,23 +334,44 @@ async function xboxGames() {
     }
   return games;
 }
-const ubisoftIds = { 'Anno 1800': '4553' };
-async function ubisoftGames() {
+// Ubisoft Connect anota cada juego en el registro con su número (el que abre uplay://launch/<número>).
+const UBISOFT_INSTALLS = 'HKLM\\SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs';
+async function ubisoftGames(env, drives) {
   const games = [];
-  for (const drive of DRIVE_LETTERS)
-    for (const folder of await folders(`${drive}:\\UbisoftLibrary`)) {
-      const location = `${drive}:\\UbisoftLibrary\\${folder}`;
-      const id = ubisoftIds[folder] ?? '';
+  const seen = new Set();
+  for (const entry of await env.registry(UBISOFT_INSTALLS)) {
+    const id = lastSegment(entry.key);
+    const location = cleanPath(entry.values.InstallDir);
+    if (!/^\d+$/.test(id) || !location || seen.has(sameLocation(location))) continue;
+    seen.add(sameLocation(location));
+    const present = await exists(location);
+    games.push(
+      makeGame({
+        platform: 'Ubisoft Connect',
+        id,
+        name: path.basename(location),
+        location,
+        launch: present ? { type: 'uri', target: `uplay://launch/${id}/0`, available: true } : null,
+        status: present ? 'installed' : 'attention',
+        evidence: present
+          ? 'Registro de Ubisoft Connect y carpeta presentes'
+          : 'Ubisoft Connect lo registra como instalado, pero la carpeta no existe. Verificá el juego desde Ubisoft Connect.'
+      })
+    );
+  }
+  // Respaldo: carpetas «UbisoftLibrary» que el registro no menciona (sin número no se pueden abrir).
+  for (const drive of drives)
+    for (const folder of await folders(path.join(env.root(drive), 'UbisoftLibrary'))) {
+      const location = path.join(env.root(drive), 'UbisoftLibrary', folder);
+      if (seen.has(sameLocation(location))) continue;
+      seen.add(sameLocation(location));
       games.push(
         makeGame({
           platform: 'Ubisoft Connect',
-          id: id || folder,
+          id: folder,
           name: folder,
           location,
-          launch: id ? { type: 'uri', target: `uplay://launch/${id}/0`, available: true } : null,
-          evidence: id
-            ? 'Biblioteca Ubisoft y URI de lanzamiento identificados'
-            : 'Biblioteca Ubisoft presente; falta identificar URI de lanzamiento'
+          evidence: 'Biblioteca Ubisoft presente; Ubisoft Connect no la registra, así que falta el número para abrirla'
         })
       );
     }
@@ -247,41 +383,119 @@ async function firstExecutable(location) {
   const exe = entries.find((entry) => entry.isFile() && /\.exe$/i.test(entry.name) && !excluded.test(entry.name));
   return exe ? path.join(location, exe.name) : '';
 }
-async function folderLibraries(platform, rootNames) {
+// Respaldo para EA y GOG: carpetas con nombres habituales en cada unidad (y las que se pasen en extraRoots).
+async function folderLibraries(platform, rootNames, env, drives, { extraRoots = [], seen = new Set() } = {}) {
   const games = [];
-  for (const drive of DRIVE_LETTERS)
-    for (const rootName of rootNames)
-      for (const folder of await folders(`${drive}:\\${rootName}`)) {
-        const location = `${drive}:\\${rootName}\\${folder}`;
-        const executable = await firstExecutable(location);
-        games.push(
-          makeGame({
-            platform,
-            id: folder,
-            name: folder,
-            location,
-            launch: executable ? { type: 'file', target: executable, available: true } : null,
-            evidence: executable
-              ? `Carpeta de ${platform} y ejecutable principal detectados`
-              : `Carpeta de ${platform} presente; falta identificar ejecutable principal`
-          })
-        );
-      }
+  const roots = [
+    ...extraRoots,
+    ...drives.flatMap((drive) => rootNames.map((name) => path.join(env.root(drive), name)))
+  ];
+  for (const root of roots)
+    for (const folder of await folders(root)) {
+      const location = path.join(root, folder);
+      if (seen.has(sameLocation(location))) continue;
+      seen.add(sameLocation(location));
+      const executable = await firstExecutable(location);
+      games.push(
+        makeGame({
+          platform,
+          id: folder,
+          name: folder,
+          location,
+          launch: executable ? { type: 'file', target: executable, available: true } : null,
+          evidence: executable
+            ? `Carpeta de ${platform} y ejecutable principal detectados`
+            : `Carpeta de ${platform} presente; falta identificar ejecutable principal`
+        })
+      );
+    }
+  return games;
+}
+// GOG Galaxy anota cada juego en el registro con su número, carpeta y ejecutable principal.
+const GOG_GAMES = 'HKLM\\SOFTWARE\\WOW6432Node\\GOG.com\\Games';
+async function gogGames(env, drives) {
+  const games = [];
+  const seen = new Set();
+  for (const entry of await env.registry(GOG_GAMES)) {
+    const { gameID, gameName, path: folder, exe, workingDir } = entry.values;
+    const location = cleanPath(folder);
+    if (!gameID || !location || seen.has(sameLocation(location))) continue;
+    seen.add(sameLocation(location));
+    const executable = cleanPath(exe);
+    const present = await exists(location);
+    const runnable = present && executable && (await exists(executable));
+    games.push(
+      makeGame({
+        platform: 'GOG Galaxy',
+        id: gameID,
+        name: gameName || path.basename(location),
+        location,
+        launch: runnable ? { type: 'file', target: executable, available: true } : null,
+        status: present ? 'installed' : 'attention',
+        evidence: runnable
+          ? 'Registro de GOG con carpeta y ejecutable presentes'
+          : present
+            ? 'Registro de GOG presente; falta el ejecutable que indica'
+            : 'GOG lo registra como instalado, pero la carpeta no existe. Verificá el juego desde GOG Galaxy.'
+      })
+    );
+    if (workingDir) seen.add(sameLocation(cleanPath(workingDir)));
+  }
+  games.push(...(await folderLibraries('GOG Galaxy', ['GOG Games', 'GOG Galaxy Games'], env, drives, { seen })));
+  return games;
+}
+// EA app (y Origin) anotan cada juego en el registro con su carpeta («Install Dir»). El ejecutable no figura:
+// se usa el principal de la carpeta.
+const EA_KEYS = ['HKLM\\SOFTWARE\\WOW6432Node\\Electronic Arts', 'HKLM\\SOFTWARE\\WOW6432Node\\EA Games'];
+const EA_NOT_GAMES = /^(ea desktop|ea core|ea app|origin|ea installer)/i;
+async function eaGames(env, drives) {
+  const roots = [];
+  for (const key of EA_KEYS)
+    for (const entry of await env.registry(key)) {
+      const location = cleanPath(entry.values['Install Dir'] ?? entry.values.InstallDir);
+      if (location && !EA_NOT_GAMES.test(lastSegment(entry.key))) roots.push(location);
+    }
+  const games = [];
+  const seen = new Set();
+  // Cada carpeta del registro ya es un juego: se revisa su carpeta madre y se toma sólo esa subcarpeta.
+  for (const location of roots) {
+    if (seen.has(sameLocation(location)) || !(await exists(location))) continue;
+    seen.add(sameLocation(location));
+    const folder = path.basename(location);
+    const executable = await firstExecutable(location);
+    games.push(
+      makeGame({
+        platform: 'EA app',
+        id: folder,
+        name: folder,
+        location,
+        launch: executable ? { type: 'file', target: executable, available: true } : null,
+        evidence: executable
+          ? 'Registro de EA y ejecutable principal detectados'
+          : 'Registro de EA presente; falta identificar ejecutable principal'
+      })
+    );
+  }
+  const programFiles = drives.includes('C') ? [path.join(env.root('C'), 'Program Files', 'EA Games')] : [];
+  games.push(
+    ...(await folderLibraries('EA app', ['EALibrary', 'EA Games'], env, drives, { extraRoots: programFiles, seen }))
+  );
   return games;
 }
 // onSource(tienda, juegos): avisa cada tienda revisada (para mostrar el avance la primera vez).
-export async function scanLibrary({ onSource } = {}) {
+export async function scanLibrary({ onSource, env = windowsEnv, output = outputPath } = {}) {
   const report = (platform) => (games) => {
     onSource?.(platform, games.length);
     return games;
   };
+  const drives = await env.drives();
   const sources = await Promise.all([
-    steamGames().then(report('Steam')),
-    epicGames().then(report('Epic Games')),
-    xboxGames().then(report('Xbox / Microsoft Store')),
-    ubisoftGames().then(report('Ubisoft Connect')),
-    folderLibraries('EA app', ['EALibrary', 'EA Games']).then(report('EA app')),
-    folderLibraries('GOG Galaxy', ['GOG Games', 'GOG Galaxy Games']).then(report('GOG Galaxy'))
+    steamGames(env, drives).then(report('Steam')),
+    epicGames(env).then(report('Epic Games')),
+    xboxGames(env, drives).then(report('Xbox / Microsoft Store')),
+    ubisoftGames(env, drives).then(report('Ubisoft Connect')),
+    eaGames(env, drives).then(report('EA app')),
+    gogGames(env, drives).then(report('GOG Galaxy'))
   ]);
   const byKey = new Map();
   for (const game of sources.flat()) byKey.set(game.key, game);
@@ -290,7 +504,7 @@ export async function scanLibrary({ onSource } = {}) {
     generatedAt: new Date().toISOString(),
     games: [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
   };
-  await writeJsonAtomic(outputPath, result);
+  if (output) await writeJsonAtomic(output, result);
   return result;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url))

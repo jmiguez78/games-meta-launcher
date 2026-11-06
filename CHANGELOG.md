@@ -1,5 +1,16 @@
 # Registro de cambios
 
+## 0.35.0
+
+Tanda 1 del plan para liberar: el launcher encuentra los juegos de cualquier PC, no sólo los de la de desarrollo.
+
+- **Sin rutas fijas.** Se revisan todas las unidades que existen en la PC (antes, una lista fija: C, D, E, F, G, H y K).
+- **Steam donde esté instalado.** La carpeta de Steam sale del registro; antes, con Steam fuera de `C:\Program Files (x86)\Steam`, no aparecía ningún juego de Steam ni sus portadas locales. Las bibliotecas salen de `libraryfolders.vdf`, más `SteamLibrary` en cada unidad por si falta.
+- **Xbox con sus bibliotecas reales.** Se lee `.GamingRoot`, el archivo donde la app Xbox anota en qué carpeta de cada unidad instala, más `XboxGames` (su nombre por defecto). Antes se buscaba sólo en tres carpetas fijas.
+- **Ubisoft, GOG y EA desde el registro.** Ubisoft Connect da la carpeta y el número de cada juego, así que todos se pueden abrir (antes, sólo Anno 1800). GOG da el ejecutable real de cada juego, en lugar del primer `.exe` de la carpeta. EA da la carpeta de cada juego. Las carpetas habituales (`UbisoftLibrary`, `GOG Games`, `EA Games`…) siguen como respaldo, sin repetir juegos.
+- **Rutas con tildes.** El registro se lee con PowerShell en UTF-8: una carpeta como `C:\Users\José\Videos` ya no llega rota (también para Tus capturas).
+- Los juegos conservan su identificador: favoritos, notas y tiempo jugado no se pierden.
+
 ## 0.34.0
 
 - **Tus videos.** La pestaña **Tus capturas** suma los videos `.mp4` y `.webm` que graba Xbox Game Bar (Win + Alt + G o el botón del mando), con las mismas reglas que las capturas: por carpeta o por nombre de archivo, y los de MAME («MAME_ Kung-Fu Master (World) [kungfum] ….mp4») por el set. Cada miniatura muestra un cuadro del comienzo y la duración; el visor los reproduce con sus controles y las flechas adelantan o atrasan. Los videos se sirven por partes, así que uno de varios GB arranca enseguida y se puede adelantar sin leerlo entero. El resumen dice cuántas capturas y cuántos videos hay («5 capturas y 2 videos»). La fila de Inicio sigue mostrando sólo imágenes, para no abrir decenas de videos cada vez que se entra.

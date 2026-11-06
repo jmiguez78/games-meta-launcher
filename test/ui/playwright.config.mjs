@@ -35,7 +35,8 @@ export default defineConfig({
       GML_OFFLINE: '1',
       // Capturas propias inventadas (fixture.mjs): nunca se leen las carpetas reales de Steam ni de Videos.
       GML_STEAM_DIR: 'test/ui/.data/Steam',
-      GML_VIDEOS_DIR: 'test/ui/.data/Videos'
+      GML_VIDEOS_DIR: 'test/ui/.data/Videos',
+      GML_CAPTURES_DIR: 'test/ui/.data/Videos/Captures'
     },
     reuseExistingServer: false,
     timeout: 30000

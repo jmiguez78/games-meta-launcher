@@ -236,7 +236,8 @@ async function registryValue(key, name) {
   if (process.platform !== 'win32') return null;
   try {
     const { stdout } = await execFileAsync('reg.exe', ['query', key, '/v', name]);
-    const value = stdout.match(new RegExp(`${name}\\s+REG_(?:EXPAND_)?SZ\\s+(.+)`, 'i'))?.[1]?.trim();
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const value = stdout.match(new RegExp(`${escaped}\\s+REG_(?:EXPAND_)?SZ\\s+(.+)`, 'i'))?.[1]?.trim();
     return value ? value.replace(/%([^%]+)%/g, (all, variable) => process.env[variable] ?? all) : null;
   } catch {
     return null;
@@ -261,14 +262,23 @@ async function screenshotSources() {
         'My Video'
       )) ||
       path.join(os.homedir(), 'Videos');
-    return { steamDir, videos };
+    // Carpeta «Capturas» de Windows (Game Bar y el botón de captura del mando). Si se movió, el registro la guarda
+    // con su identificador de carpeta conocida; si no, es Videos\Captures.
+    const capturesId = '{EDC0FE71-98D8-4F4A-B920-C8DC133CB165}';
+    const explorer = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\';
+    const captures =
+      process.env.GML_CAPTURES_DIR ||
+      (await registryValue(explorer + 'User Shell Folders', capturesId)) ||
+      (await registryValue(explorer + 'Shell Folders', capturesId)) ||
+      path.join(videos, 'Captures');
+    return { steamDir, videos, captures };
   })();
-  const { steamDir, videos } = await screenshotRoots;
+  const { steamDir, videos, captures } = await screenshotRoots;
   const list = [
     { kind: 'steam', label: 'Steam', dir: path.join(steamDir, 'userdata') },
-    { kind: 'named', label: 'Xbox Game Bar', dir: path.join(videos, 'Captures'), mode: 'files' },
+    { kind: 'named', label: 'Xbox Game Bar', dir: captures, mode: 'both' },
     { kind: 'named', label: 'NVIDIA', dir: path.join(videos, 'NVIDIA'), mode: 'folders' },
-    { kind: 'named', label: 'Videos', dir: videos, mode: 'folders', skip: ['Captures', 'NVIDIA'] }
+    { kind: 'named', label: 'Videos', dir: videos, mode: 'both', skip: ['Captures', 'NVIDIA'] }
   ];
   for (const [instance, label] of [
     [arcade, 'MAME'],

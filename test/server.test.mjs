@@ -9,6 +9,7 @@ const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'gml-test-'));
 process.env.GML_DATA_DIR = dataDir;
 process.env.GML_STEAM_DIR = path.join(dataDir, 'Steam');
 process.env.GML_VIDEOS_DIR = path.join(dataDir, 'Videos');
+process.env.GML_CAPTURES_DIR = path.join(dataDir, 'Videos', 'Captures');
 const { createServer } = await import('../src/server.mjs');
 
 const catalog = {

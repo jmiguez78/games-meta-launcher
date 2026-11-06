@@ -1,5 +1,10 @@
 # Registro de cambios
 
+## 0.33.1
+
+- **Capturas del botón del mando.** Las capturas de Xbox Game Bar (también las del botón de captura del mando compatible con Xbox) se buscan en la carpeta «Capturas» de Windows aunque se haya movido a otra unidad (por ejemplo, `E:\Videos`), y ahora se leen también los archivos sueltos de `Videos` y las subcarpetas armadas a mano, hasta tres niveles. Una subcarpeta con el nombre del juego le da todas sus imágenes; si tiene otro nombre («Expedition 33»), cada archivo se asocia por el suyo («Clair Obscur_ Expedition 33 …»). Los `.jxr` (HDR) se ignoran porque Game Bar guarda al lado una copia `.png`.
+- **Búsqueda nocturna: la causa real.** El script de desarrollo `tools/register-nightly-index.ps1` creaba la tarea con el mismo nombre que la aplicación y la reemplazaba: el índice de las 3:00 se guardaba en `data/` del proyecto y el launcher no veía los juegos nuevos. Ahora el script usa otro nombre, y la 0.33.0 ya reprograma la tarea de la aplicación al abrirse.
+
 ## 0.33.0
 
 Tus capturas en el launcher, y una búsqueda nocturna que no se rompe al compilar una versión nueva.

@@ -141,3 +141,42 @@ test('createScreenshots reutiliza el índice y lo rehace al pedirlo', async () =
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test('carpeta de Game Bar movida a Videos: archivos sueltos, subcarpetas propias y HDR', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gml-capturas-'));
+  try {
+    const library = [
+      ...games,
+      { key: 'xbox:e33', platform: 'Xbox / Microsoft Store', id: 'e33', name: 'Clair Obscur: Expedition 33' },
+      { key: 'xbox:herd', platform: 'Xbox / Microsoft Store', id: 'herd', name: 'Herdling' }
+    ];
+    // Como en E:\Videos: el botón de captura del mando deja los archivos sueltos, con un .jxr (HDR) al lado.
+    await write(path.join(root, 'CONTROL Resonant 5_11_2026 07_33_13.png'), 'png', '2026-11-05T10:33:13Z');
+    await write(path.join(root, 'CONTROL Resonant 5_11_2026 07_33_13.jxr'), 'hdr');
+    await write(path.join(root, 'Games Meta Launcher 26_10_2026 20_46_17.png'));
+    // Subcarpetas armadas a mano: con el nombre del juego, o con otro nombre y archivos que sí lo tienen.
+    await write(path.join(root, 'Herdling', 'Herdling 23_8_2025 10_16_12.png'));
+    await write(path.join(root, 'Expedition 33', 'Clair Obscur_ Expedition 33 18_6_2025 23_39_26.png'));
+    await write(path.join(root, 'Viejas', '2024', 'Herdling 29_8_2025 07_17_04.png'));
+    await write(path.join(root, 'Ask Jesus', 'ask_jesus - Twitch - Brave 2023-06-24 12-28-22.mp4'));
+    const shots = createScreenshots({
+      games: async () => library,
+      sources: async () => [
+        { kind: 'named', label: 'Xbox Game Bar', dir: root, mode: 'both' },
+        // La misma carpeta como «Videos»: no se cuenta dos veces.
+        { kind: 'named', label: 'Videos', dir: root, mode: 'both', skip: ['Captures'] }
+      ]
+    });
+    assert.equal((await shots.forGame('steam:1234560')).total, 1);
+    assert.equal((await shots.forGame('xbox:e33')).total, 1);
+    assert.equal((await shots.forGame('xbox:herd')).total, 2);
+    assert.equal((await shots.recent(20)).total, 4);
+    const folders = await shots.folders();
+    assert.deepEqual(
+      folders.map((item) => [item.label, item.count]),
+      [['Xbox Game Bar', 4]]
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

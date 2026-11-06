@@ -1,8 +1,9 @@
 // Tus capturas: las imágenes que sacás mientras jugás, leídas de donde las guarda cada programa.
 // - Steam (F12): userdata/<cuenta>/760/remote/<appid>/screenshots/, con miniaturas en thumbnails/.
 // - MAME (F12): <snapshot_directory>/<set>/0000.png.
-// - Xbox Game Bar: una sola carpeta (Videos\Captures); el nombre del archivo empieza con el del juego.
-// - NVIDIA y carpetas propias: una subcarpeta por juego con su nombre, o archivos con el nombre del juego.
+// - Xbox Game Bar (también el botón de captura del mando): la carpeta «Capturas» de Windows; el nombre del
+//   archivo empieza con el del juego. Los .jxr (HDR) se ignoran: Game Bar guarda al lado una copia .png.
+// - NVIDIA, Videos y carpetas propias: una subcarpeta por juego con su nombre, o archivos con el nombre del juego.
 // Nada se copia ni se modifica: el índice vive en memoria y se rehace como mucho una vez por minuto.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -17,6 +18,7 @@ export const IMAGE_TYPES = {
 };
 const isImage = (name) => Object.hasOwn(IMAGE_TYPES, path.extname(name).toLowerCase());
 const MAX_BYTES = 60_000_000;
+const MAX_DEPTH = 3;
 
 // Nombres comparables: sin tildes, marcas ni signos ("Control™ Resonant" → "control resonant").
 export function normalizeName(name) {
@@ -106,16 +108,21 @@ async function readSource(source, lookup) {
       if (key) add(key, await imagesIn(path.join(source.dir, set.name)));
     }
   } else {
-    // Carpetas por nombre: subcarpetas con el nombre del juego y, en la raíz, archivos con su nombre.
+    // Carpetas por nombre (Game Bar, NVIDIA, Videos y las propias), hasta MAX_DEPTH niveles. Una carpeta con el
+    // nombre de un juego le da todas sus imágenes; si no, cada archivo se asocia por su nombre. Así funciona
+    // tanto «Videos\Herdling\Herdling 23_8_2025.png» como «Videos\Expedition 33\Clair Obscur_ Expedition 33 ….png».
     const skip = new Set((source.skip ?? []).map((name) => name.toLowerCase()));
-    for (const entry of await entries(source.dir)) {
-      if (entry.isDirectory() && source.mode !== 'files' && !skip.has(entry.name.toLowerCase())) {
-        const key = lookup.byName(entry.name);
-        if (key) add(key, await imagesIn(path.join(source.dir, entry.name)));
+    const walk = async (dir, depth, key) => {
+      if (key || source.mode !== 'folders' || depth > 0)
+        for (const item of await imagesIn(dir)) add(key ?? lookup.byName(titleFromFile(item.file)), [item]);
+      if (depth >= MAX_DEPTH || source.mode === 'files') return;
+      for (const entry of await entries(dir)) {
+        if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+        if (depth === 0 && skip.has(entry.name.toLowerCase())) continue;
+        await walk(path.join(dir, entry.name), depth + 1, key ?? lookup.byName(entry.name));
       }
-    }
-    if (source.mode !== 'folders')
-      for (const item of await imagesIn(source.dir)) add(lookup.byName(titleFromFile(item.file)), [item]);
+    };
+    await walk(source.dir, 0, null);
   }
   return found.map((item) => ({ ...item, source: source.label }));
 }
@@ -147,7 +154,12 @@ export function createScreenshots({ sources, games, ttl = 60_000, now = Date.now
     const seen = new Set();
     const items = [];
     const folders = [];
+    const dirs = new Set();
     for (const source of list) {
+      // La misma carpeta puede llegar dos veces (por ejemplo, si las capturas de Game Bar van a «Videos»).
+      const dirKey = path.resolve(source.dir).toLowerCase();
+      if (dirs.has(dirKey)) continue;
+      dirs.add(dirKey);
       const exists = await fs
         .stat(source.dir)
         .then((info) => info.isDirectory())

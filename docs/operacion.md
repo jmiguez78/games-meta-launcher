@@ -20,7 +20,7 @@ En la aplicación portable, **Configuración → Búsqueda nocturna de juegos** 
 
 La tarea guarda la ruta exacta del `.exe` que la programó. Como `npm run package` deja sólo los dos últimos ejecutables, al abrir otra versión el launcher compara esa ruta con la propia y, si no coinciden, vuelve a crear la tarea con el mismo horario (queda en el registro: «Tarea nocturna reprogramada»). Configuración muestra la última ejecución, su resultado y avisa si la tarea apunta a un ejecutable que ya no existe.
 
-Durante el desarrollo, el script `tools/register-nightly-index.ps1` crea una tarea de Windows para ejecutar el índice todos los días a las 03:00. Debe ejecutarse una sola vez por el usuario desde PowerShell.
+Durante el desarrollo, el script `tools/register-nightly-index.ps1` crea otra tarea, «Games Meta Launcher - Indexación nocturna (desarrollo)», que ejecuta el índice todos los días a las 03:00 y guarda en `data/` del proyecto. Debe ejecutarse una sola vez por el usuario desde PowerShell. Hasta la 0.33.0 las dos tareas tenían el mismo nombre: registrar la de desarrollo reemplazaba la de la aplicación, el índice nocturno quedaba en `data/` y el launcher no veía los juegos nuevos. Al abrirse, la 0.33.0 detecta que la tarea apunta a otro programa y la vuelve a crear.
 
 ```powershell
 .\tools\register-nightly-index.ps1
@@ -34,11 +34,11 @@ Las capturas se leen en su lugar, sin copiarlas (`src/screenshots.mjs`); el índ
 | --- | --- | --- |
 | Steam (F12) | `<Steam>\userdata\<cuenta>\760\remote\<appid>\screenshots` (la carpeta de Steam sale del registro) | Número de juego; usa las miniaturas de `thumbnails` |
 | MAME (F12) | `snapshot_directory` de `mame.ini` (`snap` si no está), una subcarpeta por set | Set o versión regional |
-| Xbox Game Bar | `Videos\Captures` | Nombre del archivo, sin la fecha |
-| NVIDIA | Subcarpetas de `Videos` y de `Videos\NVIDIA` | Nombre de la carpeta |
+| Xbox Game Bar y el botón de captura del mando | La carpeta «Capturas» de Windows (`Videos\Captures`, o la que figure en el registro si se movió), con sus subcarpetas | Nombre del archivo, sin la fecha; los `.jxr` (HDR) se ignoran porque Game Bar guarda al lado una copia `.png` |
+| NVIDIA y Videos | `Videos\NVIDIA` y `Videos`, con sus subcarpetas (hasta tres niveles) | Nombre de la carpeta; si no es el de un juego, el de cada archivo |
 | Carpetas propias | Las de **Configuración → Tus capturas** | Nombre de la subcarpeta o del archivo |
 
-Los nombres se comparan sin tildes, marcas ni signos; si el nombre de la captura es el comienzo de un solo juego («Control» → «Control Ultimate Edition») también se asocia, pero no si hay varios posibles. Los juegos de Arcade no se asocian por nombre. Para las pruebas, `GML_STEAM_DIR` y `GML_VIDEOS_DIR` reemplazan las carpetas reales.
+Los nombres se comparan sin tildes, marcas ni signos; si el nombre de la captura es el comienzo de un solo juego («Control» → «Control Ultimate Edition») también se asocia, pero no si hay varios posibles. Los juegos de Arcade no se asocian por nombre. Para las pruebas, `GML_STEAM_DIR`, `GML_VIDEOS_DIR` y `GML_CAPTURES_DIR` reemplazan las carpetas reales.
 
 ## Dónde se guardan los datos
 

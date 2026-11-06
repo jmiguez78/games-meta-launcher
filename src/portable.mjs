@@ -50,6 +50,22 @@ export function chooseDataDir({ exeDir, defaultDir }) {
 // nueva no tiene datos y alguna de las viejas sí, se copian (la vieja queda como respaldo). Se copia también lo que
 // recuerda la interfaz (vista, colección); sólo se dejan las cachés pesadas de Chromium, que se rehacen solas.
 const HEAVY_CACHES = /^(Cache|Code Cache|GPUCache|DawnGraphiteCache|DawnWebGPUCache|Crashpad|lockfile|Singleton\w*)$/;
+// Copia recursiva con operaciones básicas (crear carpeta, copiar archivo). fs.cp / fs.cpSync no copian carpetas en
+// Windows cuando el destino tiene tildes («Viciódromo»): sólo pasaban los archivos sueltos. No pisa lo que ya existe.
+export function copyTree(from, to) {
+  const info = fs.lstatSync(from);
+  if (info.isSymbolicLink()) return;
+  if (info.isDirectory()) {
+    fs.mkdirSync(to, { recursive: true });
+    for (const entry of fs.readdirSync(from)) copyTree(path.join(from, entry), path.join(to, entry));
+  } else if (!fs.existsSync(to)) {
+    try {
+      fs.copyFileSync(from, to);
+    } catch {
+      /* un archivo bloqueado (por ejemplo, abierto por otra copia de la app) no frena el resto */
+    }
+  }
+}
 export function migrateLegacyData({ defaultDir, legacyDirs }) {
   if (hasAppData(defaultDir)) return null;
   const from = legacyDirs.find((dir) => dir && path.resolve(dir) !== path.resolve(defaultDir) && hasAppData(dir));
@@ -58,11 +74,7 @@ export function migrateLegacyData({ defaultDir, legacyDirs }) {
   for (const entry of fs.readdirSync(from)) {
     if (HEAVY_CACHES.test(entry)) continue;
     try {
-      fs.cpSync(path.join(from, entry), path.join(defaultDir, entry), {
-        recursive: true,
-        force: false,
-        errorOnExist: false
-      });
+      copyTree(path.join(from, entry), path.join(defaultDir, entry));
     } catch {
       /* un archivo bloqueado no frena el resto */
     }
@@ -77,6 +89,6 @@ export async function copyToPortable(from, to) {
   await fsp.mkdir(to, { recursive: true });
   for (const entry of await fsp.readdir(from)) {
     if (CHROMIUM.test(entry)) continue;
-    await fsp.cp(path.join(from, entry), path.join(to, entry), { recursive: true, errorOnExist: false });
+    copyTree(path.join(from, entry), path.join(to, entry));
   }
 }

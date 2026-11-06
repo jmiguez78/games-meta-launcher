@@ -1,17 +1,11 @@
 node_modules/
 .env
-data/library.json
-data/preferences.json
-data/covers/
-data/art-cache/
+# Todo lo de data/ es de cada PC (inventario, preferencias, claves, cachés), salvo el ejemplo.
+data/*
+!data/library.sample.json
 dist/
 *.log
 release*/
-data/integrations.json
-data/metadata.json
-data/steam-credentials.json
-data/steam-account.json
-data/steam-cache/
 releases/
 _to_delete/
 test/ui/.data/

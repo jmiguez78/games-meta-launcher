@@ -6,8 +6,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
-import zlib from 'node:zlib';
-import { fileURLToPath } from 'node:url';
 import { readZipEntries } from './zip-index.mjs';
 import { readJsonCached, writeJsonAtomic } from './json-file.mjs';
 import { badRequest, conflict, notFound } from './http.mjs';
@@ -516,18 +514,15 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     const help = await output(exe, ['-help']);
     return help.match(/\bv(\d+\.\d+\w*)/)?.[1] ?? null;
   }
-  // Archivos de apoyo: la copia descargada (se renueva cada 30 días); si la descarga falla, la anterior;
-  // si no hay ninguna, la que viene con la aplicación. Se informa de dónde salió cada uno.
+  // Archivos de apoyo de AntoPISA (progetto-SNAPS): la copia descargada (se renueva cada 30 días); si la descarga
+  // falla, la anterior. No se incluyen en la aplicación porque no tienen una licencia que permita redistribuirlos:
+  // sin descarga, Arcade funciona sin categorías, ranking, sagas ni movimientos. Se informa de dónde salió cada uno.
   const looksValid = {
     catver: /^\[Category\]/m,
     bestgames: /^\[\d+ to \d+/m,
     series: /^\[[^\]]+\]/m,
     command: /^\$info=/m
   };
-  async function bundled(name) {
-    const file = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mame-support', `${name}.ini.gz`);
-    return zlib.gunzipSync(await fs.readFile(file)).toString('utf8');
-  }
   async function support(name) {
     const file = path.join(supportDir, `${name}.ini`);
     try {
@@ -551,8 +546,7 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     }
     const previous = await fs.readFile(file, 'utf8').catch(() => '');
     if (previous) return { text: previous, source: 'cache', error };
-    const text = await bundled(name).catch(() => '');
-    return { text, source: text ? 'bundled' : 'missing', error };
+    return { text: '', source: 'missing', error };
   }
 
   // Nombres de las carpetas Named_* de libretro-thumbnails, guardados 30 días en mame-support.

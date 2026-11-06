@@ -15,8 +15,8 @@ jobs:
     name: Código y pruebas en Windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -30,12 +30,12 @@ jobs:
 
   interfaz:
     name: Interfaz (Playwright)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # fijo: las capturas de referencia dependen de las fuentes del sistema
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -45,7 +45,7 @@ jobs:
         run: npm run test:ui
       - name: Informe y diferencias de las capturas
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: informe-interfaz
           path: |
@@ -60,14 +60,14 @@ jobs:
     needs: [windows, interfaz]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run package
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: viciodromo
           path: releases/*.exe

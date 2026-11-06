@@ -222,7 +222,7 @@ export function describeMame(info) {
 // Categorías, ranking y sagas: si no se pudieron descargar, se dice por qué y qué se usó en su lugar.
 export function supportNote(support) {
   if (!support) return '';
-  const names = { catver: 'categorías', bestgames: 'ranking', series: 'sagas' };
+  const names = { catver: 'categorías', bestgames: 'ranking', series: 'sagas', command: 'movimientos' };
   const failed = Object.entries(support).filter(([, item]) => item.error);
   if (!failed.length) return '';
   const missing = failed.filter(([, item]) => item.source === 'missing');
@@ -232,9 +232,10 @@ export function supportNote(support) {
     ' (' +
     failed[0][1].error +
     '). ' +
-    (missing.length
-      ? 'Sin categorías, los juegos de casino y mahjong no se pueden ocultar.'
-      : 'Se usó la copia guardada o la incluida en la aplicación.')
+    (missing.some(([name]) => name === 'catver')
+      ? 'Sin categorías, los juegos de casino y mahjong no se pueden ocultar. '
+      : '') +
+    (missing.length ? 'Se vuelve a intentar en la próxima búsqueda de Arcade.' : 'Se usó la copia guardada.')
   );
 }
 

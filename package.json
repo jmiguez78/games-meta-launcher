@@ -1,7 +1,7 @@
 {
   "name": "viciodromo",
   "productName": "Viciódromo",
-  "version": "0.36.1",
+  "version": "0.36.2",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
@@ -42,7 +42,9 @@
     "files": [
       "public/**/*",
       "src/**/*",
-      "package.json"
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
     ],
     "extraResources": [
       {

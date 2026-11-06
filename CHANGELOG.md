@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.36.2
+
+Primera versión publicada como Viciódromo.
+
+- **Avisos de terceros.** `THIRD_PARTY_NOTICES.md` detalla cada componente incluido (Electron, dependencias, tipografías, íconos) con su licencia, y lo que se descarga de terceros con sus condiciones. Viaja dentro del ejecutable, junto con `LICENSE`.
+- **Los archivos de AntoPISA ya no vienen incluidos.** `catver.ini`, `series.ini`, `bestgames.ini` y `command.dat` no publican una licencia que permita redistribuirlos, así que se quitaron de la aplicación: se siguen descargando de su repositorio cada 30 días. Sin conexión la primera vez, Arcade funciona sin categorías, sagas, ranking ni movimientos hasta la próxima búsqueda, y Configuración lo avisa.
+- **Repositorio.** `data/` se ignora entera (salvo el ejemplo). Los flujos de GitHub usan versiones que corren en Node 24 y las pruebas de interfaz quedan fijas en Ubuntu 24.04, para que un cambio de fuentes del sistema no rompa las capturas de referencia.
+
 ## 0.36.1
 
 - **Repositorio público con el nombre nuevo.** El código está en [jmiguez78/viciodromo](https://github.com/jmiguez78/viciodromo), bajo la licencia MIT, con aviso legal y créditos. El aviso de versión nueva consulta ese repositorio (GitHub redirige el nombre anterior, pero así no depende de la redirección).

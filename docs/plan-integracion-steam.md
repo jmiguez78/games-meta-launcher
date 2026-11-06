@@ -4,7 +4,7 @@ Propuesta del 23 de octubre de 2026. Estado: implementado en 0.14.0. Las entrega
 
 ## Punto de partida comprobado
 
-- Games Meta Launcher 0.13.0 detecta instalaciones locales y conserva preferencias personales.
+- Viciódromo 0.13.0 detecta instalaciones locales y conserva preferencias personales.
 - El MCP comunitario `steam-games-mcp` 0.17.0 está configurado en Codex y autenticado.
 - Una consulta con `get_owned_games(limit: 300)` devolvió los 266 juegos reportados por Steam, sin duplicados.
 - El último inventario local, generado el 23 de octubre de 2026, contiene 37 juegos de Steam. Los 37 pertenecen al conjunto reportado por la cuenta.

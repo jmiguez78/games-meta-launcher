@@ -35,7 +35,7 @@ La base local está terminada:
 - Navegación en Inicio, Biblioteca, Diagnóstico y Configuración.
 - Sistema visual de escritorio con estados de carga, vacío, error y confirmación.
 - Diagnóstico por plataforma y horario de indexación nocturna configurable desde la aplicación.
-- Fecha de última vez jugado registrada al iniciar un título desde Games Meta Launcher.
+- Fecha de última vez jugado registrada al iniciar un título desde Viciódromo.
 - Explorador en tabla única, ordenable de forma ascendente o descendente por nombre, plataforma, unidad, estado y fecha de juego.
 - Servidor local restringido a esta PC, respaldos validados y lanzamiento sin `cmd.exe` (0.7.2 y 0.8.0).
 - Pruebas automáticas (`npm test`) y código fuente formateado.

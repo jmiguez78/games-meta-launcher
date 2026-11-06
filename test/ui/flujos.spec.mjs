@@ -70,7 +70,7 @@ test('exportar el diagnóstico descarga un archivo sin datos personales', async 
   await openApp(page);
   await show(page, 'settings');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-diagnostics')]);
-  expect(download.suggestedFilename()).toMatch(/^games-meta-launcher-diagnostico-\d{4}-\d\d-\d\d\.json$/);
+  expect(download.suggestedFilename()).toMatch(/^viciodromo-diagnostico-\d{4}-\d\d-\d\d\.json$/);
   const report = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
   expect(report.library.total).toBe(54);
   expect(report.files.find((file) => file.name === 'preferences.json').schema).toBe(1);

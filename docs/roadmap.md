@@ -46,7 +46,7 @@
 
 ## 0.7.1 — Exploración de biblioteca · Completada
 
-- Fecha de última vez jugado para inicios realizados desde Games Meta Launcher.
+- Fecha de última vez jugado para inicios realizados desde Viciódromo.
 - Vista Explorador en tabla única y ordenamiento ascendente o descendente desde cada encabezado.
 
 ## 0.7.2 — Seguridad del servidor local · Completada

@@ -1,10 +1,11 @@
 {
-  "name": "games-meta-launcher",
-  "version": "0.35.0",
+  "name": "viciodromo",
+  "productName": "Viciódromo",
+  "version": "0.36.0",
   "main": "src/electron-main.mjs",
   "private": true,
   "type": "module",
-  "description": "Lanzador local y catálogo de juegos para Windows.",
+  "description": "Viciódromo: todos tus juegos de PC en un solo lugar. Lanzador y catálogo para Windows.",
   "author": "Jorge Miguez",
   "gml": {
     "releases": "jmiguez78/games-meta-launcher"
@@ -28,8 +29,9 @@
     "prettier": "3.6.2"
   },
   "build": {
-    "appId": "com.jorgemiguez.gamesmetalauncher",
-    "productName": "Games Meta Launcher",
+    "appId": "com.jorgemiguez.viciodromo",
+    "productName": "Viciódromo",
+    "artifactName": "Viciodromo-${version}.${ext}",
     "files": [
       "public/**/*",
       "src/**/*",

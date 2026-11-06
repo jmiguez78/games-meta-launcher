@@ -14,7 +14,7 @@ const distDir = path.join(root, 'dist');
 const releasesDir = path.join(root, 'releases');
 const KEEP = 2;
 
-// Versión a partir del nombre «Games Meta Launcher 0.18.0.exe».
+// Versión a partir del nombre («Viciodromo-0.36.0.exe»; antes, «Games Meta Launcher 0.18.0.exe»).
 export function versionOf(file) {
   const match = /(\d+)\.(\d+)\.(\d+)\.exe$/i.exec(file);
   return match ? match.slice(1, 4).map(Number) : null;

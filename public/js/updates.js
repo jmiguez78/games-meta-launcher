@@ -51,7 +51,7 @@ export function setup() {
     const info = await loadUpdates();
     if (!info?.newer || remembered() === info.latest) return;
     remember(info.latest);
-    notify('Hay una versión nueva de Games Meta Launcher: ' + info.latest + '.', {
+    notify('Hay una versión nueva de Viciódromo: ' + info.latest + '.', {
       action: info.url ? { label: 'Ver novedades', run: () => openRelease(info.url) } : undefined
     });
   }, 8000);

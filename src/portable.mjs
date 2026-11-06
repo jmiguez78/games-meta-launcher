@@ -9,7 +9,10 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-export const PORTABLE_FOLDER = 'Games Meta Launcher - datos';
+export const PORTABLE_FOLDER = 'Viciódromo - datos';
+// Nombres de antes de llamarse Viciódromo (hasta la 0.35.0): sus datos se pasan a la carpeta nueva.
+export const LEGACY_PORTABLE_FOLDER = 'Games Meta Launcher - datos';
+export const LEGACY_APP_FOLDERS = ['Games Meta Launcher', 'games-meta-launcher'];
 const APP_FILES = ['library.json', 'preferences.json'];
 // Lo que Chromium guarda en la carpeta de datos: no se copia.
 const CHROMIUM =
@@ -23,6 +26,16 @@ export function chooseDataDir({ exeDir, defaultDir }) {
   const portable = portableFolder(exeDir);
   if (!portable) return { dir: defaultDir, portable: false };
   if (fs.existsSync(portable)) return { dir: portable, portable: true };
+  // La carpeta de antes del cambio de nombre se renombra; si no se puede (abierta en otro programa), se sigue usando.
+  const legacy = path.join(exeDir, LEGACY_PORTABLE_FOLDER);
+  if (fs.existsSync(legacy)) {
+    try {
+      fs.renameSync(legacy, portable);
+      return { dir: portable, portable: true, renamed: legacy };
+    } catch {
+      return { dir: legacy, portable: true };
+    }
+  }
   if (hasAppData(defaultDir)) return { dir: defaultDir, portable: false };
   try {
     fs.mkdirSync(portable, { recursive: true });
@@ -31,6 +44,30 @@ export function chooseDataDir({ exeDir, defaultDir }) {
   } catch {
     return { dir: defaultDir, portable: false };
   }
+}
+
+// Cambio de nombre (0.36.0): la carpeta de datos de Windows pasa de «Games Meta Launcher» a «Viciódromo». Si la
+// nueva no tiene datos y alguna de las viejas sí, se copian (la vieja queda como respaldo). Se copia también lo que
+// recuerda la interfaz (vista, colección); sólo se dejan las cachés pesadas de Chromium, que se rehacen solas.
+const HEAVY_CACHES = /^(Cache|Code Cache|GPUCache|DawnGraphiteCache|DawnWebGPUCache|Crashpad|lockfile|Singleton\w*)$/;
+export function migrateLegacyData({ defaultDir, legacyDirs }) {
+  if (hasAppData(defaultDir)) return null;
+  const from = legacyDirs.find((dir) => dir && path.resolve(dir) !== path.resolve(defaultDir) && hasAppData(dir));
+  if (!from) return null;
+  fs.mkdirSync(defaultDir, { recursive: true });
+  for (const entry of fs.readdirSync(from)) {
+    if (HEAVY_CACHES.test(entry)) continue;
+    try {
+      fs.cpSync(path.join(from, entry), path.join(defaultDir, entry), {
+        recursive: true,
+        force: false,
+        errorOnExist: false
+      });
+    } catch {
+      /* un archivo bloqueado no frena el resto */
+    }
+  }
+  return { from };
 }
 
 // Copia los datos del launcher (no las cachés de Chromium) a la carpeta junto al .exe. No pisa una carpeta que

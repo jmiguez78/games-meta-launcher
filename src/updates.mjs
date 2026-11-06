@@ -22,7 +22,7 @@ export function createUpdates({ current, repository, fetchImpl = globalThis.fetc
 
   async function query() {
     const response = await fetchImpl(`https://api.github.com/repos/${repository}/releases/latest`, {
-      headers: { accept: 'application/vnd.github+json', 'user-agent': 'GamesMetaLauncher' },
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'Viciodromo' },
       signal: AbortSignal.timeout(10000)
     });
     if (response.status === 404) return { available: false, reason: 'Todavía no hay versiones publicadas.' };

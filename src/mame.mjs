@@ -572,7 +572,7 @@ export function createArcade(dataDir, { fetchImpl = globalThis.fetch, spawnImpl 
     if (!saved || Date.now() - Date.parse(saved.fetchedAt) > SUPPORT_MAX_AGE) {
       const get = async (sha) => {
         const response = await fetchImpl(THUMBNAIL_TREE + sha, {
-          headers: { accept: 'application/vnd.github+json', 'user-agent': 'GamesMetaLauncher' },
+          headers: { accept: 'application/vnd.github+json', 'user-agent': 'Viciodromo' },
           signal: AbortSignal.timeout(60000)
         });
         if (!response.ok) throw new Error(`GitHub respondió ${response.status}`);

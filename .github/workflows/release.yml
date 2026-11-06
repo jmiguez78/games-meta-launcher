@@ -30,6 +30,6 @@ jobs:
         run: node tools/release-notes.mjs "${GITHUB_REF_NAME}" > notas.md
       - uses: softprops/action-gh-release@v2
         with:
-          name: Games Meta Launcher ${{ github.ref_name }}
+          name: Viciódromo ${{ github.ref_name }}
           body_path: notas.md
           files: releases/*.exe

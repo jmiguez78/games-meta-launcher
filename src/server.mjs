@@ -68,7 +68,9 @@ function imageType(bytes) {
 }
 const extensionByMime = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
 const execFileAsync = promisify(execFile);
-const scheduleName = 'Games Meta Launcher - Indexación nocturna';
+const scheduleName = 'Viciódromo - Búsqueda nocturna';
+// Nombre de la tarea hasta la 0.35.0 (Games Meta Launcher): al abrir, se reemplaza por la de nombre nuevo.
+const LEGACY_SCHEDULES = ['Games Meta Launcher - Indexación nocturna'];
 // Preferencias por juego (favorito, etiquetas, notas, tiempo) y de la aplicación. Versión 1: { games, settings }.
 const prefsFile = createVersionedFile(preferencesPath, {
   version: 1,
@@ -539,11 +541,11 @@ function scheduleTarget() {
     : { exe: process.execPath, args: `"${path.join(root, 'src', 'indexer.mjs')}"` };
 }
 const samePath = (a, b) => Boolean(a && b) && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
-async function schedule() {
+async function schedule(name = scheduleName) {
   if (process.platform !== 'win32') return { supported: false, configured: false };
   const date = (name) =>
     `$(if ($info.${name} -and $info.${name}.Year -gt 2000) { $info.${name}.ToString('o') } else { $null })`;
-  const script = `$task = Get-ScheduledTask -TaskName '${scheduleName}' -ErrorAction SilentlyContinue; if ($null -eq $task) { @{ configured = $false } | ConvertTo-Json -Compress } else { $info = Get-ScheduledTaskInfo -TaskName '${scheduleName}'; $trigger = $task.Triggers | Select-Object -First 1; $action = $task.Actions | Select-Object -First 1; [pscustomobject]@{ configured = $true; enabled = $task.State -ne 'Disabled'; nextRun = ${date('NextRunTime')}; lastRun = ${date('LastRunTime')}; lastResult = $info.LastTaskResult; target = $action.Execute; time = if ($trigger.StartBoundary) { ([datetime]$trigger.StartBoundary).ToString('HH:mm') } else { $null } } | ConvertTo-Json -Compress }`;
+  const script = `[Console]::OutputEncoding = [Text.Encoding]::UTF8; $task = Get-ScheduledTask -TaskName '${name}' -ErrorAction SilentlyContinue; if ($null -eq $task) { @{ configured = $false } | ConvertTo-Json -Compress } else { $info = Get-ScheduledTaskInfo -TaskName '${name}'; $trigger = $task.Triggers | Select-Object -First 1; $action = $task.Actions | Select-Object -First 1; [pscustomobject]@{ configured = $true; enabled = $task.State -ne 'Disabled'; nextRun = ${date('NextRunTime')}; lastRun = ${date('LastRunTime')}; lastResult = $info.LastTaskResult; target = $action.Execute; time = if ($trigger.StartBoundary) { ([datetime]$trigger.StartBoundary).ToString('HH:mm') } else { $null } } | ConvertTo-Json -Compress }`;
   try {
     const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]);
     const data = JSON.parse(stdout);
@@ -582,9 +584,23 @@ async function configureSchedule(time) {
 // se vuelve a crear con el mismo horario y este ejecutable.
 export async function repairSchedule() {
   if (process.platform !== 'win32' || !process.versions.electron) return null;
+  const valid = (time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time ?? '');
   const current = await schedule();
-  if (!current.configured || current.current) return null;
-  const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(current.time ?? '') ? current.time : '03:00';
+  if (!current.configured) {
+    // Tarea con el nombre anterior: se crea la nueva con el mismo horario y se borra la vieja.
+    for (const legacy of LEGACY_SCHEDULES) {
+      const old = await schedule(legacy);
+      if (!old.configured) continue;
+      const time = valid(old.time) ? old.time : '03:00';
+      await configureSchedule(time);
+      await execFileAsync('schtasks.exe', ['/Delete', '/TN', legacy, '/F']).catch(() => {});
+      log('info', 'tarea', `Tarea nocturna renombrada («${legacy}» → «${scheduleName}»), a las ${time}`);
+      return { repaired: true, renamed: legacy };
+    }
+    return null;
+  }
+  if (current.current) return null;
+  const time = valid(current.time) ? current.time : '03:00';
   await configureSchedule(time);
   log('info', 'tarea', `Tarea nocturna reprogramada a las ${time}: apuntaba a ${current.target || 'otro ejecutable'}`);
   return { repaired: true, previous: current.target };
@@ -1003,7 +1019,7 @@ export function startServer(port = Number(process.env.PORT || 4321), options = {
   const fixSchedule = setTimeout(() => repairSchedule().catch((error) => log('warn', 'tarea', error.message)), 3000);
   fixSchedule.unref();
   server.listen(port, '127.0.0.1', () =>
-    console.log(`Games Meta Launcher disponible en http://127.0.0.1:${server.address().port}`)
+    console.log(`Viciódromo disponible en http://127.0.0.1:${server.address().port}`)
   );
   return server;
 }

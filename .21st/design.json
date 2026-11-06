@@ -1,7 +1,7 @@
 {
   "version": 1,
   "project": {
-    "name": "games-meta-launcher",
+    "name": "viciodromo",
     "productType": "Biblioteca y lanzador local de juegos para Windows",
     "stack": [
       "Electron",

@@ -20,7 +20,7 @@ En la aplicación portable, **Configuración → Búsqueda nocturna de juegos** 
 
 La tarea guarda la ruta exacta del `.exe` que la programó. Como `npm run package` deja sólo los dos últimos ejecutables, al abrir otra versión el launcher compara esa ruta con la propia y, si no coinciden, vuelve a crear la tarea con el mismo horario (queda en el registro: «Tarea nocturna reprogramada»). Configuración muestra la última ejecución, su resultado y avisa si la tarea apunta a un ejecutable que ya no existe.
 
-Durante el desarrollo, el script `tools/register-nightly-index.ps1` crea otra tarea, «Games Meta Launcher - Indexación nocturna (desarrollo)», que ejecuta el índice todos los días a las 03:00 y guarda en `data/` del proyecto. Debe ejecutarse una sola vez por el usuario desde PowerShell. Hasta la 0.33.0 las dos tareas tenían el mismo nombre: registrar la de desarrollo reemplazaba la de la aplicación, el índice nocturno quedaba en `data/` y el launcher no veía los juegos nuevos. Al abrirse, la 0.33.0 detecta que la tarea apunta a otro programa y la vuelve a crear.
+Durante el desarrollo, el script `tools/register-nightly-index.ps1` crea otra tarea, «Viciódromo - Búsqueda nocturna (desarrollo)», que ejecuta el índice todos los días a las 03:00 y guarda en `data/` del proyecto. Debe ejecutarse una sola vez por el usuario desde PowerShell. Hasta la 0.33.0 las dos tareas tenían el mismo nombre: registrar la de desarrollo reemplazaba la de la aplicación, el índice nocturno quedaba en `data/` y el launcher no veía los juegos nuevos. Al abrirse, la 0.33.0 detecta que la tarea apunta a otro programa y la vuelve a crear.
 
 ```powershell
 .\tools\register-nightly-index.ps1
@@ -58,7 +58,7 @@ Los nombres se comparan sin tildes, marcas ni signos; si el nombre de la captura
 ## Dónde se guardan los datos
 
 - **Desarrollo** (`npm start`, `npm run desktop`): en `data/` dentro del proyecto (excluida del repositorio).
-- **Portable:** en la carpeta `Games Meta Launcher - datos` junto al `.exe` si existe o si es una PC sin datos previos; si la PC ya tenía datos, en el perfil de Windows (`%APPDATA%\Games Meta Launcher`). **Configuración → Datos del portable** los copia junto al ejecutable. Las cachés del navegador interno quedan siempre en el perfil de Windows.
+- **Portable:** en la carpeta `Viciódromo - datos` junto al `.exe` si existe o si es una PC sin datos previos; si la PC ya tenía datos, en el perfil de Windows (`%APPDATA%\Viciódromo`). **Configuración → Datos del portable** los copia junto al ejecutable. Las cachés del navegador interno quedan siempre en el perfil de Windows.
 
 | Archivo                                 | Contenido                                                                          |
 | --------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -73,7 +73,7 @@ Los nombres se comparan sin tildes, marcas ni signos; si el nombre de la captura
 
 ## Datos personales y sesiones
 
-Los datos personales se asocian al identificador estable de cada juego: buscar juegos de nuevo no los borra. La fecha de última vez jugado se actualiza al iniciar un juego desde Games Meta Launcher. Las sesiones (con su duración) se miden cuando el juego se abre desde el launcher: Arcade viendo cerrarse a MAME y, en Windows, el resto vigilando los procesos que corren desde la carpeta de instalación del juego. Lo jugado fuera del launcher sólo cuenta si lo informa Steam.
+Los datos personales se asocian al identificador estable de cada juego: buscar juegos de nuevo no los borra. La fecha de última vez jugado se actualiza al iniciar un juego desde Viciódromo. Las sesiones (con su duración) se miden cuando el juego se abre desde el launcher: Arcade viendo cerrarse a MAME y, en Windows, el resto vigilando los procesos que corren desde la carpeta de instalación del juego. Lo jugado fuera del launcher sólo cuenta si lo informa Steam.
 
 **Configuración → Respaldo** exporta e importa favoritos, notas, etiquetas, portadas propias, rutas personalizadas y listas.
 

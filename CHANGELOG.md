@@ -1,5 +1,15 @@
 # Registro de cambios
 
+## 0.36.0
+
+**Games Meta Launcher ahora se llama Viciódromo:** el lugar donde se vicia.
+
+- El nombre nuevo está en la ventana, la barra lateral, la imagen de bienvenida, los avisos, los archivos de respaldo y de diagnóstico, y la documentación. El ejecutable pasa a llamarse `Viciodromo-<versión>.exe`, sin tilde ni espacios, para que se pueda compartir y publicar en GitHub sin que cambie el nombre.
+- **Tus datos no se pierden.** Windows guarda los datos en una carpeta con el nombre de la aplicación. Al abrir la 0.36.0 por primera vez, lo que había en `%APPDATA%\Games Meta Launcher` (preferencias, sesiones, listas, portadas, claves de Steam e IGDB, y lo que recuerda la interfaz) se copia a `%APPDATA%\Viciódromo`; la carpeta vieja queda como respaldo. En el portable, la carpeta `Games Meta Launcher - datos` junto al `.exe` se renombra a `Viciódromo - datos`.
+- **La búsqueda nocturna se renombra.** La tarea «Games Meta Launcher - Indexación nocturna» se reemplaza por «Viciódromo - Búsqueda nocturna», con el mismo horario.
+- Los respaldos de preferencias hechos con Games Meta Launcher se siguen pudiendo restaurar.
+- El script de la tarea de desarrollo se guarda en UTF-8 con BOM, para que Windows PowerShell lea bien las tildes del nombre.
+
 ## 0.35.0
 
 Tanda 1 del plan para liberar: el launcher encuentra los juegos de cualquier PC, no sólo los de la de desarrollo.

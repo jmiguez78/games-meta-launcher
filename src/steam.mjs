@@ -121,7 +121,7 @@ function createTransport() {
         startup = request('initialize', {
           protocolVersion: '2025-11-25',
           capabilities: {},
-          clientInfo: { name: 'games-meta-launcher', version: '1.0.0' }
+          clientInfo: { name: 'viciodromo', version: '1.0.0' }
         })
           .then((response) => {
             if (response.error) throw new Error('No se pudo iniciar la integración de Steam.');

@@ -10,7 +10,7 @@ export async function exportPreferences() {
     const data = await request('/api/preferences/export');
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-    link.download = 'games-meta-launcher-preferencias.json';
+    link.download = 'viciodromo-preferencias.json';
     link.click();
     URL.revokeObjectURL(link.href);
     notify('Respaldo preparado.', { type: 'success' });
@@ -25,7 +25,7 @@ export async function exportDiagnostics() {
     const data = await request('/api/diagnostics');
     const link = document.createElement('a');
     link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-    link.download = 'games-meta-launcher-diagnostico-' + new Date().toISOString().slice(0, 10) + '.json';
+    link.download = 'viciodromo-diagnostico-' + new Date().toISOString().slice(0, 10) + '.json';
     link.click();
     URL.revokeObjectURL(link.href);
     notify('Diagnóstico preparado.', { type: 'success' });
@@ -50,7 +50,7 @@ export async function importPreferences(file) {
     try {
       data = JSON.parse(await file.text());
     } catch {
-      throw new Error('El archivo no es un respaldo de Games Meta Launcher.');
+      throw new Error('El archivo no es un respaldo de Viciódromo (ni de Games Meta Launcher, su nombre anterior).');
     }
     const previous = await request('/api/preferences/export');
     await restorePreferences(data);

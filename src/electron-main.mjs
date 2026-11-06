@@ -1,7 +1,7 @@
 import { app, BrowserWindow, nativeTheme, session, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chooseDataDir } from './portable.mjs';
+import { LEGACY_APP_FOLDERS, chooseDataDir, migrateLegacyData } from './portable.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Puerto fijo para que la interfaz conserve lo que recuerda (vista, colección, la última biblioteca) entre
@@ -17,6 +17,9 @@ const scanMode = process.argv.includes('--scan');
 // Sin await: tiene que pasar antes del evento «ready».
 {
   const defaultDir = app.getPath('userData');
+  // Antes de la 0.36.0 la aplicación se llamaba Games Meta Launcher: sus datos se copian a la carpeta nueva.
+  const appData = app.getPath('appData');
+  migrateLegacyData({ defaultDir, legacyDirs: LEGACY_APP_FOLDERS.map((name) => path.join(appData, name)) });
   const chosen = chooseDataDir({ exeDir: process.env.PORTABLE_EXECUTABLE_DIR, defaultDir });
   if (chosen.portable) {
     app.setPath('sessionData', defaultDir);
@@ -114,7 +117,7 @@ async function openWindow() {
     height: 900,
     minWidth: 920,
     minHeight: 650,
-    title: 'Games Meta Launcher',
+    title: 'Viciódromo',
     icon: path.join(root, 'public', 'brand', 'icon-256.png'),
     // La ventana se muestra recién cuando la interfaz pintó su primer cuadro, con el fondo del tema:
     // así no hay un destello blanco al abrir.

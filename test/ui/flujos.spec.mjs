@@ -128,3 +128,26 @@ test('listas propias: crear desde un juego, verla en Inicio y en la Biblioteca, 
   await page.locator('#lists-dialog').getByRole('button', { name: 'Cerrar' }).click();
   await expect(page.locator('#active-filters')).not.toContainText('Lista:');
 });
+
+test('tus capturas: en la ficha del juego, en el visor y en Inicio', async ({ page }) => {
+  await openApp(page);
+  const shelf = page.locator('#home-captures');
+  await expect(shelf).toBeVisible();
+  await expect(shelf.locator('.capture-thumbnail')).toHaveCount(4);
+  await openGame(page, 'steam:900000');
+  await page.locator('#game-page [role=tab]', { hasText: 'Tus capturas' }).click();
+  const panel = page.locator('#game-page [role=tabpanel]:not([hidden])');
+  await expect(panel.locator('.capture-summary')).toContainText('4 capturas');
+  await expect(panel.locator('.capture-summary')).toContainText('Xbox Game Bar y Steam');
+  await expect(panel.locator('.capture-thumbnail')).toHaveCount(4);
+  await panel.locator('.capture-thumbnail').first().click();
+  const viewer = page.locator('#media-viewer');
+  await expect(viewer.locator('img')).toBeVisible();
+  await expect(viewer.locator('[data-gallery=folder]')).toBeVisible();
+  await expect(viewer.locator('.media-position')).toHaveText('1 / 4');
+  await page.keyboard.press('Escape');
+  // Un juego sin capturas explica cómo sacarlas.
+  await openGame(page, 'steam:900006');
+  await page.locator('#game-page [role=tab]', { hasText: 'Tus capturas' }).click();
+  await expect(page.locator('#game-page [role=tabpanel]:not([hidden]) .capture-summary')).toContainText('F12');
+});

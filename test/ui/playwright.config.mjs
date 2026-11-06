@@ -29,7 +29,14 @@ export default defineConfig({
     command: 'node test/ui/fixture.mjs test/ui/.data && node src/server.mjs',
     cwd: '../..',
     url: `http://127.0.0.1:${PORT}/api/health`,
-    env: { PORT: String(PORT), GML_DATA_DIR: 'test/ui/.data', GML_OFFLINE: '1' },
+    env: {
+      PORT: String(PORT),
+      GML_DATA_DIR: 'test/ui/.data',
+      GML_OFFLINE: '1',
+      // Capturas propias inventadas (fixture.mjs): nunca se leen las carpetas reales de Steam ni de Videos.
+      GML_STEAM_DIR: 'test/ui/.data/Steam',
+      GML_VIDEOS_DIR: 'test/ui/.data/Videos'
+    },
     reuseExistingServer: false,
     timeout: 30000
   }

@@ -1,5 +1,12 @@
 # Registro de cambios
 
+## 0.33.0
+
+Tus capturas en el launcher, y una búsqueda nocturna que no se rompe al compilar una versión nueva.
+
+- **Tus capturas.** Nueva pestaña **Tus capturas** en la página de cada juego, con las imágenes que sacaste jugando, de la más nueva a la más vieja: visor a pantalla completa, «Mostrar en la carpeta» y «Buscar de nuevo». En Inicio, la fila **Tus últimas capturas** junta las de todos los juegos. Se leen de donde las guarda cada programa, sin copiarlas: Steam (F12, por número de juego), MAME (F12, por set y según `snapshot_directory` de `mame.ini`), Xbox Game Bar (`Videos\Captures`, por el nombre del archivo) y NVIDIA (una carpeta por juego en `Videos` o `Videos\NVIDIA`). En **Configuración → Tus capturas** se ve qué carpetas se revisan y cuántas capturas hay en cada una, y se pueden sumar otras.
+- **Búsqueda nocturna que se repara sola.** La tarea de Windows guarda la ruta del `.exe` que la programó, y `npm run package` borra los ejecutables viejos: la tarea seguía «activa», pero fallaba todas las noches sin avisar. Ahora, al abrir una versión nueva, la tarea se vuelve a crear con el mismo horario y el ejecutable actual. Configuración muestra cuándo corrió por última vez y si anduvo, y avisa si apunta a un ejecutable que ya no existe.
+
 ## 0.32.0
 
 Tanda 4 del plan, «ambición»: listas propias, una biblioteca que aguanta miles de juegos y el tema claro y los errores revisados. Con esta tanda se completa el plan de 20 mejoras.

@@ -5,6 +5,7 @@ import { icon } from './icons.js';
 import { playGame } from './launch.js';
 import { state } from './state.js';
 import { loadSteamGameTab, steamPlain } from './steam.js';
+import { loadCapturesTab } from './captures.js';
 
 export function metaSection(meta) {
   const section = document.createElement('section');
@@ -96,11 +97,18 @@ export function openMediaViewer(pictures, index, title, trigger) {
       '<figcaption id="media-viewer-status" role="status"></figcaption></figure>' +
       '<footer class="media-viewer-footer"><button type="button" class="button" data-gallery="previous">Anterior</button>' +
       '<span class="media-position" aria-live="polite"></span><button type="button" class="button" data-gallery="next">Siguiente</button>' +
-      '<button type="button" class="button" data-gallery="retry" hidden>Reintentar imagen</button></footer>';
+      '<button type="button" class="button" data-gallery="retry" hidden>Reintentar imagen</button>' +
+      '<button type="button" class="button" data-gallery="folder" hidden>' +
+      icon('folder') +
+      ' Mostrar en la carpeta</button></footer>';
     viewer.querySelector('.icon-btn').onclick = () => viewer.close();
     viewer.querySelector('[data-gallery=previous]').onclick = () => showMediaImage(-1);
     viewer.querySelector('[data-gallery=next]').onclick = () => showMediaImage(1);
     viewer.querySelector('[data-gallery=retry]').onclick = () => showMediaImage(0);
+    viewer.querySelector('[data-gallery=folder]').onclick = () => {
+      const picture = mediaSession?.pictures[mediaSession.index];
+      if (picture?.reveal) picture.reveal();
+    };
     viewer.addEventListener('keydown', (event) => {
       // La galería conserva el foco y no activa atajos de la biblioteca que queda detrás.
       event.stopPropagation();
@@ -149,10 +157,15 @@ export function showMediaImage(direction) {
   };
   img.onerror = () => {
     figure.setAttribute('aria-busy', 'false');
-    status.textContent = 'No se pudo cargar la imagen. Revisá tu conexión y reintentá.';
+    status.textContent = picture.src
+      ? 'No se pudo abrir la captura: puede que se haya movido o borrado.'
+      : 'No se pudo cargar la imagen. Revisá tu conexión y reintentá.';
     retry.hidden = false;
   };
-  img.src = 'https://images.igdb.com/igdb/image/upload/t_1080p/' + picture.id + '.jpg';
+  // Capturas propias (src local, con su carpeta) o imágenes de IGDB (id).
+  viewer.querySelector('[data-gallery=folder]').hidden = !picture.reveal;
+  img.referrerPolicy = 'no-referrer';
+  img.src = picture.src || 'https://images.igdb.com/igdb/image/upload/t_1080p/' + picture.id + '.jpg';
 }
 
 export function appendExtendedMetadata(section, meta, mediaSection) {
@@ -551,7 +564,7 @@ export function personalSection(game) {
   return section;
 }
 
-// Pestañas de la ficha (Resumen, Información, Multimedia y, en Steam, Steam y Logros).
+// Pestañas de la ficha (Resumen, Información, Multimedia, Tus capturas y, en Steam, Steam y Logros).
 // Se usan en la vista Ficha de la Biblioteca y en la página de cada juego.
 export function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
   const tabs = document.createElement('div');
@@ -566,6 +579,7 @@ export function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
     ['summary', 'Resumen'],
     ['information', 'Información'],
     ['media', 'Multimedia'],
+    ['captures', 'Tus capturas'],
     ...(game.platform === 'Steam'
       ? [
           ['steam', 'Steam'],
@@ -601,6 +615,7 @@ export function gameTabs(game, { summaryExtras = [], prefix = 'detail' } = {}) {
       if (active && focus) tab.focus({ preventScroll: true });
     });
     if (key === 'steam' || key === 'achievements') loadSteamGameTab(content.get(key), game, key);
+    if (key === 'captures') loadCapturesTab(content.get(key), game);
   };
   tablist.addEventListener('keydown', (event) => {
     const keys = [...content.keys()];

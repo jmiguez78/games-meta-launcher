@@ -2,6 +2,7 @@
 // sin imágenes ni datos reales. Se genera en una carpeta temporal antes de levantar el servidor.
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 
 const PLATFORMS = [
   ['Steam', 'steam'],
@@ -48,6 +49,61 @@ const GENRES = [
 ];
 const DAY = 86400000;
 const NOW = Date.parse('2026-10-24T18:00:00-03:00');
+
+// PNG de un solo color (para las capturas propias de prueba), sin depender de archivos binarios en el repositorio.
+function crc32(bytes) {
+  let crc = ~0;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return ~crc >>> 0;
+}
+function solidPng(width, height, [r, g, b]) {
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
+    const out = Buffer.alloc(body.length + 8);
+    out.writeUInt32BE(data.length, 0);
+    body.copy(out, 4);
+    out.writeUInt32BE(crc32(body), body.length + 4);
+    return out;
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 2, 0, 0, 0], 8);
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: width }, () => [r, g, b]).flat())]);
+  const pixels = zlib.deflateSync(Buffer.concat(Array.from({ length: height }, () => row)));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', pixels),
+    chunk('IEND', Buffer.alloc(0))
+  ]);
+}
+// Capturas propias: tres de Steam (por appid) y una de Xbox Game Bar (por nombre de archivo).
+function writeCaptures(dir, games) {
+  const steamGame = games.find((game) => game.key === 'steam:900000');
+  const shots = path.join(dir, 'Steam', 'userdata', '1', '760', 'remote', '900000', 'screenshots');
+  const captures = path.join(dir, 'Videos', 'Captures');
+  fs.mkdirSync(shots, { recursive: true });
+  fs.mkdirSync(captures, { recursive: true });
+  const colors = [
+    [70, 110, 160],
+    [150, 90, 60],
+    [60, 130, 90],
+    [120, 80, 140]
+  ];
+  const files = [
+    ...[0, 1, 2].map((index) => path.join(shots, `2026102${index}180000_1.png`)),
+    path.join(captures, `${steamGame.name} 2026-10-23 21-30-00.png`)
+  ];
+  files.forEach((file, index) => {
+    fs.writeFileSync(file, solidPng(64, 36, colors[index]));
+    const when = new Date(NOW - (4 - index) * DAY);
+    fs.utimesSync(file, when, when);
+  });
+}
 
 export function writeFixture(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
@@ -165,6 +221,7 @@ export function writeFixture(dir) {
     games: arcadeGames,
     stats: { visible: arcadeGames.length }
   });
+  writeCaptures(dir, games);
   return { games: games.length + arcadeGames.length };
 }
 

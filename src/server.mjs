@@ -17,17 +17,20 @@ import { buildActivity } from './activity.mjs';
 import { copyToPortable, portableFolder } from './portable.mjs';
 import { cleanLists, createLists } from './lists.mjs';
 import { createWiki } from './wiki.mjs';
+import { createScreenshots, snapshotDirectory } from './screenshots.mjs';
 import { displayName } from './names.mjs';
 import { arcadeCategoryEs, metaEs } from './es.mjs';
 import { createVersionedFile, readJsonCached } from './json-file.mjs';
 import { configureLog, log, recentLog } from './log.mjs';
-import { badRequest, conflict, createRouter, notImplemented, send } from './http.mjs';
+import { badRequest, conflict, createRouter, notFound, notImplemented, send } from './http.mjs';
 import { libraryRoutes } from './routes/library.mjs';
 import { preferencesRoutes } from './routes/preferences.mjs';
 import { integrationRoutes } from './routes/integrations.mjs';
 import { systemRoutes } from './routes/system.mjs';
+import { screenshotRoutes } from './routes/screenshots.mjs';
 import { createUpdates } from './updates.mjs';
 import { readFileSync } from 'node:fs';
+import os from 'node:os';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
@@ -227,6 +230,82 @@ function queueSteam() {
   return tasks.enqueue('steam', 'Biblioteca de Steam', () => steam.sync(), { lightweight: true });
 }
 const wiki = createWiki();
+// Tus capturas (ver screenshots.mjs). Las carpetas salen del registro de Windows cuando se puede
+// (dónde está Steam, dónde está «Videos»); GML_STEAM_DIR y GML_VIDEOS_DIR las fijan en las pruebas.
+async function registryValue(key, name) {
+  if (process.platform !== 'win32') return null;
+  try {
+    const { stdout } = await execFileAsync('reg.exe', ['query', key, '/v', name]);
+    const value = stdout.match(new RegExp(`${name}\\s+REG_(?:EXPAND_)?SZ\\s+(.+)`, 'i'))?.[1]?.trim();
+    return value ? value.replace(/%([^%]+)%/g, (all, variable) => process.env[variable] ?? all) : null;
+  } catch {
+    return null;
+  }
+}
+const MAX_SCREENSHOT_FOLDERS = 10;
+async function extraScreenshotFolders() {
+  const saved = (await preferences()).settings?.screenshotFolders;
+  return Array.isArray(saved) ? saved.filter((item) => typeof item === 'string' && item.trim()) : [];
+}
+let screenshotRoots = null;
+async function screenshotSources() {
+  screenshotRoots ??= (async () => {
+    const steamDir =
+      process.env.GML_STEAM_DIR ||
+      (await registryValue('HKCU\\Software\\Valve\\Steam', 'SteamPath'))?.replaceAll('/', '\\') ||
+      'C:\\Program Files (x86)\\Steam';
+    const videos =
+      process.env.GML_VIDEOS_DIR ||
+      (await registryValue(
+        'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders',
+        'My Video'
+      )) ||
+      path.join(os.homedir(), 'Videos');
+    return { steamDir, videos };
+  })();
+  const { steamDir, videos } = await screenshotRoots;
+  const list = [
+    { kind: 'steam', label: 'Steam', dir: path.join(steamDir, 'userdata') },
+    { kind: 'named', label: 'Xbox Game Bar', dir: path.join(videos, 'Captures'), mode: 'files' },
+    { kind: 'named', label: 'NVIDIA', dir: path.join(videos, 'NVIDIA'), mode: 'folders' },
+    { kind: 'named', label: 'Videos', dir: videos, mode: 'folders', skip: ['Captures', 'NVIDIA'] }
+  ];
+  for (const [instance, label] of [
+    [arcade, 'MAME'],
+    [legacyArcade, 'MAME alternativo']
+  ]) {
+    const { exe } = await instance.settings().catch(() => ({}));
+    if (!exe) continue;
+    const mameDir = path.dirname(exe);
+    const ini = await fs.readFile(path.join(mameDir, 'mame.ini'), 'utf8').catch(() => '');
+    list.push({ kind: 'mame', label, dir: snapshotDirectory(ini, mameDir) });
+  }
+  for (const dir of await extraScreenshotFolders())
+    list.push({ kind: 'named', label: path.basename(dir) || dir, dir, mode: 'both', custom: true });
+  return list;
+}
+const screenshots = createScreenshots({ sources: screenshotSources, games: async () => (await library()).games });
+async function saveScreenshotFolders(folders) {
+  if (!Array.isArray(folders)) throw badRequest('Indicá una lista de carpetas.');
+  const clean = [
+    ...new Set(
+      folders
+        .map((item) =>
+          String(item ?? '')
+            .trim()
+            .replace(/^"|"$/g, '')
+        )
+        .filter(Boolean)
+    )
+  ];
+  if (clean.length > MAX_SCREENSHOT_FOLDERS)
+    throw badRequest(`Podés agregar hasta ${MAX_SCREENSHOT_FOLDERS} carpetas.`);
+  if (clean.some((item) => item.length > 400 || !path.isAbsolute(item)))
+    throw badRequest('Cada carpeta tiene que ser una ruta completa, por ejemplo D:\\Capturas.');
+  await updatePreferences((prefs) => ({ ...prefs, settings: { ...prefs.settings, screenshotFolders: clean } }));
+  screenshots.forget();
+  return screenshots.folders({ refresh: true });
+}
 // Aviso de versión nueva: el repositorio de publicaciones se indica en package.json (gml.releases).
 const updates = createUpdates({
   current: appVersion,
@@ -446,12 +525,31 @@ const buildLibrary = memo((catalog, prefs, metadata, account, arcadeList) => {
 });
 // La respuesta de /api/library se serializa una vez por versión de la biblioteca.
 const libraryJson = memo((value) => JSON.stringify(value));
+// Tarea nocturna. Guarda la ruta exacta del ejecutable que la programó; como `npm run package` borra los .exe
+// viejos, al abrir otra versión la tarea se reprograma sola (repairSchedule) para no quedar apuntando a la nada.
+function scheduleTarget() {
+  return process.versions.electron
+    ? { exe: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath, args: '--scan' }
+    : { exe: process.execPath, args: `"${path.join(root, 'src', 'indexer.mjs')}"` };
+}
+const samePath = (a, b) => Boolean(a && b) && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 async function schedule() {
   if (process.platform !== 'win32') return { supported: false, configured: false };
-  const script = `$task = Get-ScheduledTask -TaskName '${scheduleName}' -ErrorAction SilentlyContinue; if ($null -eq $task) { @{ configured = $false } | ConvertTo-Json -Compress } else { $info = Get-ScheduledTaskInfo -TaskName '${scheduleName}'; $trigger = $task.Triggers | Select-Object -First 1; [pscustomobject]@{ configured = $true; enabled = $task.State -ne 'Disabled'; nextRun = $info.NextRunTime; lastRun = $info.LastRunTime; time = if ($trigger.StartBoundary) { ([datetime]$trigger.StartBoundary).ToString('HH:mm') } else { $null } } | ConvertTo-Json -Compress }`;
+  const date = (name) =>
+    `$(if ($info.${name} -and $info.${name}.Year -gt 2000) { $info.${name}.ToString('o') } else { $null })`;
+  const script = `$task = Get-ScheduledTask -TaskName '${scheduleName}' -ErrorAction SilentlyContinue; if ($null -eq $task) { @{ configured = $false } | ConvertTo-Json -Compress } else { $info = Get-ScheduledTaskInfo -TaskName '${scheduleName}'; $trigger = $task.Triggers | Select-Object -First 1; $action = $task.Actions | Select-Object -First 1; [pscustomobject]@{ configured = $true; enabled = $task.State -ne 'Disabled'; nextRun = ${date('NextRunTime')}; lastRun = ${date('LastRunTime')}; lastResult = $info.LastTaskResult; target = $action.Execute; time = if ($trigger.StartBoundary) { ([datetime]$trigger.StartBoundary).ToString('HH:mm') } else { $null } } | ConvertTo-Json -Compress }`;
   try {
     const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script]);
-    return { supported: true, ...JSON.parse(stdout) };
+    const data = JSON.parse(stdout);
+    if (!data.configured) return { supported: true, configured: false };
+    const target = typeof data.target === 'string' ? data.target.replace(/^"|"$/g, '') : '';
+    const targetExists = target
+      ? await fs.access(target).then(
+          () => true,
+          () => false
+        )
+      : false;
+    return { supported: true, ...data, target, targetExists, current: samePath(target, scheduleTarget().exe) };
   } catch {
     return { supported: true, configured: false };
   }
@@ -459,15 +557,13 @@ async function schedule() {
 async function configureSchedule(time) {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw badRequest('Indicá una hora válida en formato HH:MM.');
   if (process.platform !== 'win32') throw notImplemented('La indexación programada sólo está disponible en Windows.');
-  const command = process.versions.electron
-    ? `"${process.env.PORTABLE_EXECUTABLE_FILE || process.execPath}" --scan`
-    : `"${process.execPath}" "${path.join(root, 'src', 'indexer.mjs')}"`;
+  const { exe, args } = scheduleTarget();
   await execFileAsync('schtasks.exe', [
     '/Create',
     '/TN',
     scheduleName,
     '/TR',
-    command,
+    `"${exe}" ${args}`,
     '/SC',
     'DAILY',
     '/ST',
@@ -475,6 +571,17 @@ async function configureSchedule(time) {
     '/F'
   ]);
   return schedule();
+}
+// Al abrir la aplicación: si la tarea existe pero apunta a otro ejecutable (otra versión, o uno ya borrado),
+// se vuelve a crear con el mismo horario y este ejecutable.
+export async function repairSchedule() {
+  if (process.platform !== 'win32' || !process.versions.electron) return null;
+  const current = await schedule();
+  if (!current.configured || current.current) return null;
+  const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(current.time ?? '') ? current.time : '03:00';
+  await configureSchedule(time);
+  log('info', 'tarea', `Tarea nocturna reprogramada a las ${time}: apuntaba a ${current.target || 'otro ejecutable'}`);
+  return { repaired: true, previous: current.target };
 }
 async function health() {
   const catalog = await library();
@@ -741,6 +848,15 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit, onRestart
       return buildActivity({ sessions, games: catalog.games, now });
     },
     gameArt,
+    screenshots,
+    saveScreenshotFolders,
+    async openScreenshot(id) {
+      const file = await screenshots.path(id);
+      if (!file) throw notFound('No se encontró la captura.');
+      if (process.platform !== 'win32') throw notImplemented('Abrir la carpeta sólo está disponible en Windows.');
+      await startDetached('explorer.exe', [`/select,${file}`]);
+      return { ok: true };
+    },
     startDetached,
     schedule,
     configureSchedule,
@@ -803,6 +919,7 @@ export function createServer({ onSettingsChange, onLaunch, onGameExit, onRestart
   preferencesRoutes(router, deps);
   integrationRoutes(router, deps);
   systemRoutes(router, deps);
+  screenshotRoutes(router, deps);
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -877,6 +994,8 @@ export function startServer(port = Number(process.env.PORT || 4321), options = {
     } catch {}
   }, 1000);
   updateSteam.unref();
+  const fixSchedule = setTimeout(() => repairSchedule().catch((error) => log('warn', 'tarea', error.message)), 3000);
+  fixSchedule.unref();
   server.listen(port, '127.0.0.1', () =>
     console.log(`Games Meta Launcher disponible en http://127.0.0.1:${server.address().port}`)
   );

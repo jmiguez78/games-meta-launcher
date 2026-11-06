@@ -88,12 +88,40 @@ export async function loadSchedule() {
       return;
     }
     document.querySelector('#schedule-time').value = data.time || '03:00';
-    status.textContent = data.enabled
-      ? 'Activa. Se ejecuta todos los días a las ' + (data.time || '03:00') + '.'
-      : 'La tarea existe, pero está desactivada.';
+    status.textContent = scheduleSummary(data);
+    status.classList.toggle('form-error', scheduleProblem(data));
   } catch (error) {
     document.querySelector('#schedule-status').textContent = error.message;
   }
+}
+
+// Estado de la tarea nocturna: además de si está activa, si su última ejecución anduvo y si el ejecutable
+// al que apunta todavía existe (las compilaciones viejas se borran de releases/).
+const SCHEDULE_NEVER_RAN = 267011;
+const SCHEDULE_RUNNING = 267009;
+const scheduleProblem = (data) =>
+  Boolean(data.target && !data.targetExists) ||
+  (Number.isInteger(data.lastResult) && ![0, SCHEDULE_NEVER_RAN, SCHEDULE_RUNNING].includes(data.lastResult));
+export function scheduleSummary(data, locale = 'es-AR') {
+  const time = data.time || '03:00';
+  if (!data.enabled) return 'La tarea existe, pero está desactivada.';
+  if (data.target && !data.targetExists)
+    return 'La tarea apunta a un ejecutable que ya no existe. Guardá el horario de nuevo para corregirla.';
+  const base = 'Activa. Se ejecuta todos los días a las ' + time + '.';
+  const when = data.lastRun
+    ? new Date(data.lastRun).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })
+    : '';
+  if (data.lastResult === SCHEDULE_RUNNING) return base + ' Se está ejecutando ahora.';
+  if (data.lastResult === SCHEDULE_NEVER_RAN || !when) return base + ' Todavía no se ejecutó.';
+  if (data.lastResult === 0) return base + ' Última ejecución: ' + when + ', sin errores.';
+  return (
+    base +
+    ' La última ejecución (' +
+    when +
+    ') falló con el código 0x' +
+    (data.lastResult >>> 0).toString(16).toUpperCase() +
+    '. Guardá el horario de nuevo; si sigue fallando, revisá el registro de diagnóstico.'
+  );
 }
 
 // Con «Sistema» no se fija atributo y el CSS sigue prefers-color-scheme.

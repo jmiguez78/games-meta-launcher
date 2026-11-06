@@ -7,6 +7,8 @@ import path from 'node:path';
 
 const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'gml-test-'));
 process.env.GML_DATA_DIR = dataDir;
+process.env.GML_STEAM_DIR = path.join(dataDir, 'Steam');
+process.env.GML_VIDEOS_DIR = path.join(dataDir, 'Videos');
 const { createServer } = await import('../src/server.mjs');
 
 const catalog = {
@@ -489,4 +491,38 @@ test('listas propias: crear, agregar juegos, renombrar, quitar de Inicio y borra
   assert.equal((await send('DELETE', `/api/lists/${manual.id}`)).status, 404);
   await send('DELETE', `/api/lists/${auto.id}`);
   assert.deepEqual((await (await fetch(`${base}/api/library`)).json()).lists, []);
+});
+
+test('capturas: las de Steam por appid, las de Game Bar por nombre y carpetas propias validadas', async () => {
+  const shots = path.join(dataDir, 'Steam', 'userdata', '7', '760', 'remote', '10', 'screenshots');
+  await fs.mkdir(shots, { recursive: true });
+  await fs.writeFile(path.join(shots, 'a.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+  await fs.mkdir(path.join(dataDir, 'Videos', 'Captures'), { recursive: true });
+  await fs.writeFile(path.join(dataDir, 'Videos', 'Captures', 'Tiny Lands 2026-11-05 10-00-00.png'), 'png');
+  const game = await (await fetch(`${base}/api/screenshots/game/${encodeURIComponent('steam:10')}?refresh=1`)).json();
+  assert.equal(game.total, 1);
+  assert.equal(game.items[0].source, 'Steam');
+  assert.equal(game.items[0].file, undefined);
+  const image = await fetch(`${base}/api/screenshots/file/${game.items[0].id}`);
+  assert.equal(image.status, 200);
+  assert.equal(image.headers.get('content-type'), 'image/jpeg');
+  assert.equal((await fetch(`${base}/api/screenshots/file/${'0'.repeat(20)}`)).status, 404);
+  assert.equal((await fetch(`${base}/api/screenshots/file/..%2F..%2Fsecreto`)).status, 404);
+  const epic = await (await fetch(`${base}/api/screenshots/game/${encodeURIComponent('epic games:x')}`)).json();
+  assert.equal(epic.items[0].source, 'Xbox Game Bar');
+  const recent = await (await fetch(`${base}/api/screenshots/recent?limit=5`)).json();
+  assert.equal(recent.total, 2);
+  const put = (folders) => fetch(`${base}/api/screenshots/folders`, { method: 'PUT', ...json({ folders }) });
+  assert.equal((await put(['relativa'])).status, 400);
+  const own = path.join(dataDir, 'Mis capturas');
+  await fs.mkdir(path.join(own, 'Juego roto'), { recursive: true });
+  await fs.writeFile(path.join(own, 'Juego roto', 'x.webp'), 'webp');
+  const saved = await (await put([own, own])).json();
+  const custom = saved.folders.filter((item) => item.custom);
+  assert.deepEqual(
+    custom.map((item) => [item.dir, item.count]),
+    [[own, 1]]
+  );
+  const roto = await (await fetch(`${base}/api/screenshots/game/${encodeURIComponent('gog galaxy:roto')}`)).json();
+  assert.equal(roto.total, 1);
 });

@@ -7,6 +7,7 @@ import { showGame } from './game-page.js';
 import { icon } from './icons.js';
 import { uniqueGames } from './library.js';
 import { state } from './state.js';
+import { renderCaptureShelf } from './captures.js';
 
 export const homeShelvesHost = document.querySelector('#home-shelves');
 
@@ -241,6 +242,8 @@ export function renderHome() {
   renderHero();
   renderShelves();
   renderHomeEmpty();
+  // Sin biblioteca (vacía o con error) Inicio muestra sólo el aviso: tampoco la fila de capturas.
+  renderCaptureShelf(document.querySelector('#home-captures'), !homeShelvesHost.hidden);
   renderHealthSignals();
   pruneCoverLoads();
 }

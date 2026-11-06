@@ -2194,3 +2194,100 @@ a.meta-source {
     transform: translateX(250%);
   }
 }
+
+/* ── Tus capturas: pestaña de la ficha, fila de Inicio y carpetas en Configuración ── */
+.capture-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.capture-summary {
+  flex: 1 1 260px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.capture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-2);
+}
+.capture-thumbnail {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: zoom-in;
+}
+.capture-thumbnail:hover {
+  border-color: var(--accent-text);
+}
+.capture-thumbnail img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+.capture-thumbnail.broken {
+  aspect-ratio: 16 / 9;
+  cursor: default;
+}
+.capture-caption {
+  overflow: hidden;
+  padding: 6px var(--space-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.capture-more {
+  justify-self: start;
+}
+.home-shelves + .capture-shelf {
+  margin-top: 36px;
+}
+.capture-shelf[hidden] {
+  display: none;
+}
+.capture-track {
+  display: grid;
+  grid-auto-columns: minmax(240px, 22%);
+  grid-auto-flow: column;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+}
+.capture-track .capture-thumbnail {
+  scroll-snap-align: start;
+}
+.capture-folders {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+.capture-folders li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#capture-extra {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}

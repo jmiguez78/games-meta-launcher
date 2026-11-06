@@ -12,6 +12,7 @@ import { setup as setupEvents } from './events.js';
 import { loadActivity, setup as setupActivity } from './activity.js';
 import { setup as setupOnboarding } from './onboarding.js';
 import { setup as setupLists } from './lists.js';
+import { loadCaptureFolders, setupCaptureSettings } from './captures.js';
 import { request } from './api.js';
 import { readSnapshot, saveSnapshot } from './snapshot.js';
 import { report, setup as setupReport } from './report.js';
@@ -60,6 +61,7 @@ export function showPage(page, { focus = true } = {}) {
   if (page === 'settings') {
     document.querySelector('#big-screen').checked = document.body.classList.contains('couch');
     loadSchedule();
+    loadCaptureFolders();
     loadIgdb();
     loadMame();
     loadSteamSettings();
@@ -157,6 +159,7 @@ setupHome();
 setupGamePage();
 setupLaunch();
 setupSettings();
+setupCaptureSettings();
 setupPalette();
 setupEditor();
 setupCouch();

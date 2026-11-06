@@ -83,6 +83,7 @@
           </section>
           <div id="home-empty" class="library-state hidden"></div>
           <div id="home-shelves" class="home-shelves"></div>
+          <section id="home-captures" class="shelf capture-shelf" hidden></section>
         </section>
 
         <section id="library-page" class="page hidden">
@@ -430,6 +431,26 @@
                     </div>
                     <p id="schedule-status" class="helper-text">Consultando la tarea programada…</p>
                     <p id="schedule-error" class="form-error" role="alert"></p>
+                  </form>
+                </div>
+              </section>
+              <section class="settings-row">
+                <div class="settings-copy">
+                  <h3>Tus capturas</h3>
+                  <p>
+                    Las imágenes que sacás jugando, en la ficha de cada juego y en Inicio. Se buscan solas en Steam,
+                    MAME, Xbox Game Bar y NVIDIA; si guardás capturas en otra carpeta, agregala abajo (una por línea).
+                  </p>
+                </div>
+                <div class="settings-control">
+                  <ul id="capture-folders" class="capture-folders" aria-live="polite">
+                    <li class="helper-text">Buscando carpetas de capturas…</li>
+                  </ul>
+                  <form id="capture-form" class="schedule-form" novalidate>
+                    <label for="capture-extra">Otras carpetas</label>
+                    <textarea id="capture-extra" rows="2" spellcheck="false" placeholder="D:\Capturas"></textarea>
+                    <div class="field-row"><button class="button" type="submit">Guardar carpetas</button></div>
+                    <p class="form-error" role="alert"></p>
                   </form>
                 </div>
               </section>

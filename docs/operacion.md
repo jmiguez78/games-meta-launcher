@@ -28,7 +28,7 @@ Durante el desarrollo, el script `tools/register-nightly-index.ps1` crea otra ta
 
 ## Tus capturas
 
-Las capturas se leen en su lugar, sin copiarlas (`src/screenshots.mjs`); el índice vive en memoria y se rehace como mucho una vez por minuto, o con «Buscar de nuevo».
+Las capturas (`.png`, `.jpg`, `.webp`) y los videos (`.mp4`, `.webm`) se leen en su lugar, sin copiarlas (`src/screenshots.mjs`); los videos se sirven por partes (`/api/screenshots/video/:id`, con `Range`) y los de MAME grabados con Game Bar se asocian por el set que figura entre corchetes en el nombre; el índice vive en memoria y se rehace como mucho una vez por minuto, o con «Buscar de nuevo».
 
 | Programa | Carpeta | Cómo se asocia al juego |
 | --- | --- | --- |

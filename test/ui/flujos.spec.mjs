@@ -129,7 +129,7 @@ test('listas propias: crear desde un juego, verla en Inicio y en la Biblioteca, 
   await expect(page.locator('#active-filters')).not.toContainText('Lista:');
 });
 
-test('tus capturas: en la ficha del juego, en el visor y en Inicio', async ({ page }) => {
+test('tus capturas y videos: en la ficha del juego, en el visor y en Inicio', async ({ page }) => {
   await openApp(page);
   const shelf = page.locator('#home-captures');
   await expect(shelf).toBeVisible();
@@ -137,14 +137,21 @@ test('tus capturas: en la ficha del juego, en el visor y en Inicio', async ({ pa
   await openGame(page, 'steam:900000');
   await page.locator('#game-page [role=tab]', { hasText: 'Tus capturas' }).click();
   const panel = page.locator('#game-page [role=tabpanel]:not([hidden])');
-  await expect(panel.locator('.capture-summary')).toContainText('4 capturas');
+  await expect(panel.locator('.capture-summary')).toContainText('4 capturas y 1 video');
   await expect(panel.locator('.capture-summary')).toContainText('Xbox Game Bar y Steam');
-  await expect(panel.locator('.capture-thumbnail')).toHaveCount(4);
-  await panel.locator('.capture-thumbnail').first().click();
+  await expect(panel.locator('.capture-thumbnail')).toHaveCount(5);
+  // El video va primero (es el más nuevo), con su duración sobre la miniatura.
+  const clip = panel.locator('.capture-thumbnail.is-video');
+  await expect(clip.locator('.capture-badge')).toHaveText('0:02');
+  await clip.click();
   const viewer = page.locator('#media-viewer');
+  await expect(viewer.locator('video')).toBeVisible();
+  await expect(viewer.locator('img')).toBeHidden();
+  await expect(viewer.locator('.media-position')).toHaveText('1 / 5');
+  await viewer.locator('[data-gallery=next]').click();
   await expect(viewer.locator('img')).toBeVisible();
+  await expect(viewer.locator('video')).toBeHidden();
   await expect(viewer.locator('[data-gallery=folder]')).toBeVisible();
-  await expect(viewer.locator('.media-position')).toHaveText('1 / 4');
   await page.keyboard.press('Escape');
   // Un juego sin capturas explica cómo sacarlas.
   await openGame(page, 'steam:900006');

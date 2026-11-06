@@ -1165,13 +1165,18 @@ dialog .list-check input {
   padding: var(--space-4);
   text-align: center;
 }
-.media-viewer figure img {
+.media-viewer figure :is(img, video) {
   display: block;
   max-width: 100%;
   max-height: calc(100dvh - 245px);
   margin: auto;
   object-fit: contain;
   border-radius: var(--control-radius);
+}
+/* Un video ocupa todo el ancho disponible (con bandas si su proporción no coincide), aunque sea chico. */
+.media-viewer figure video {
+  width: 100%;
+  background: var(--black);
 }
 .media-viewer figcaption {
   margin-top: var(--space-3);

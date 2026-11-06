@@ -81,7 +81,11 @@ function solidPng(width, height, [r, g, b]) {
     chunk('IEND', Buffer.alloc(0))
   ]);
 }
-// Capturas propias: tres de Steam (por appid) y una de Xbox Game Bar (por nombre de archivo).
+// Video de prueba: 2 segundos de un color, 64×36, VP8 (lo genera ffmpeg; base64 para no sumar un binario).
+const TINY_WEBM =
+  'GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAPFEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggOv7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECfQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYi7ekWziMXyBZyBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhAX14QDgibCBQLqBJJqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYi7ekWziMXyBWfIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDIuMDAwMDAwMDAwAB9DtnVCCueBAKO/gQAAgJADAJ0BKkAAJAAARwiFhYiFhIgCAgJ1qgP4A/gCBzt54s8zHl4A/vhff/9wb7Iuf+tF/9nc2qkP7dwAo5aBAGQA0QEAARAQABgAGFgv9AAIjAAAo5aBAMgA0QEAARAQABgAGFgv9AAIjAAAo5aBASwA0QEAARAQABgAGFgv9AAIjAAAo5aBAZAA0QEAARAQABgAGFgv9AAIjAAAo5aBAfQA0QEAARAQABgAGFgv9AAIjAAAo5aBAlgA0QEAARAQABgAGFgv9AAIjAAAo5WBArwAsQEAARAQFGAAYWC/0AAiMACjloEDIADRAQABEBAAGAAYWC/0AAiMAACjloEDhADRAQABEBAAGAAYWC/0AAiMAACjloED6ADRAQABEBAAGAAYWC/0AAiMAACjloEETADRAQABEBAAGAAYWC/0AAiMAACjloEEsADRAQABEBAAGAAYWC/0AAiMAACjloEFFADRAQABEBAAGAAYWC/0AAiMAACjloEFeADRAQABEBAAGAAYWC/0AAiMAACjloEF3ADRAQABEBAAGAAYWC/0AAiMAACjloEGQADRAQABEBAAGAAYWC/0AAiMAACjloEGpADRAQABEBAAGAAYWC/0AAiMAACjlYEHCACxAQABEBAUYABhYL/QACIwAKOWgQdsANEBAAEQEAAYABhYL/QACIwAABxTu2uRu4+zgQC3iveBAfGCAZ/wgQM=';
+// Capturas propias: tres de Steam (por appid), una de Xbox Game Bar (por nombre de archivo) y un video.
+
 function writeCaptures(dir, games) {
   const steamGame = games.find((game) => game.key === 'steam:900000');
   const shots = path.join(dir, 'Steam', 'userdata', '1', '760', 'remote', '900000', 'screenshots');
@@ -103,6 +107,11 @@ function writeCaptures(dir, games) {
     const when = new Date(NOW - (4 - index) * DAY);
     fs.utimesSync(file, when, when);
   });
+  // El video es el más nuevo: en la ficha va primero; la fila de Inicio muestra sólo imágenes.
+  const video = path.join(captures, `${steamGame.name} 2026-10-24 12-00-00.webm`);
+  fs.writeFileSync(video, Buffer.from(TINY_WEBM, 'base64'));
+  const when = new Date(NOW - DAY / 4);
+  fs.utimesSync(video, when, when);
 }
 
 export function writeFixture(dir) {

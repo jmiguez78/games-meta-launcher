@@ -527,3 +527,29 @@ test('capturas: las de Steam por appid, las de Game Bar por nombre y carpetas pr
   const roto = await (await fetch(`${base}/api/screenshots/game/${encodeURIComponent('gog galaxy:roto')}`)).json();
   assert.equal(roto.total, 1);
 });
+
+test('videos: se sirven por partes (Range) para poder adelantar sin leer el archivo entero', async () => {
+  const captures = path.join(dataDir, 'Videos', 'Captures');
+  await fs.mkdir(captures, { recursive: true });
+  await fs.writeFile(path.join(captures, 'Counter-Strike 2026-11-05 10-00-00.mp4'), '0123456789');
+  const game = await (await fetch(`${base}/api/screenshots/game/${encodeURIComponent('steam:10')}?refresh=1`)).json();
+  const video = game.items.find((item) => item.kind === 'video');
+  assert.equal(video.size, 10);
+  const url = `${base}/api/screenshots/video/${video.id}`;
+  const whole = await fetch(url);
+  assert.equal(whole.status, 200);
+  assert.equal(whole.headers.get('accept-ranges'), 'bytes');
+  assert.equal(await whole.text(), '0123456789');
+  const part = await fetch(url, { headers: { range: 'bytes=2-5' } });
+  assert.equal(part.status, 206);
+  assert.equal(part.headers.get('content-range'), 'bytes 2-5/10');
+  assert.equal(await part.text(), '2345');
+  const open = await fetch(url, { headers: { range: 'bytes=7-' } });
+  assert.equal(await open.text(), '789');
+  const tail = await fetch(url, { headers: { range: 'bytes=-3' } });
+  assert.equal(await tail.text(), '789');
+  assert.equal((await fetch(url, { headers: { range: 'bytes=20-' } })).status, 416);
+  assert.equal((await fetch(`${base}/api/screenshots/file/${video.id}`)).status, 404);
+  const image = game.items.find((item) => item.kind === 'image');
+  assert.equal((await fetch(`${base}/api/screenshots/video/${image.id}`)).status, 404);
+});

@@ -94,6 +94,7 @@ export function openMediaViewer(pictures, index, title, trigger) {
       '<h2 id="media-viewer-title"></h2></div><button type="button" class="icon-btn" aria-label="Cerrar galería">' +
       icon('x') +
       '</button></header><figure><img alt="Imagen de la galería" referrerpolicy="no-referrer" />' +
+      '<video controls playsinline preload="metadata" hidden></video>' +
       '<figcaption id="media-viewer-status" role="status"></figcaption></figure>' +
       '<footer class="media-viewer-footer"><button type="button" class="button" data-gallery="previous">Anterior</button>' +
       '<span class="media-position" aria-live="polite"></span><button type="button" class="button" data-gallery="next">Siguiente</button>' +
@@ -112,6 +113,8 @@ export function openMediaViewer(pictures, index, title, trigger) {
     viewer.addEventListener('keydown', (event) => {
       // La galería conserva el foco y no activa atajos de la biblioteca que queda detrás.
       event.stopPropagation();
+      // Con el foco en el reproductor, las flechas adelantan o atrasan el video.
+      if (event.target.closest('video')) return;
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
         showMediaImage(event.key === 'ArrowLeft' ? -1 : 1);
@@ -121,6 +124,7 @@ export function openMediaViewer(pictures, index, title, trigger) {
       const opener = mediaSession?.trigger;
       mediaSession = null;
       viewer.querySelector('img').removeAttribute('src');
+      stopViewerVideo(viewer);
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     });
     document.body.append(viewer);
@@ -129,6 +133,14 @@ export function openMediaViewer(pictures, index, title, trigger) {
   viewer.querySelector('h2').textContent = title;
   showMediaImage(0);
   viewer.showModal();
+}
+
+function stopViewerVideo(viewer) {
+  const video = viewer.querySelector('video');
+  if (!video.getAttribute('src')) return;
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
 }
 
 export function showMediaImage(direction) {
@@ -141,7 +153,10 @@ export function showMediaImage(direction) {
   const status = viewer.querySelector('figcaption');
   const retry = viewer.querySelector('[data-gallery=retry]');
   const figure = viewer.querySelector('figure');
-  status.textContent = 'Cargando imagen…';
+  const video = viewer.querySelector('video');
+  stopViewerVideo(viewer);
+  video.hidden = true;
+  status.textContent = picture.video ? 'Cargando video…' : 'Cargando imagen…';
   figure.setAttribute('aria-busy', 'true');
   retry.hidden = true;
   img.hidden = true;
@@ -164,6 +179,23 @@ export function showMediaImage(direction) {
   };
   // Capturas propias (src local, con su carpeta) o imágenes de IGDB (id).
   viewer.querySelector('[data-gallery=folder]').hidden = !picture.reveal;
+  if (picture.video) {
+    img.removeAttribute('src');
+    video.setAttribute('aria-label', picture.label + ' de ' + session.title);
+    video.onloadedmetadata = () => {
+      video.hidden = false;
+      figure.setAttribute('aria-busy', 'false');
+      status.textContent = picture.label + ' · Espacio reproduce o pausa; Anterior y Siguiente recorren la galería.';
+    };
+    video.onerror = () => {
+      figure.setAttribute('aria-busy', 'false');
+      status.textContent =
+        'No se pudo abrir el video: puede que se haya movido, borrado o que su formato no se pueda ver acá.';
+      retry.hidden = false;
+    };
+    video.src = picture.video;
+    return;
+  }
   img.referrerPolicy = 'no-referrer';
   img.src = picture.src || 'https://images.igdb.com/igdb/image/upload/t_1080p/' + picture.id + '.jpg';
 }

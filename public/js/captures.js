@@ -1,5 +1,5 @@
 // Tus capturas: pestaña de la ficha, fila «Tus últimas capturas» en Inicio y carpetas en Configuración.
-// Las imágenes se leen de donde las guarda cada programa (Steam, MAME, Xbox Game Bar, NVIDIA); ver screenshots.mjs.
+// Imágenes y videos, leídos de donde los guarda cada programa (Steam, MAME, Xbox Game Bar, NVIDIA); ver screenshots.mjs.
 import { request } from './api.js';
 import { openMediaViewer } from './details.js';
 import { notifyError } from './feedback.js';
@@ -9,6 +9,40 @@ const PAGE = 60;
 const sourceList = (items) =>
   new Intl.ListFormat('es', { type: 'conjunction' }).format([...new Set(items.map((item) => item.source))]);
 const fileUrl = (item, thumb) => '/api/screenshots/file/' + item.id + (thumb && item.thumb ? '?thumb=1' : '');
+const videoUrl = (item) => '/api/screenshots/video/' + item.id;
+const isVideo = (item) => item.kind === 'video';
+const sizeText = (bytes) =>
+  bytes >= 1e9
+    ? (bytes / 1e9).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' GB'
+    : Math.max(1, Math.round(bytes / 1e6)).toLocaleString('es-AR') + ' MB';
+const durationText = (seconds) => {
+  const total = Math.round(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = String(total % 60).padStart(2, '0');
+  return hours ? hours + ':' + String(minutes).padStart(2, '0') + ':' + rest : minutes + ':' + rest;
+};
+// «5 capturas y 2 videos», «1 video»…
+export function countText(images, videos) {
+  const parts = [];
+  if (images) parts.push(images === 1 ? '1 captura' : images.toLocaleString('es-AR') + ' capturas');
+  if (videos) parts.push(videos === 1 ? '1 video' : videos.toLocaleString('es-AR') + ' videos');
+  return parts.join(' y ') || 'Sin capturas';
+}
+// Miniatura de un video: el navegador lee sólo el comienzo del archivo y muestra un cuadro del primer segundo.
+// Se pide recién cuando la miniatura está a la vista, para no abrir decenas de videos de varios GB a la vez.
+const videoObserver =
+  'IntersectionObserver' in window
+    ? new IntersectionObserver(
+        (entries) =>
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            videoObserver.unobserve(entry.target);
+            entry.target.src = entry.target.dataset.src;
+          }),
+        { rootMargin: '200px' }
+      )
+    : null;
 const dateText = (value) => new Date(value).toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
 
 export async function revealCapture(item) {
@@ -22,7 +56,7 @@ export async function revealCapture(item) {
 // Lo que necesita el visor: la imagen completa, su descripción y cómo abrir su carpeta.
 export function capturePictures(items, withName = false) {
   return items.map((item) => ({
-    src: fileUrl(item, false),
+    ...(isVideo(item) ? { video: videoUrl(item) } : { src: fileUrl(item, false) }),
     label: (withName && item.name ? item.name + ' · ' : '') + item.source + ' · ' + dateText(item.takenAt),
     reveal: () => revealCapture(item)
   }));
@@ -36,9 +70,36 @@ export function captureThumbnail(item, index, pictures, title, withName = false)
   button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute(
     'aria-label',
-    'Ampliar captura ' + (withName && item.name ? 'de ' + item.name + ' ' : '') + 'del ' + dateText(item.takenAt)
+    (isVideo(item) ? 'Ver video ' : 'Ampliar captura ') +
+      (withName && item.name ? 'de ' + item.name + ' ' : '') +
+      'del ' +
+      dateText(item.takenAt)
   );
   button.onclick = () => openMediaViewer(pictures, index, title, button);
+  const caption = document.createElement('span');
+  caption.className = 'capture-caption';
+  caption.textContent = (withName && item.name ? item.name + ' · ' : '') + dateText(item.takenAt);
+  const broken = () => button.classList.add('broken');
+  if (isVideo(item)) {
+    button.classList.add('is-video');
+    const preview = document.createElement('video');
+    preview.muted = true;
+    preview.preload = 'metadata';
+    preview.setAttribute('aria-hidden', 'true');
+    preview.tabIndex = -1;
+    preview.dataset.src = videoUrl(item) + '#t=1';
+    const badge = document.createElement('span');
+    badge.className = 'capture-badge';
+    badge.innerHTML = icon('play', true) + '<span>' + sizeText(item.size) + '</span>';
+    preview.onloadedmetadata = () => {
+      if (Number.isFinite(preview.duration)) badge.lastChild.textContent = durationText(preview.duration);
+    };
+    preview.onerror = broken;
+    if (videoObserver) videoObserver.observe(preview);
+    else preview.src = preview.dataset.src;
+    button.append(preview, badge, caption);
+    return button;
+  }
   const img = document.createElement('img');
   img.src = fileUrl(item, true);
   img.alt = '';
@@ -46,18 +107,16 @@ export function captureThumbnail(item, index, pictures, title, withName = false)
   img.decoding = 'async';
   img.onerror = () => {
     img.hidden = true;
-    button.classList.add('broken');
+    broken();
   };
-  const caption = document.createElement('span');
-  caption.className = 'capture-caption';
-  caption.textContent = (withName && item.name ? item.name + ' · ' : '') + dateText(item.takenAt);
   button.append(img, caption);
   return button;
 }
 
 const EMPTY_TEXT =
-  'Todavía no hay capturas tuyas de este juego. Sacalas con F12 en Steam o en MAME, o con Win + Alt + ImprPant ' +
-  '(Xbox Game Bar), y aparecen acá. Si las guardás en otra carpeta, agregala en Configuración → Tus capturas.';
+  'Todavía no hay capturas ni videos tuyos de este juego. Sacá capturas con F12 en Steam o en MAME, o con el botón ' +
+  'de captura del mando o Win + Alt + ImprPant (Xbox Game Bar); los videos de Game Bar (Win + Alt + G) también ' +
+  'aparecen acá. Si las guardás en otra carpeta, agregala en Configuración → Tus capturas.';
 
 // Pestaña «Tus capturas»: se carga al abrirla y se puede actualizar sin salir de la ficha.
 export async function loadCapturesTab(body, game, { refresh = false } = {}) {
@@ -91,7 +150,7 @@ export async function loadCapturesTab(body, game, { refresh = false } = {}) {
   if (data.items.length) {
     const sources = sourceList(data.items);
     summary.textContent =
-      (data.total === 1 ? '1 captura' : data.total.toLocaleString('es-AR') + ' capturas') +
+      countText(data.images ?? data.total, data.videos ?? 0) +
       ' · ' +
       sources +
       ' · la última del ' +
@@ -136,7 +195,7 @@ export async function renderCaptureShelf(host, visible = true) {
   }
   if (Date.now() - recent.at > 60_000) {
     try {
-      recent = { at: Date.now(), items: (await request('/api/screenshots/recent?limit=16')).items };
+      recent = { at: Date.now(), items: (await request('/api/screenshots/recent?limit=16&kind=image')).items };
     } catch {
       recent = { at: Date.now(), items: [] };
     }
@@ -187,11 +246,7 @@ function renderFolders(list, folders) {
         detail.textContent =
           item.dir +
           ' · ' +
-          (item.exists
-            ? item.count === 1
-              ? '1 captura'
-              : item.count.toLocaleString('es-AR') + ' capturas'
-            : 'la carpeta no existe');
+          (item.exists ? countText(item.count - (item.videos ?? 0), item.videos ?? 0) : 'la carpeta no existe');
         row.append(name, detail);
         return row;
       })

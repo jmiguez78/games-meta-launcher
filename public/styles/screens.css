@@ -2229,11 +2229,38 @@ a.meta-source {
 .capture-thumbnail:hover {
   border-color: var(--accent-text);
 }
-.capture-thumbnail img {
+.capture-thumbnail :is(img, video) {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
+  background: var(--surface-soft);
+}
+/* Videos: un cuadro del comienzo, con ícono de reproducir y la duración (o el tamaño hasta que se conoce). */
+.capture-thumbnail.is-video {
+  position: relative;
+  cursor: pointer;
+}
+.capture-thumbnail video {
+  pointer-events: none;
+}
+.capture-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  color: var(--white);
+  background: color-mix(in srgb, var(--black) 68%, transparent);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.capture-badge .icon {
+  width: 12px;
+  height: 12px;
 }
 .capture-thumbnail.broken {
   aspect-ratio: 16 / 9;

@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.34.0
+
+- **Tus videos.** La pestaña **Tus capturas** suma los videos `.mp4` y `.webm` que graba Xbox Game Bar (Win + Alt + G o el botón del mando), con las mismas reglas que las capturas: por carpeta o por nombre de archivo, y los de MAME («MAME_ Kung-Fu Master (World) [kungfum] ….mp4») por el set. Cada miniatura muestra un cuadro del comienzo y la duración; el visor los reproduce con sus controles y las flechas adelantan o atrasan. Los videos se sirven por partes, así que uno de varios GB arranca enseguida y se puede adelantar sin leerlo entero. El resumen dice cuántas capturas y cuántos videos hay («5 capturas y 2 videos»). La fila de Inicio sigue mostrando sólo imágenes, para no abrir decenas de videos cada vez que se entra.
+
 ## 0.33.1
 
 - **Capturas del botón del mando.** Las capturas de Xbox Game Bar (también las del botón de captura del mando compatible con Xbox) se buscan en la carpeta «Capturas» de Windows aunque se haya movido a otra unidad (por ejemplo, `E:\Videos`), y ahora se leen también los archivos sueltos de `Videos` y las subcarpetas armadas a mano, hasta tres niveles. Una subcarpeta con el nombre del juego le da todas sus imágenes; si tiene otro nombre («Expedition 33»), cada archivo se asocia por el suyo («Clair Obscur_ Expedition 33 …»). Los `.jxr` (HDR) se ignoran porque Game Bar guarda al lado una copia `.png`.

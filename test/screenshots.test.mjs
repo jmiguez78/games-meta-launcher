@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  arcadeSetFromFile,
   createScreenshots,
   nameMatcher,
   normalizeName,
@@ -71,7 +72,7 @@ test('createScreenshots junta Steam, MAME, Game Bar y carpetas por nombre, de la
       '2026-11-05T10:00:00Z'
     );
     await write(path.join(root, 'Videos', 'Captures', 'Escritorio 2026-11-05 10-00-00.png'));
-    await write(path.join(root, 'Videos', 'Captures', 'Control Resonant 2026-11-05 10-00-00.mp4'));
+    await write(path.join(root, 'Videos', 'Captures', 'Control Resonant 2026-11-05 10-00-00.mkv'));
     await write(path.join(root, 'Videos', 'Alan Wake 2', 'foto.png'), 'nv', '2026-11-03T10:00:00Z');
     await write(path.join(root, 'Videos', 'Vacaciones', 'playa.jpg'));
     await write(path.join(root, 'mame', 'snap', 'sf2ua', '0000.png'), 'mame', '2026-11-01T10:00:00Z');
@@ -175,6 +176,54 @@ test('carpeta de Game Bar movida a Videos: archivos sueltos, subcarpetas propias
     assert.deepEqual(
       folders.map((item) => [item.label, item.count]),
       [['Xbox Game Bar', 4]]
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('videos de Game Bar: se suman con su tamaño, sin límite, y los de MAME van por el set', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gml-capturas-'));
+  try {
+    assert.equal(arcadeSetFromFile('MAME_ Kung-Fu Master (World) [kungfum] 2020-02-24 15-25-35.mp4'), 'kungfum');
+    assert.equal(arcadeSetFromFile('Juego [especial] 2020-02-24 15-25-35.mp4'), null);
+    const library = [...games, { key: 'arcade:kungfum', platform: 'Arcade', id: 'kungfum', name: 'Kung-Fu Master' }];
+    await write(path.join(root, 'CONTROL Resonant 2026-11-05 10-00-00.mp4'), 'video', '2026-11-05T13:00:00Z');
+    await write(path.join(root, 'CONTROL Resonant 5_11_2026 07_33_13.png'), 'png', '2026-11-05T10:33:13Z');
+    await write(path.join(root, 'MAME_ Kung-Fu Master (World) [kungfum] 2020-02-24 15-25-35.mp4'), 'mame');
+    await write(path.join(root, 'Cubase 5 2023-10-25 23-25-56.mp4'), 'otro');
+    const steamShots = path.join(root, 'Steam', '1', '760', 'remote', '1234560', 'screenshots');
+    await write(path.join(steamShots, 'clip.mp4'), 'no');
+    const shots = createScreenshots({
+      games: async () => library,
+      sources: async () => [
+        { kind: 'steam', label: 'Steam', dir: path.join(root, 'Steam') },
+        { kind: 'named', label: 'Xbox Game Bar', dir: root, mode: 'both', skip: ['Steam'] }
+      ]
+    });
+    const control = await shots.forGame('steam:1234560');
+    assert.deepEqual([control.total, control.images, control.videos], [2, 1, 1]);
+    assert.deepEqual(
+      control.items.map((item) => [item.kind, item.size ?? null]),
+      [
+        ['video', 5],
+        ['image', null]
+      ]
+    );
+    assert.equal((await shots.forGame('arcade:kungfum')).videos, 1);
+    const video = await shots.video(control.items[0].id);
+    assert.equal(video.type, 'video/mp4');
+    assert.equal(video.size, 5);
+    // Un video no se sirve como imagen ni una imagen como video.
+    assert.equal(await shots.file(control.items[0].id), null);
+    assert.equal(await shots.video(control.items[1].id), null);
+    const folders = await shots.folders();
+    assert.deepEqual(
+      folders.map((item) => [item.label, item.count, item.videos]),
+      [
+        ['Steam', 0, 0],
+        ['Xbox Game Bar', 3, 2]
+      ]
     );
   } finally {
     await fs.rm(root, { recursive: true, force: true });

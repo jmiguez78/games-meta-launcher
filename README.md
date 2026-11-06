@@ -115,3 +115,14 @@ Cada versión se marca con una etiqueta de Git (`v0.18.0`). Los ejecutables no s
 Con los flujos de `tools/ci/` copiados a `.github/workflows/`, en GitHub cada push corre las pruebas en Windows y las de interfaz en Linux (`ci.yml`) y deja el portable como artefacto. Al subir una etiqueta `vX.Y.Z`, `release.yml` arma el portable y publica la versión con sus notas de `CHANGELOG.md`; la aplicación consulta esa publicación (repositorio en `gml.releases` de `package.json`) y avisa cuando hay una más nueva.
 
 Se usa versionado semántico: `MAYOR.MENOR.PARCHE`. Los cambios incompatibles incrementan MAYOR; las funciones nuevas compatibles, MENOR; las correcciones, PARCHE.
+
+
+## Aviso legal y créditos
+
+Games Meta Launcher es un proyecto personal e independiente, sin relación con Valve (Steam), Epic Games, Microsoft (Xbox), Ubisoft, Electronic Arts, CD PROJEKT (GOG), IGDB/Twitch ni el proyecto MAME, y sin su respaldo. Los nombres y marcas mencionados pertenecen a sus dueños y se usan sólo para identificar las tiendas y servicios compatibles.
+
+**Juegos y ROMs.** El launcher no incluye juegos, ROMs, BIOS ni otros archivos protegidos por derechos de autor, ni explica cómo conseguirlos: sólo abre lo que ya tenés instalado. Para Arcade, usá únicamente ROMs que tengas derecho a usar.
+
+**Datos y arte de terceros.** Portadas, capturas, descripciones y fichas se descargan a tu PC desde sus fuentes y siguen sujetas a sus propias condiciones: Steam Web API, IGDB, Wikipedia y Wikidata (los textos de Wikipedia están bajo CC BY-SA y se muestran con enlace al artículo), libretro-thumbnails y los archivos catver.ini, series.ini y bestgames.ini de AntoPISA/MAME_SupportFiles (con una copia incluida en src/mame-support/). Gracias a todos esos proyectos.
+
+**Licencia.** El código se distribuye bajo la licencia MIT; ver LICENSE. Esa licencia no alcanza al contenido de terceros mencionado arriba.
